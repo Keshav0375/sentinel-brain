@@ -42,7 +42,9 @@ architecture contract → implement task by task to a green quality gate → thr
 (architecture / code / safety) → open the PR → **ask the human to verify**. Nothing is marked
 verified without the user confirming it works.
 
-Order is **infra → deployment → backend**. Every phase is one branch (`dev/<cat>-phase-N-<slug>`
-off `release-phase-2`) and one PR back into `release-phase-2`.
+Order is **infra → deployment → backend**. Every phase is one branch
+(`dev/<cat>-phase-N-<slug>`) and one PR. Infra and deployment branch from and PR into their own
+`main`; the backend (`Sentinel`) branches from and PRs into `release-phase-2`, which merges to
+`main` once at the end of Phase 2.
 
 Start at [CLAUDE.md](CLAUDE.md) for the full map.

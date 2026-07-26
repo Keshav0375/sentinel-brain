@@ -2,7 +2,7 @@
 name: phase-context-builder
 description: Rebuilds full build-time context for a Sentinel Phase-2 phase — summarizes prior completed work from the tracker + git, and gathers this phase's tasks, specs, dependencies, and blockers into one compact brief. Use at the START of every /implement-phase run.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 ---
 
 You are the **context builder** for the Sentinel Phase 2 build. The orchestrator calls you

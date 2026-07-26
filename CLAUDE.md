@@ -84,10 +84,22 @@ Skill tool before anything else.
 Order **infra → deployment → backend**. Each phase = one branch + one PR, merged only on the
 user's end-of-phase sign-off.
 
-**Branch model (binding, all repos):** branch from an up-to-date `release-phase-2` as
-`dev/<cat>-phase-<M>-<slug>`; PR back into `release-phase-2`. **Never branch from or PR to
-`main`** — `release-phase-2` → `main` is one final merge at the end of Phase 2. Enforced by
-`../Sentinel/.github/workflows/guard-main-source.yml`.
+**Branch model (binding).** Every phase is one branch `dev/<cat>-phase-<M>-<slug>` + one PR.
+The *integration target* differs per repo — only the backend runs a release train:
+
+| Repo | Branch from | PR into | Protected? |
+|------|-------------|---------|-----------|
+| `Sentinel` (backend) | `release-phase-2` | `release-phase-2` | yes — `main` is guarded |
+| `Sentinel-infra` | `main` | `main` | no |
+| `Sentinel-deployment` | `main` | `main` | no |
+
+In `Sentinel`, **`main` accepts exactly one merge — `release-phase-2`, once, at the end of
+Phase 2.** Never PR `dev/*` to `Sentinel` `main`; `../Sentinel/.github/workflows/guard-main-source.yml`
+rejects it. The two sibling repos have no release branch and no protection: `dev/*` merges
+straight into their `main`, one PR per phase.
+
+`planning/phase-2-e2e` is **retired** — merged into `Sentinel` `main` on 2026-07-26. Planning
+lives in this repo now; do not branch from it or PR to it.
 
 ---
 

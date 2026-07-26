@@ -114,8 +114,8 @@ whole phase; within it, each task moves through:
 1. **Locate + context** — resolve the active phase (category order + phase-gate locks), rebuild
    full context via the `phase-context-builder` subagent, and distill the architecture contract
    via `architecture-warden` (distill mode).
-2. **Goal + branch** — one todo per task; branch `dev/<cat>-phase-<M>-<slug>` fresh from
-   `release-phase-2` (§6).
+2. **Goal + branch** — one todo per task; branch `dev/<cat>-phase-<M>-<slug>` fresh from the
+   repo's integration branch: `main` for infra/deployment, `release-phase-2` for backend (§6).
 3. **Prereqs** — per task, verify tools/accounts/keys/upstream tasks **and that no open
    Reconciliation (R-item) in [STATE.md](STATE.md) applies to this task**. Missing →
    write a **BLOCKED** report into the task file + STATE.md, and **halt**. Never default an
@@ -127,37 +127,56 @@ whole phase; within it, each task moves through:
 7. **Report** — fill the task file's Report/Tests/How-to-Verify; flip status; update TODO + STATE.md.
 8. **Phase review** — when all tasks are green, `architecture-warden` (review) + `code-reviewer` +
    `safety-reviewer` (backend) run over the phase diff; resolve blockers.
-9. **Close** — open the PR **into `release-phase-2`**, present the "see it working" checklist,
-   and ask the user to sign off (§6).
+9. **Close** — open the PR **back into that same integration branch**, present the "see it
+   working" checklist, and ask the user to sign off (§6).
 
 ## 6. Git model — one branch + one PR per phase
 
+Every phase is **one branch + one PR**. The prefix is always `dev/`, but the **integration
+branch it comes from and returns to differs per repo** — only the backend runs a release train.
+
+| Repo | Integration branch | Phase flow |
+|------|--------------------|-----------|
+| `Sentinel-infra` | `main` | `main` → `dev/infra-phase-<M>-<slug>` → PR → `main` |
+| `Sentinel-deployment` | `main` | `main` → `dev/deployment-phase-<M>-<slug>` → PR → `main` |
+| `Sentinel` (backend) | `release-phase-2` | `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR → `release-phase-2` |
+
 ```
-release-phase-2  ──┬──►  dev/<cat>-phase-<M>-<slug>  ──PR──►  release-phase-2
-                   │            (one branch + one PR per phase)
-                   └──────────────────────────────────────────►  main
-                            (final, once ALL 16 phases are merged)
+infra / deployment          main ──►  dev/<cat>-phase-<M>-<slug>  ──PR──►  main
+
+backend (Sentinel)   release-phase-2 ──┬──►  dev/backend-phase-<M>-<slug> ──PR──► release-phase-2
+                                       └──────────────────────────────────────────►  main
+                                              (ONE final merge, end of Phase 2)
 ```
 
-- **`release-phase-2` is the integration branch in all three repos.** A phase branches
-  fresh from it, never from `main`:
-  `git checkout release-phase-2 && git pull && git checkout -b dev/<cat>-phase-<M>-<slug>`.
-- The prefix is **`dev/`**. `Sentinel`'s `ci.yml`
-  branch-convention check only accepts `dev|feat|fix|refactor|ci|docs|test|chore|planning|ai|hotfix`.
+**Why the asymmetry.** `Sentinel` is the showcase repo: its `main` is protected by a ruleset and
+must read as a clean, reviewed history, so work accumulates on `release-phase-2` and lands in one
+deliberate merge. `Sentinel-infra` and `Sentinel-deployment` have no protection, no external
+consumers, and one author — a release train there would be ceremony with no reviewer on the other
+end, so `dev/*` merges straight to `main`.
+
+- Branch fresh from the integration branch every time:
+  `git checkout <integration> && git pull && git checkout -b dev/<cat>-phase-<M>-<slug>`.
+- The prefix is **`dev/`**. `Sentinel`'s `ci.yml` branch-convention check only accepts
+  `dev|feat|fix|refactor|ci|docs|test|chore|planning|ai|hotfix`.
 - Each task in the phase is a **separate commit** on that branch (prefixes: `feat/fix/refactor/test/docs`).
 - **No Claude as contributor** — commits and the PR carry no `Co-Authored-By` / "generated with" attribution.
-- When every task in the phase is `done-pending-review` and green, `/implement-phase` closes it:
-  opens the **PR into `release-phase-2`**, produces a **verification checklist** ("here's how to
-  see it working"), and asks the user to confirm.
-- On **human sign-off**, the PR **merges to `release-phase-2`**; the branch is deleted; the phase
-  is marked `verified` in TODO/STATE.md. The next phase branches from the updated `release-phase-2`.
+- When every task is `done-pending-review` and green, `/implement-phase` closes the phase: opens
+  the PR into the integration branch, produces a **verification checklist** ("here's how to see it
+  working"), and asks the user to confirm.
+- On **human sign-off**, the PR merges, the branch is deleted, and the phase is marked `verified`
+  in TODO/STATE.md. The next phase branches from the updated integration branch.
 - Until sign-off, the next phase stays **locked**. This is the human-review gate.
-- **`release-phase-2` → `main` happens once**, at the end of Phase 2. The user drives that
-  merge; `/implement-phase` never does.
+- **`release-phase-2` → `main` happens once**, at the end of Phase 2, and `Sentinel` `main`
+  accepts nothing else. The user drives that merge; `/implement-phase` never does.
 
-> Enforced by `guard-main-source.yml` in
-> the `Sentinel` repo: `release-phase-2 <- dev/* | planning/phase-2-e2e` and
-> `main <- release-phase-2`. **A PR from `dev/*` straight to `main` is rejected.**
+> Enforced by `guard-main-source.yml` in the `Sentinel` repo only:
+> `release-phase-2 <- dev/*` and `main <- release-phase-2`. **A PR from `dev/*` straight to
+> `Sentinel` `main` is rejected.** The two sibling repos carry no guard — infra task 4.3 decides
+> whether they get CI of their own.
+>
+> `planning/phase-2-e2e` is **retired** (merged to `Sentinel` `main` 2026-07-26). Planning lives
+> in `sentinel-brain` now — never branch from it or PR to it.
 
 ### Where the tracker commits live
 
@@ -165,12 +184,12 @@ The tracker is in **`sentinel-brain`**, which has no CI, no branch protection an
 train — **commit tracker updates straight to brain `main`** and push after each task, so
 `STATE.md` never lags the code. Brain's history *is* the build log.
 
-So one phase = **one code PR** (in the target repo, `dev/*` → `release-phase-2`) **+ tracker
-commits on brain `main`**. There is no tracker branch and no second PR.
+So one phase = **one code PR** (in the target repo, `dev/*` → that repo's integration branch)
+**+ tracker commits on brain `main`**. There is no tracker branch and no second PR.
 
 | What | Where | How |
 |------|-------|-----|
-| Code for the phase | the target code repo | branch `dev/<cat>-phase-<M>-<slug>` → PR into `release-phase-2` |
+| Code for the phase | the target code repo | branch `dev/<cat>-phase-<M>-<slug>` → PR into `main` (infra/deployment) or `release-phase-2` (backend) |
 | Task files, TODO, STATE, phase report | `sentinel-brain` | commits on `main`, pushed as you go |
 
 ## 7. Quality gate (reusable in CI)

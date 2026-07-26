@@ -8,7 +8,7 @@
 | | |
 |---|---|
 | **Repo** | `Sentinel` \| `Sentinel-deployment` \| `Sentinel-infra` |
-| **Branch → PR** | `dev/{cat}-phase-{M}-{slug}` → `release-phase-2` · PR #N — `<paste the PR url>` |
+| **Branch → PR** | `dev/{cat}-phase-{M}-{slug}` → `main` (infra/deployment) \| `release-phase-2` (backend) · PR #N — `<paste the PR url>` |
 | **Tasks** | N/N green |
 | **Gate** | ⬜ awaiting sign-off \| ✅ verified {date} |
 

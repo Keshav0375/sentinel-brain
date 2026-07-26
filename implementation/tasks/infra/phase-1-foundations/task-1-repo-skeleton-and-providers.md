@@ -41,7 +41,8 @@ terraform { backend "azurerm" { ... } }            # §8.1
 ## Prerequisites
 - [ ] `terraform` CLI installed (for fmt/validate).
 - [ ] Repo cloned locally (present, bare).
-- [ ] ⛔ **B13** — `release-phase-2` branch exists in `Sentinel-infra` (the phase branches off it).
+- [x] **Branch base** — `Sentinel-infra` has no release train; this phase branches from `main`
+      and PRs back into `main`. (Former B13 — closed 2026-07-26, model changed.)
 - [ ] ⛔ **R3 RESOLVED** — the user has named the Azure region. **Halt if open**; do not default it.
 
 ## Acceptance Criteria

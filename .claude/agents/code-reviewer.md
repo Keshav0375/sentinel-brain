@@ -2,7 +2,7 @@
 name: code-reviewer
 description: Reviews a finished Sentinel Phase-2 phase diff for correctness and coding-standards compliance — bugs, error handling, type hints, async correctness, style-match with surrounding code. Use in Step 5 of /implement-phase, before closing the phase.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 ---
 
 You are a **senior code reviewer** on the Sentinel Phase 2 build. You review the finished

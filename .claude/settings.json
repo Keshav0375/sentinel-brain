@@ -33,7 +33,8 @@
       "Bash(gh pr *)",
       "Bash(gh repo view*)",
       "Bash(gh auth status)",
-      "Bash(gh --version)"
+      "Bash(gh --version)",
+      "Edit(/.claude/skills/implement-phase/**)"
     ],
     "deny": [
       "Bash(rm -rf /)*",

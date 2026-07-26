@@ -53,22 +53,34 @@ a code repo. Brain drives; the code repos stay clean.
 
 ## Branch model
 
-**In the code repo you are building (all three behave identically):**
+**The integration branch differs per repo. Resolve it BEFORE you branch:**
+
+| Category | Repo | Integration branch (branch from **and** PR into) |
+|----------|------|--------------------------------------------------|
+| infra | `../Sentinel-infra` | **`main`** |
+| deployment | `../Sentinel-deployment` | **`main`** |
+| backend | `../Sentinel` | **`release-phase-2`** |
 
 ```
-release-phase-2  ──┬──►  dev/<cat>-phase-<M>-<slug>  ──PR──►  release-phase-2
-                   │            (one branch + one PR per phase)
-                   └──────────────────────────────────────────►  main
-                            (final, once ALL phases are merged)
+infra / deployment          main ──►  dev/<cat>-phase-<M>-<slug>  ──PR──►  main
+
+backend (Sentinel)   release-phase-2 ──┬──►  dev/backend-phase-<M>-<slug> ──PR──► release-phase-2
+                                       └──────────────────────────────────────────►  main
+                                              (ONE final merge, end of Phase 2)
 ```
 
-- **Every phase branches from an up-to-date `release-phase-2`**, never from `main`.
+- **Every phase branches fresh from its repo's integration branch**, pulled up to date first.
 - Branch prefix is **`dev/`** — `ci.yml`'s branch-convention check accepts only
   `dev|feat|fix|refactor|ci|docs|test|chore|planning|ai|hotfix`.
-- The phase PR targets **`release-phase-2`**. `guard-main-source.yml` enforces
-  `release-phase-2 <- dev/*` and `main <- release-phase-2`.
-  **A PR from `dev/*` straight to `main` will be rejected** — never open one.
-- `release-phase-2` → `main` happens once, at the end of Phase 2. The user drives it.
+- The phase PR targets that **same** integration branch.
+- **In `Sentinel` only**, `guard-main-source.yml` enforces `release-phase-2 <- dev/*` and
+  `main <- release-phase-2`. **A PR from `dev/*` straight to `Sentinel` `main` will be
+  rejected** — never open one. `release-phase-2` → `main` happens once, at the end of Phase 2,
+  and the user drives it. `Sentinel` `main` accepts nothing else.
+- `Sentinel-infra` and `Sentinel-deployment` have **no release branch and no guard** — their
+  `dev/*` PRs merge straight into their own `main`. Do not create a `release-phase-2` there.
+- `planning/phase-2-e2e` is **retired** (merged to `Sentinel` `main` 2026-07-26). Never branch
+  from it or PR to it.
 
 **In `sentinel-brain` (the tracker):** commit straight to `main`. Brain has no CI, no branch
 protection, and no release train — its history *is* the build log. One phase therefore produces
@@ -131,13 +143,14 @@ and ask the user** before writing any code.
     branch: dev/<cat>-phase-<M>-<slug>
     tasks:  <K.1 …> · <K.2 …> · …
   ```
-- Create the phase branch off a fresh `release-phase-2` (see Branch model above):
+- Resolve the integration branch from the **Branch model** table above (`main` for
+  infra/deployment, `release-phase-2` for backend), then branch off a fresh copy of it:
   ```
-  git -C <repo> checkout release-phase-2 && git -C <repo> pull
+  git -C <repo> checkout <integration> && git -C <repo> pull
   git -C <repo> checkout -b dev/<cat>-phase-<M>-<slug>
   ```
-  If `release-phase-2` does not exist in the target repo, **stop and ask** — do not
-  branch from `main` as a fallback and do not create the integration branch yourself.
+  If that integration branch does not exist in the target repo, **stop and ask** — never
+  substitute a different base, and never create an integration branch yourself.
 - **No branch is needed in `sentinel-brain`** — tracker updates commit to brain `main`
   directly. Make sure brain is clean and pulled before you start.
 
@@ -182,8 +195,9 @@ real gap the spec missed, raise it with the user rather than silently expanding 
 
 ## Step 6 — Close the phase (human verification — the gate)
 
-1. Push the branch and open the PR **to `release-phase-2`** (never to `main`) in the target
-   repo with `gh pr create --base release-phase-2`:
+1. Push the branch and open the PR **to the repo's integration branch** —
+   `gh pr create --base main` for infra/deployment, `gh pr create --base release-phase-2` for
+   backend (never `--base main` in `Sentinel`):
    - Title: `<cat> phase <M> — <phase name>`.
    - Body: one bullet per task (with commit subject) + the aggregated **How to Verify** steps.
      **No Claude attribution in the body.** If `gh`/remote is unavailable, say so and give the
@@ -195,12 +209,13 @@ real gap the spec missed, raise it with the user rather than silently expanding 
    (one line per task) and the exact commands/URLs/UI steps to confirm it, ordered top-to-bottom.
    Be honest about anything deferred/BLOCKED (e.g. infra that needs a live Azure account).
 4. **Ask the user to verify** with `AskUserQuestion` — "Does <phase> work as expected?":
-   - **Approve & merge** — verified → merge the code PR **into `release-phase-2`**
+   - **Approve & merge** — verified → merge the code PR **into that repo's integration branch**
      (`gh pr merge --squash --delete-branch` unless they prefer a merge commit), mark every task
      `verified` (task files + TODO cells ✅), append a row to the Phase Gate Ledger in
      `implementation/STATE.md`, unlock the next phase (drop its 🔒), push brain, state what's next.
-     **Never merge a phase into `main`** — `release-phase-2` → `main` is a single, separate
-     merge at the end of Phase 2, after the planning docs are removed, and the user drives it.
+     **Never merge a backend phase into `Sentinel` `main`** — `release-phase-2` → `main` is a
+     single, separate merge at the end of Phase 2 and the user drives it. Infra and deployment
+     phases *do* merge into their own `main`; that is their integration branch.
    - **Changes needed** — record their feedback into the relevant task(s) (`in_progress`) +
      STATE.md, do NOT merge, loop back to Step 4; the same PR updates as fix commits land.
    - **Hold** — leave the PR open, don't merge.

@@ -4,10 +4,11 @@
 > Order is dependency order — work top to bottom. Each **phase = 1 branch + 1 PR**;
 > the phase gate (human sign-off) unlocks the next phase. See [README](README.md).
 >
-> **Branch model:** every phase branches from an up-to-date **`release-phase-2`** as
-> `dev/<cat>-phase-<M>-<slug>` and PRs back into `release-phase-2`. `release-phase-2` → `main`
-> is one final merge at the end of Phase 2. Never PR a `dev/*` branch to `main` — the
-> `verify-source-branch` check rejects it. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase).
+> **Branch model:** every phase is one branch `dev/<cat>-phase-<M>-<slug>` + one PR. The target
+> differs per repo — **infra and deployment PR into their own `main`**; **backend (`Sentinel`)
+> PRs into `release-phase-2`**, and `release-phase-2` → `main` is one final merge at the end of
+> Phase 2. Never PR a `dev/*` branch to `Sentinel` `main` — `verify-source-branch` rejects it.
+> See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase).
 >
 > **Status:** ⬜ not-started · 🔵 in-progress · ⛔ blocked · 🟡 done-pending-review · ✅ verified
 > **Legend:** 🔒 = phase locked until the previous phase gate is signed off.
