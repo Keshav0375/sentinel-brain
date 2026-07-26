@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local-only: 25MB of archived Claude session reports (kept on disk, not in git)
+archive/notes/session-reports/

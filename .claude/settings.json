@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash(ruff*)",
+      "Bash(pyright*)",
+      "Bash(pytest*)",
+      "Bash(python*)",
+      "Bash(pip*)",
+      "Bash(poetry*)",
+      "Bash(uvicorn*)",
+      "Bash(terraform*)",
+      "Bash(tflint*)",
+      "Bash(actionlint*)",
+      "Bash(yamllint*)",
+      "Bash(cat*)",
+      "Bash(ls*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(head*)",
+      "Bash(tail*)",
+      "Bash(wc*)",
+      "Bash(mkdir*)",
+      "Bash(cp*)",
+      "Bash(mv*)",
+      "Bash(touch*)",
+      "Bash(tree*)",
+      "Bash(echo*)",
+      "Bash(git*)",
+      "Bash(docker*)",
+      "Bash(gh pr *)",
+      "Bash(gh repo view*)",
+      "Bash(gh auth status)",
+      "Bash(gh --version)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)*",
+      "Bash(curl*)",
+      "Bash(wget*)",
+      "Bash(sudo*)",
+      "Read(archive/**)",
+      "Read(./archive/**)",
+      "Edit(archive/**)",
+      "Read(//c/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/sentinel-brain/archive/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\DELL\\OneDrive - University of Windsor\\Desktop\\Agentic-Engineering\\Sentinel-development-project"
+    ]
+  }
+}
