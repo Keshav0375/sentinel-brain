@@ -219,3 +219,6 @@ __marimo__/
 
 # Local-only: 25MB of archived Claude session reports (kept on disk, not in git)
 archive/notes/session-reports/
+
+# Personal, per-machine Claude preferences — never committed
+CLAUDE.local.md
