@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel-infra` |
 | **Local path** | `../Sentinel-infra` |
 | **Phase branch** | `dev/infra-phase-1-foundations` |
@@ -65,15 +65,15 @@ the provider/backend plumbing.
 - [x] **R3 RESOLVED** — `canadacentral`.
 
 ## Acceptance Criteria
-- [ ] `terraform fmt -check -recursive` clean.
-- [ ] `terraform init -backend=false && terraform validate` passes (offline validate; real
+- [x] `terraform fmt -check -recursive` clean.
+- [x] `terraform init -backend=false && terraform validate` passes (offline validate; real
       init needs state — task 1.2 / B2).
-- [ ] `terraform.tfvars` and `.env` are gitignored; the Python template's entries survive.
-- [ ] Provider `github.owner` resolves to `Keshav0375`.
-- [ ] `azurerm_resource_group` appears **only** as a `data` block.
-- [ ] `backend.tf` carries `use_azuread_auth` + `use_oidc`.
-- [ ] Providers pinned; **no `azuread` provider declared**.
-- [ ] No `db_password`, no `postgres_entra_admin_group_object_id`; `location` has no default.
+- [x] `terraform.tfvars` and `.env` are gitignored; the Python template's entries survive.
+- [x] Provider `github.owner` resolves to `Keshav0375`.
+- [x] `azurerm_resource_group` appears **only** as a `data` block.
+- [x] `backend.tf` carries `use_azuread_auth` + `use_oidc`.
+- [x] Providers pinned; **no `azuread` provider declared**.
+- [x] No `db_password`, no `postgres_entra_admin_group_object_id`; `location` has no default.
 
 ## Tests
 - **Unit/validate:** `terraform fmt -check`, `terraform validate` (with `-backend=false`).
@@ -86,8 +86,33 @@ the provider/backend plumbing.
 2. `terraform init -backend=false && terraform validate` → "Success".
 3. `grep -c azuread *.tf` → 0.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report   ·   _2026-08-15_
+
+Six files on `dev/infra-phase-1-foundations`: `versions.tf`, `main.tf`, `backend.tf`,
+`variables.tf`, `outputs.tf`, `terraform.tfvars.example`, plus a Terraform section appended
+to the existing Python `.gitignore` (template preserved — `.env` was already at line 151).
+
+**Gate:** `RESULT: PASS` — `tf-fmt` ✅ · `tf-init -backend=false` ✅ · `tf-validate` ✅ ·
+`gitleaks` ✅. Skipped: `tfsec` + `yamllint` (not installed), `actionlint` (no
+`.github/workflows/` until task 4.3 — this is the C13/B15 fix working as intended).
+
+**⚠️ `tflint` reports 5 `terraform_unused_declarations` warnings** — `location`,
+`postgres_entra_admin_object_id`, `postgres_entra_admin_principal_name`,
+`data.azurerm_client_config.current`, `data.azurerm_resource_group.sentinel`. All five are
+correct-but-premature: each is consumed by a module that lands in phase 2. tflint is an
+*optional* check so the gate still passes, but it is **not** clean and is not being
+presented as such. Deliberately **not** suppressed via `.tflint.hcl` — silencing a correct
+rule to make a scaffold look finished would also hide genuinely dead code later. Expect
+these to clear themselves in phase 2 task 2.2; if any survive phase 2, that is a real
+finding.
+
+**Design notes.** `sentinel-rg` is a `data` source, not a resource (C1) — Terraform owning
+it would make `terraform destroy` delete the group that `ci_destroy_infra` then tries to
+`az group delete`, and would collide with the bootstrap on first apply. `subscription_id`
+is a variable wired into the provider rather than ambient `ARM_SUBSCRIPTION_ID`, so a
+wrong subscription shows up in the plan instead of the environment. `github_owner` carries
+a `validation` block pinning it to `Keshav0375` exactly, because Azure matches OIDC subject
+claims case-sensitively and the failure mode is a silent auth error, not a diff.
 
 ## BLOCKED   ·   _only if halted_
 _none — code is writable and gateable offline. Full `terraform init` with remote state is
