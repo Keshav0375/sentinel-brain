@@ -213,19 +213,37 @@ resource "azurerm_postgresql_flexible_server" "sentinel" {
   }
 }
 
-# Entra administrator = a security group, so members are added/removed centrally
-# in Entra without touching the server. Group holds: Keshav (human break-glass),
-# the sentinel-gha SP (GHA runners), and the backend pod's workload-identity
-# UAMI (§3.7). Only an Entra admin can create further Entra DB roles.
-resource "azurerm_postgresql_flexible_server_active_directory_administrator" "sentinel" {
+# rev-9 (2026-08-15): the `sentinel-db-admins` security group is GONE. Creating a group
+# is a DIRECTORY write, which the uwindsor.ca tenant denies (§4.2). Entra admins are now
+# attached directly — one resource per principal, no group indirection:
+#   (1) the human owner, for break-glass psql access
+#   (2) the backend pod's workload-identity UAMI (§3.7)
+# GHA runners are NOT admins; they connect as an Entra DB role created in §10 step 8.
+#
+# TRADE-OFF, accepted knowingly: with a group, adding an admin was an Entra membership
+# change with no infra deploy. Now it is a Terraform change + apply. Worse day-2
+# operability, in exchange for needing zero directory rights. Revisit if R4 closes and
+# directory writes become available.
+resource "azurerm_postgresql_flexible_server_active_directory_administrator" "human" {
   server_name         = azurerm_postgresql_flexible_server.sentinel.name
   resource_group_name = var.resource_group_name
   tenant_id           = data.azurerm_client_config.current.tenant_id
-  object_id           = var.postgres_entra_admin_group_object_id
-  principal_name      = "sentinel-db-admins"
-  principal_type      = "Group"
+  object_id           = var.postgres_entra_admin_object_id
+  principal_name      = var.postgres_entra_admin_principal_name
+  principal_type      = "User"
 
   # Entra auth must be ON before any Entra DB role is created (Terraform ordering).
+  depends_on = [azurerm_postgresql_flexible_server.sentinel]
+}
+
+resource "azurerm_postgresql_flexible_server_active_directory_administrator" "backend_uami" {
+  server_name         = azurerm_postgresql_flexible_server.sentinel.name
+  resource_group_name = var.resource_group_name
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  object_id           = var.backend_uami_principal_id
+  principal_name      = "sentinel-backend-wi"
+  principal_type      = "ServicePrincipal"
+
   depends_on = [azurerm_postgresql_flexible_server.sentinel]
 }
 
@@ -275,7 +293,7 @@ they're not Azure services. The AKS backend's egress IP alone isn't enough. Opti
 
 We use allow-all for dev. The DB is still protected by **Entra token auth** —
 password auth is off, so reaching the port is useless without a valid token
-from a member of the `sentinel-db-admins` group (or an Entra role it created).
+from a Postgres Entra admin (§3.2) or an Entra DB role one of them created.
 Lock down the network later with Private Endpoint if needed.
 
 **Entra DB roles (created once by the Entra admin, not by Terraform):** after the
@@ -319,7 +337,7 @@ resource "azurerm_role_assignment" "terraform_kv_admin" {
 resource "azurerm_role_assignment" "gha_kv_reader" {
   scope                = azurerm_key_vault.sentinel.id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = azuread_service_principal.sentinel_gha.object_id
+  principal_id         = azurerm_user_assigned_identity.sentinel_gha.principal_id
 }
 
 # Backend pod (workload-identity UAMI, §3.7) — read-only. The pod reads LLM keys
@@ -602,12 +620,12 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
 resource "azurerm_role_assignment" "gha_aks_user" {
   scope                = azurerm_kubernetes_cluster.sentinel.id
   role_definition_name = "Azure Kubernetes Service Cluster User Role"
-  principal_id         = azuread_service_principal.sentinel_gha.object_id
+  principal_id         = azurerm_user_assigned_identity.sentinel_gha.principal_id
 }
 
 # ── Backend workload identity ────────────────────────────────────────────────
 # User-assigned identity the backend pod runs as. It gets Key Vault Secrets User
-# (§3.3) and is a member of sentinel-db-admins for PostgreSQL (§3.2).
+# (§3.3) and is attached directly as a PostgreSQL Entra admin (§3.2, rev-9).
 resource "azurerm_user_assigned_identity" "backend" {
   name                = "sentinel-backend-wi"
   location            = var.location
@@ -740,114 +758,201 @@ GHA workflow                Azure AD
 
 ### 4.2 Terraform resources for OIDC
 
+> **rev-9 (2026-08-15) — the CI identity is a User-Assigned Managed Identity, not an app
+> registration.** See `decisions.md` "Identity plane rebuilt on managed identities". The
+> Sentinel subscription lives in the **University of Windsor** Entra tenant
+> (`uwindsor.ca`, `12f933b3-3d61-4b19-9a4d-689021de8cc9`), where the owner holds
+> **Owner on the subscription but no directory rights** — `azuread_application` cannot be
+> created. A UAMI is an ordinary Azure resource governed by Azure RBAC, and it carries
+> federated identity credentials exactly like an app registration does. `azure/login@v2`
+> treats the two identically.
+
 > **Casing matters.** The GitHub OIDC token's `sub` claim uses the repository's canonical
 > owner/name (`Keshav0375/Sentinel-infra`, `Keshav0375/Sentinel-deployment`,
 > `Keshav0375/Sentinel`), and Azure matches federated-credential subjects as an exact,
 > case-sensitive string. Use the real casing below verbatim.
 
 ```hcl
-# Azure AD Application
-resource "azuread_application" "sentinel_gha" {
-  display_name = "sentinel-gha-oidc"
+# The resource group is created out-of-band by the bootstrap (§10 step 1) and deleted
+# by ci_destroy_infra (§7.3). Terraform reads it, never owns it.
+data "azurerm_resource_group" "sentinel" {
+  name = var.resource_group_name
 }
 
-resource "azuread_service_principal" "sentinel_gha" {
-  client_id = azuread_application.sentinel_gha.client_id
+# The CI identity. A UAMI, not an app registration — see the rev-9 note above.
+resource "azurerm_user_assigned_identity" "sentinel_gha" {
+  name                = "sentinel-gha"
+  resource_group_name = data.azurerm_resource_group.sentinel.name
+  location            = var.location
 }
 
-# Contributor on resource group
+# Contributor on the resource group — lets CI manage every Sentinel resource.
 resource "azurerm_role_assignment" "gha_contributor" {
-  scope                = azurerm_resource_group.sentinel.id
+  scope                = data.azurerm_resource_group.sentinel.id
   role_definition_name = "Contributor"
-  principal_id         = azuread_service_principal.sentinel_gha.object_id
+  principal_id         = azurerm_user_assigned_identity.sentinel_gha.principal_id
 }
 
-# Federated credentials — one per repo + trigger combination
-resource "azuread_application_federated_identity_credential" "sentinel_infra_main" {
-  application_id = azuread_application.sentinel_gha.id
-  display_name   = "sentinel-infra-main"
-  audiences      = ["api://AzureADTokenExchange"]
-  issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:Keshav0375/Sentinel-infra:ref:refs/heads/main"
+# Terraform state lives in a DIFFERENT resource group (§8.1), outside Contributor's
+# scope. Without this, `terraform init` fails in CI — the backend uses Entra auth
+# (use_azuread_auth), so blob-level RBAC is the credential path.
+resource "azurerm_role_assignment" "gha_state_blob" {
+  scope                = "/subscriptions/${var.subscription_id}/resourceGroups/sentinel-state-rg/providers/Microsoft.Storage/storageAccounts/sentineltfstate"
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.sentinel_gha.principal_id
 }
 
-resource "azuread_application_federated_identity_credential" "sentinel_infra_pr" {
-  application_id = azuread_application.sentinel_gha.id
-  display_name   = "sentinel-infra-pr"
-  audiences      = ["api://AzureADTokenExchange"]
-  issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:Keshav0375/Sentinel-infra:pull_request"
+# Federated credentials — one per repo + trigger combination. Children of the UAMI,
+# so they are plain Azure resources (RBAC), not directory objects.
+resource "azurerm_federated_identity_credential" "sentinel_infra_main" {
+  name                = "sentinel-infra-main"
+  resource_group_name = data.azurerm_resource_group.sentinel.name
+  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:Keshav0375/Sentinel-infra:ref:refs/heads/main"
 }
 
-resource "azuread_application_federated_identity_credential" "sentinel_main" {
-  application_id = azuread_application.sentinel_gha.id
-  display_name   = "sentinel-main"
-  audiences      = ["api://AzureADTokenExchange"]
-  issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:Keshav0375/Sentinel:ref:refs/heads/main"
+resource "azurerm_federated_identity_credential" "sentinel_infra_pr" {
+  name                = "sentinel-infra-pr"
+  resource_group_name = data.azurerm_resource_group.sentinel.name
+  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:Keshav0375/Sentinel-infra:pull_request"
 }
 
-resource "azuread_application_federated_identity_credential" "sentinel_pr" {
-  application_id = azuread_application.sentinel_gha.id
-  display_name   = "sentinel-pr"
-  audiences      = ["api://AzureADTokenExchange"]
-  issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:Keshav0375/Sentinel:pull_request"
+resource "azurerm_federated_identity_credential" "sentinel_main" {
+  name                = "sentinel-main"
+  resource_group_name = data.azurerm_resource_group.sentinel.name
+  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:Keshav0375/Sentinel:ref:refs/heads/main"
 }
 
-resource "azuread_application_federated_identity_credential" "sentinel_deployment_main" {
-  application_id = azuread_application.sentinel_gha.id
-  display_name   = "sentinel-deployment-main"
-  audiences      = ["api://AzureADTokenExchange"]
-  issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:Keshav0375/Sentinel-deployment:ref:refs/heads/main"
+resource "azurerm_federated_identity_credential" "sentinel_pr" {
+  name                = "sentinel-pr"
+  resource_group_name = data.azurerm_resource_group.sentinel.name
+  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:Keshav0375/Sentinel:pull_request"
+}
+
+resource "azurerm_federated_identity_credential" "sentinel_deployment_main" {
+  name                = "sentinel-deployment-main"
+  resource_group_name = data.azurerm_resource_group.sentinel.name
+  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:Keshav0375/Sentinel-deployment:ref:refs/heads/main"
 }
 ```
+
+**Limits worth knowing:** a managed identity accepts up to **20** federated credentials
+(we use 5), and `subject` cannot be wildcarded — every new repo/trigger pair is a new
+resource. That is deliberate: the blast radius of a leaked GitHub workflow is one branch
+of one repo.
 
 ### 4.3 Chicken-and-egg: bootstrapping OIDC
 
-The OIDC federated credential itself is a Terraform resource — but Terraform
-needs Azure access to create it. Bootstrap sequence:
+The federated credential is itself a Terraform resource — but Terraform needs Azure
+access to create it. That circularity is resolved by one deliberate manual seam:
 
-1. **Manual (one-time):** Create SP + first federated credential via `az` CLI
-2. **Import into Terraform:** `terraform import azuread_application.sentinel_gha <app-id>`
-3. **After import:** Terraform manages all subsequent federated credentials
+1. **Manual (one-time):** create the UAMI, both role assignments, and the two
+   `Sentinel-infra` federated credentials via `az`.
+2. **Import into Terraform:** all five objects (§4.3.1) — not just the identity.
+3. **After import:** Terraform manages every remaining federated credential.
+
+> **Run this in PowerShell.** In Git Bash (MSYS2), `--scope /subscriptions/...` is
+> rewritten to a Windows path and the command fails confusingly. If you must use Git
+> Bash, prefix `MSYS_NO_PATHCONV=1`. `scripts/bootstrap-oidc.sh` sets this itself.
 
 ```bash
-# One-time bootstrap (run manually)
-az ad app create --display-name sentinel-gha-oidc
-APP_ID=$(az ad app list --display-name sentinel-gha-oidc --query '[0].appId' -o tsv)
+SUB_ID=<subscription-id>
+LOCATION=canadacentral
 
-az ad sp create --id $APP_ID
-SP_OBJ_ID=$(az ad sp show --id $APP_ID --query 'id' -o tsv)
+az group create --name sentinel-rg --location $LOCATION
 
-# Assign Contributor on resource group
-az role assignment create --assignee $SP_OBJ_ID \
-  --role Contributor \
-  --scope /subscriptions/<sub-id>/resourceGroups/sentinel-rg
+# The CI identity — a plain Azure resource, no directory rights required.
+az identity create --name sentinel-gha --resource-group sentinel-rg --location $LOCATION
+CLIENT_ID=$(az identity show -n sentinel-gha -g sentinel-rg --query clientId -o tsv)
+PRINCIPAL_ID=$(az identity show -n sentinel-gha -g sentinel-rg --query principalId -o tsv)
 
-# Create first federated credential for sentinel-infra main branch
-az ad app federated-credential create --id $APP_ID --parameters '{
-  "name": "sentinel-infra-main",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:Keshav0375/Sentinel-infra:ref:refs/heads/main",
-  "audiences": ["api://AzureADTokenExchange"]
-}'
+# --assignee-object-id + --assignee-principal-type skip the Microsoft Graph lookup that
+# plain --assignee performs. In a tenant where you hold no directory read rights, that
+# lookup fails; this form does not.
+az role assignment create --assignee-object-id $PRINCIPAL_ID \
+  --assignee-principal-type ServicePrincipal --role Contributor \
+  --scope /subscriptions/$SUB_ID/resourceGroups/sentinel-rg
 
-# Also for PR (so ci_infra.yml can run terraform plan)
-az ad app federated-credential create --id $APP_ID --parameters '{
-  "name": "sentinel-infra-pr",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:Keshav0375/Sentinel-infra:pull_request",
-  "audiences": ["api://AzureADTokenExchange"]
-}'
+az role assignment create --assignee-object-id $PRINCIPAL_ID \
+  --assignee-principal-type ServicePrincipal --role "Storage Blob Data Contributor" \
+  --scope /subscriptions/$SUB_ID/resourceGroups/sentinel-state-rg/providers/Microsoft.Storage/storageAccounts/sentineltfstate
+
+# First two federated credentials, so ci_infra_dry.yml (PR) and ci_infra.yml (main) run.
+az identity federated-credential create --name sentinel-infra-main \
+  --identity-name sentinel-gha --resource-group sentinel-rg \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject repo:Keshav0375/Sentinel-infra:ref:refs/heads/main \
+  --audiences api://AzureADTokenExchange
+
+az identity federated-credential create --name sentinel-infra-pr \
+  --identity-name sentinel-gha --resource-group sentinel-rg \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject repo:Keshav0375/Sentinel-infra:pull_request \
+  --audiences api://AzureADTokenExchange
 ```
 
-After this, add `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
-to sentinel-infra GitHub repo secrets. Then `ci_infra.yml` can run and Terraform
-manages all remaining federated credentials for the other repos.
+#### 4.3.1 The import set (all five — partial import breaks the first apply)
+
+The bootstrap creates five objects Terraform also declares. Importing only the identity
+leaves four to collide on the first `apply`. Managed-identity resources import by Azure
+resource ID, which is derivable — one practical advantage over app registrations, whose
+import ID is an opaque directory object ID.
+
+```bash
+RG=/subscriptions/$SUB_ID/resourceGroups/sentinel-rg
+UAMI=$RG/providers/Microsoft.ManagedIdentity/userAssignedIdentities/sentinel-gha
+
+terraform import azurerm_user_assigned_identity.sentinel_gha $UAMI
+terraform import azurerm_federated_identity_credential.sentinel_infra_main $UAMI/federatedIdentityCredentials/sentinel-infra-main
+terraform import azurerm_federated_identity_credential.sentinel_infra_pr   $UAMI/federatedIdentityCredentials/sentinel-infra-pr
+
+# Role assignments import by assignment GUID — list them first:
+#   az role assignment list --assignee $PRINCIPAL_ID --all --query "[].id" -o tsv
+terraform import azurerm_role_assignment.gha_contributor  <contributor-assignment-id>
+terraform import azurerm_role_assignment.gha_state_blob   <blob-assignment-id>
+```
+
+**Acceptance:** `terraform plan` after the imports shows **no destroy and no replace**.
+Anything else means an attribute drifted between the `az` call and the HCL.
+
+After this, set the GitHub *variables* in §9 (`AZURE_CLIENT_ID` = the UAMI's `clientId`,
+not its principal ID). Then `ci_infra.yml` runs and Terraform manages the rest.
 
 ### 4.4 Backend API app registration (inbound Entra bearer auth)
+
+> ⛔ **BLOCKED — open reconciliation R4 (2026-08-15). Do not implement (infra task 3.5)
+> until resolved.** This section is the one part of the identity plane that the rev-9
+> managed-identity rebuild **cannot** rescue. Defining an API audience
+> (`api://sentinel-backend`) and an app role (`Incident.Write`) requires an
+> `azuread_application` — a **directory** object. A managed identity is a subscription
+> resource; it can *hold* an app role but cannot *define* one. There is no Azure-RBAC
+> equivalent.
+>
+> Three ways out, to be decided before infra Phase 3:
+> 1. **Obtain the `Application Developer` Entra role** from University of Windsor IT.
+>    Narrow, standard, and leaves this section exactly as written below. Preferred.
+> 2. **Move to a personally-owned tenant** — also leaves this section intact, but means
+>    abandoning the Azure-for-Students credit.
+> 3. **Downgrade inbound auth** to a shared secret held in Key Vault. This partially
+>    reverts the rev-5 overhaul and reinstates something close to `sentinel-api-token`.
+>    Cheapest, and the weakest — record it as an accepted regression if chosen.
+>
+> Until R4 closes, backend task 5.6 (`api/auth.py`) has no audience to validate against
+> and inherits this blocker.
 
 The sentinel backend is registered as its own Entra app so callers can obtain
 tokens **scoped to it** and the backend can validate them against Entra JWKS —
@@ -891,14 +996,15 @@ secrets** — pushed to the sentinel repo as GitHub *variables*, not secrets.
 
 ### 4.5 One identity, many audience-scoped tokens
 
-The `sentinel-gha` SP is a **single identity** that requests a **different token
+The `sentinel-gha` **UAMI** is a **single identity** that requests a **different token
 per destination**. A token stamped for one audience is rejected by another —
 this is by design and limits blast radius. There is no single reusable token.
 
 | GHA is talking to… | `--resource` / audience | How obtained |
 |--------------------|-------------------------|--------------|
 | Azure control plane (terraform, `az keyvault`, `az aks`) | `https://management.azure.com` | `azure/login` default |
-| Sentinel backend API | `api://sentinel-backend` | `az account get-access-token --resource api://sentinel-backend` |
+| Terraform state blob | `https://storage.azure.com` | backend `use_azuread_auth` (§8.1) |
+| Sentinel backend API ⛔ **R4** | `api://sentinel-backend` | `az account get-access-token --resource api://sentinel-backend` — audience does not exist until R4 closes (§4.4) |
 | PostgreSQL | `https://ossrdbms-aad.database.windows.net` | `az account get-access-token --resource <that>` |
 
 The backend pod does the same via **workload identity** (§3.7): one UAMI, two
@@ -945,7 +1051,7 @@ resource "github_actions_secret" "sentinel_acr_password" {
 resource "github_actions_secret" "sentinel_azure_client_id" {
   repository      = "Sentinel"
   secret_name     = "AZURE_CLIENT_ID"
-  plaintext_value = azuread_application.sentinel_gha.client_id
+  plaintext_value = azurerm_user_assigned_identity.sentinel_gha.client_id
 }
 
 resource "github_actions_secret" "sentinel_azure_tenant_id" {
@@ -967,7 +1073,7 @@ resource "github_actions_secret" "sentinel_azure_subscription_id" {
 resource "github_actions_secret" "deployment_azure_client_id" {
   repository      = "Sentinel-deployment"
   secret_name     = "AZURE_CLIENT_ID"
-  plaintext_value = azuread_application.sentinel_gha.client_id
+  plaintext_value = azurerm_user_assigned_identity.sentinel_gha.client_id
 }
 
 resource "github_actions_secret" "deployment_azure_tenant_id" {
@@ -1008,7 +1114,7 @@ terraform apply
   `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, and `SENTINEL_API_AUDIENCE`
   (`api://sentinel-backend`). These are just IDs; safe to expose.
 - **GitHub repo secrets** = the few genuine bootstrap credentials — `ACR_*`,
-  `GITHUB_PAT`. No `AZURE_CLIENT_SECRET` (OIDC), no `DB_PASSWORD` (Entra DB auth),
+  `GH_PAT`. No `AZURE_CLIENT_SECRET` (OIDC), no `DB_PASSWORD` (Entra DB auth),
   no `sentinel-api-token` (Entra bearer).
 - **Key Vault secrets** = runtime values — LLM API keys (rotated), Datadog keys,
   Teams webhook, LangFuse keys. **No DB password** (Entra token auth).
@@ -1190,7 +1296,7 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -var="github_pat=${{ secrets.GITHUB_PAT }}" -var="postgres_entra_admin_group_object_id=${{ vars.PG_ADMIN_GROUP_OBJECT_ID }}" -no-color -out=tfplan
+        run: terraform plan -var="github_pat=${{ secrets.GH_PAT }}" -var="location=${{ vars.AZURE_LOCATION }}" -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" -var="postgres_entra_admin_object_id=${{ vars.PG_ADMIN_OBJECT_ID }}" -var="postgres_entra_admin_principal_name=${{ vars.PG_ADMIN_PRINCIPAL_NAME }}" -no-color -out=tfplan
 
       - name: Post Plan to PR
         if: github.event_name == 'pull_request'
@@ -1244,7 +1350,7 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var="github_pat=${{ secrets.GITHUB_PAT }}" -var="postgres_entra_admin_group_object_id=${{ vars.PG_ADMIN_GROUP_OBJECT_ID }}"
+        run: terraform apply -auto-approve -var="github_pat=${{ secrets.GH_PAT }}" -var="location=${{ vars.AZURE_LOCATION }}" -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" -var="postgres_entra_admin_object_id=${{ vars.PG_ADMIN_OBJECT_ID }}" -var="postgres_entra_admin_principal_name=${{ vars.PG_ADMIN_PRINCIPAL_NAME }}"
 ```
 
 ### 7.3 `ci_destroy_infra.yml` — Full teardown (manual)
@@ -1299,7 +1405,7 @@ jobs:
       - name: Terraform Init
         run: terraform init
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve -var="github_pat=${{ secrets.GITHUB_PAT }}" -var="postgres_entra_admin_group_object_id=${{ vars.PG_ADMIN_GROUP_OBJECT_ID }}"
+        run: terraform destroy -auto-approve -var="github_pat=${{ secrets.GH_PAT }}" -var="location=${{ vars.AZURE_LOCATION }}" -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" -var="postgres_entra_admin_object_id=${{ vars.PG_ADMIN_OBJECT_ID }}" -var="postgres_entra_admin_principal_name=${{ vars.PG_ADMIN_PRINCIPAL_NAME }}"
 
       # ── Stage 2: az cleanup of the manual bootstrap resources Terraform can't
       #    reach — the resource group leftovers and the state storage RG ─────────
@@ -1327,17 +1433,35 @@ terraform {
     storage_account_name = "sentineltfstate"
     container_name       = "tfstate"
     key                  = "sentinel.terraform.tfstate"
+
+    # Entra auth, not a storage access key. Combined with the Storage Blob Data
+    # Contributor assignment in §4.2, this is what lets CI reach state at all —
+    # the state account sits outside the Contributor scope on sentinel-rg.
+    use_azuread_auth = true
+    use_oidc         = true
   }
 }
 ```
 
-The state storage account is created manually (one-time bootstrap):
+`subscription_id`, `tenant_id` and `client_id` are **not** written in the backend block —
+they arrive as `ARM_SUBSCRIPTION_ID` / `ARM_TENANT_ID` / `ARM_CLIENT_ID` / `ARM_USE_OIDC`
+env vars from the workflow, so the same `backend.tf` works locally (`az login`) and in CI
+(federated token). A backend block cannot interpolate variables — this is the standard
+way around that.
+
+The state storage account is created manually (one-time bootstrap), in its **own**
+resource group so that `terraform destroy` / `az group delete` on `sentinel-rg` (§7.3)
+cannot destroy the state that describes it:
 ```bash
-az group create --name sentinel-state-rg --location eastus
+az group create --name sentinel-state-rg --location canadacentral
 az storage account create --name sentineltfstate --resource-group sentinel-state-rg \
   --sku Standard_LRS --encryption-services blob
-az storage container create --name tfstate --account-name sentineltfstate
+az storage container create --name tfstate --account-name sentineltfstate --auth-mode login
 ```
+
+> **`sentineltfstate` is a globally unique name across all of Azure.** If it is taken,
+> change it in `backend.tf`, `scripts/bootstrap-state.sh`, `docs/BOOTSTRAP.md`, the
+> §4.2 `gha_state_blob` scope, and this section — together, in one commit.
 
 ### 8.2 State Locking
 
@@ -1345,26 +1469,47 @@ Azure Storage provides native state locking via blob leases. No DynamoDB needed.
 
 ---
 
-## 9. Required GitHub Secrets (sentinel-infra repo)
+## 9. Required GitHub Variables & Secrets (sentinel-infra repo)
 
-**GitHub *variables* (non-secret — just identifiers):**
+> **Read these as `${{ vars.X }}` or `${{ secrets.X }}` exactly as classified below.**
+> The split is real, not cosmetic: a value in the *variables* table is readable in logs
+> and forks by design. Every workflow in §7 must match this table — mixing them up is
+> how `vars.AZURE_CLIENT_ID` silently evaluates to empty string and `azure/login` fails
+> with an unhelpful error.
+
+**GitHub *variables* (`vars.` — non-secret identifiers):**
 
 | Variable | Description | How Set |
 |----------|-------------|---------|
-| `AZURE_CLIENT_ID` | OIDC app client ID | Manual (from bootstrap §4.3) |
-| `AZURE_TENANT_ID` | Azure AD tenant ID | Manual |
+| `AZURE_CLIENT_ID` | The `sentinel-gha` **UAMI's `clientId`** (not its principal/object ID) | Manual (from bootstrap §4.3) |
+| `AZURE_TENANT_ID` | Entra tenant ID — `12f933b3-3d61-4b19-9a4d-689021de8cc9` (uwindsor.ca) | Manual |
 | `AZURE_SUBSCRIPTION_ID` | Azure subscription ID | Manual |
-| `PG_ADMIN_GROUP_OBJECT_ID` | Object ID of the `sentinel-db-admins` Entra group | Manual (from bootstrap) |
+| `AZURE_LOCATION` | Azure region — `canadacentral` (R3, resolved 2026-08-15) | Manual |
+| `PG_ADMIN_OBJECT_ID` | Object ID of the PostgreSQL Entra admin **principal** (§3.2) | Manual (`az ad signed-in-user show --query id`) |
+| `PG_ADMIN_PRINCIPAL_NAME` | That principal's UPN, e.g. `you@uwindsor.ca` | Manual |
 
-**GitHub *secrets* (genuine credentials):**
+**GitHub *secrets* (`secrets.` — genuine credentials):**
 
 | Secret | Description | How Set |
 |--------|-------------|---------|
-| `GITHUB_PAT` | GitHub PAT with `repo` scope | Manual (for github_actions_secret provider + Function bridge) |
+| `GH_PAT` | GitHub PAT with `repo` scope | Manual (for `github_actions_secret` provider + Function bridge) |
+
+> **Why `GH_PAT` and not `GITHUB_PAT`.** GitHub **rejects** any Actions secret or variable
+> whose name begins with `GITHUB_` — the prefix is reserved. The earlier name was
+> unusable; this is a correction, not a preference (conflict C6, 2026-08-15).
+
+**Why `AZURE_LOCATION` exists at all.** `var.location` deliberately has **no default**
+(R3 — a silently defaulted region is a resource-graph-wide mistake), and
+`terraform.tfvars` is gitignored, so CI has no other way to supply it. Every §7 workflow
+therefore passes `-var="location=${{ vars.AZURE_LOCATION }}"` on plan / apply / destroy,
+alongside the other required inputs. One mechanism for all five variables — no mix of
+`-var` flags and `TF_VAR_*` env (conflict C5, 2026-08-15).
 
 **No `AZURE_CLIENT_SECRET`** — OIDC eliminates it.
 **No `DB_PASSWORD`** — PostgreSQL is Entra-only (§3.2); clients present a token.
-**No `sentinel-api-token`** — the backend API uses Entra bearer tokens (§4.4).
+**No `sentinel-api-token`** — the backend API uses Entra bearer tokens (§4.4, ⛔ R4).
+**No `PG_ADMIN_GROUP_OBJECT_ID`** — the `sentinel-db-admins` group was removed in rev-9;
+the Postgres Entra admin is now a principal set directly (§3.2).
 
 ---
 
@@ -1372,43 +1517,56 @@ Azure Storage provides native state locking via blob leases. No DynamoDB needed.
 
 ### One-time Bootstrap (manual — run once, in order)
 
+> **Run every `az` command in PowerShell.** Git Bash rewrites `/subscriptions/...` scope
+> arguments into Windows paths (§4.3). Region is `canadacentral` throughout (R3).
+
 1. [ ] Create Azure resource group:
    ```bash
-   az group create --name sentinel-rg --location eastus
+   az group create --name sentinel-rg --location canadacentral
    ```
 
-2. [ ] Create state storage (§8.1):
+2. [ ] Create state storage (§8.1) — note its **own** resource group:
    ```bash
+   az group create --name sentinel-state-rg --location canadacentral
    az storage account create --name sentineltfstate --resource-group sentinel-state-rg \
      --sku Standard_LRS --encryption-services blob
-   az storage container create --name tfstate --account-name sentineltfstate
+   az storage container create --name tfstate --account-name sentineltfstate --auth-mode login
+
+   # Control plane ≠ data plane: Owner does NOT grant blob access. Without this,
+   # `terraform init` fails with a 403 that reads like a bug.
+   SA_ID=$(az storage account show -n sentineltfstate -g sentinel-state-rg --query id -o tsv)
+   az role assignment create \
+     --assignee-object-id $(az ad signed-in-user show --query id -o tsv) \
+     --assignee-principal-type User \
+     --role "Storage Blob Data Contributor" --scope $SA_ID
    ```
 
-3. [ ] Create OIDC service principal + first federated credential (§4.3)
+3. [ ] Create the `sentinel-gha` UAMI, both role assignments, and the two
+   `Sentinel-infra` federated credentials (§4.3), then **import all five** (§4.3.1).
 
-4. [ ] Create the `sentinel-db-admins` Entra group and note its object ID (this
-   becomes the PostgreSQL Entra admin, §3.2). Add yourself now; the GHA SP + the
-   backend UAMI are added after step 5 creates them:
+4. [ ] Record the PostgreSQL Entra admin principal (§3.2). rev-9 removed the
+   `sentinel-db-admins` group — you are the admin directly, and the backend UAMI is
+   added as a second admin once Terraform creates it:
    ```bash
-   az ad group create --display-name sentinel-db-admins --mail-nickname sentinel-db-admins
-   PG_ADMIN_GROUP_OBJECT_ID=$(az ad group show --group sentinel-db-admins --query id -o tsv)
-   az ad group member add --group sentinel-db-admins --member-id $(az ad signed-in-user show --query id -o tsv)
+   az ad signed-in-user show --query "{id:id, upn:userPrincipalName}" -o json
    ```
+   `az ad signed-in-user show` needs only the delegated `User.Read` scope that every
+   account holds, so it works even where directory writes are denied.
 
-5. [ ] Add GitHub *variables* + `GITHUB_PAT` secret to sentinel-infra repo (§9) —
-   incl. `PG_ADMIN_GROUP_OBJECT_ID`. **No** `DB_PASSWORD`.
+5. [ ] Add GitHub *variables* + the `GH_PAT` secret to sentinel-infra (§9) — incl.
+   `AZURE_LOCATION`, `PG_ADMIN_OBJECT_ID`, `PG_ADMIN_PRINCIPAL_NAME`. **No**
+   `DB_PASSWORD`, **no** `GITHUB_PAT` (reserved prefix — see §9).
 
-6. [ ] First `terraform apply` (can be local or via GHA):
+6. [ ] First `terraform apply` (local or via GHA):
    ```bash
    terraform init
    terraform apply -var="github_pat=<your-pat>" \
-     -var="postgres_entra_admin_group_object_id=$PG_ADMIN_GROUP_OBJECT_ID"
+     -var="location=canadacentral" \
+     -var="subscription_id=<sub-id>" \
+     -var="postgres_entra_admin_object_id=<your object id>" \
+     -var="postgres_entra_admin_principal_name=<your UPN>"
    ```
-   Then add the created SP + backend UAMI to the admin group:
-   ```bash
-   az ad group member add --group sentinel-db-admins --member-id <sentinel_gha SP object id>
-   az ad group member add --group sentinel-db-admins --member-id <backend UAMI principal id>
-   ```
+   Then add the backend UAMI as a second Postgres Entra admin (§3.2).
 
 7. [ ] Populate Key Vault with runtime secrets (no `db-password`, no
    `sentinel-api-token` — both eliminated):

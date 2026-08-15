@@ -3,7 +3,7 @@
 > Live execution state. `/implement-phase` reads this first and updates it after every task.
 > Planning-side state (architecture decisions) stays in [architecture/decisions.md](../architecture/decisions.md).
 >
-> Last updated: 2026-07-26
+> Last updated: 2026-08-15
 
 ## Current Position
 
@@ -24,18 +24,34 @@
 
 Start **infra Phase 1** — branch `dev/infra-phase-1-foundations` off `Sentinel-infra` `main`.
 
-**The git workflow is clear.** B13 and B14 are both closed (2026-07-26): the branch model
-changed so infra/deployment need no release branch, and `Sentinel` `release-phase-2` was
-fast-forwarded to `main` (`cac026e..5b97232`), so it now carries the rewritten guard + `ci.yml`
-+ `scripts/quality_gate.py`.
+**The git workflow is clear.** B13 and B14 are both closed (2026-07-26).
 
-**One halting prerequisite remains:**
-- **R3 — the Azure region.** Halting for infra 1.1 (`/implement-phase` Step 4.1). The agent
-  will not default it to `eastus`.
+**Halting prerequisites for Phase 1: none remaining.**
+- **R3 (region) — RESOLVED 2026-08-15 → `canadacentral`.**
+- **C1–C9 — RESOLVED 2026-08-15.** Nine architecture conflicts found by
+  `architecture-warden` before any code was written; see
+  [architecture/decisions.md](../architecture/decisions.md).
+- **rev-9 identity rebuild — DECIDED 2026-08-15.** The CI identity is a User-Assigned
+  Managed Identity, not an app registration, because the subscription sits in the
+  **uwindsor.ca** tenant where the owner has no directory rights.
 
-The Terraform *code* for Phase 1 can be written without an Azure account, but nothing can
-`plan`/`apply` or be verified until B1–B3 exist. `/implement-phase` writes BLOCKED reports for
-any task whose verification needs an unavailable resource.
+**Environment facts (confirmed 2026-08-15):**
+
+| Field | Value |
+|-------|-------|
+| Tenant | University of Windsor · `uwindsor.ca` · `12f933b3-3d61-4b19-9a4d-689021de8cc9` |
+| Subscription | Azure for Students · `174e25ca-ab82-4671-a913-9c2f66e5924d` · **Owner** · Active · $0 spent |
+| Region | `canadacentral` |
+| Directory rights | **None** — portal 401. Drives the entire rev-9 rebuild. |
+| Local toolchain | terraform 1.15.8 · az 2.89.1 · tflint 0.64.0 · gitleaks 8.30.1 · actionlint 1.7.12 — all installed 2026-08-15. `tfsec` (optional, unavailable on winget) and `yamllint` (optional) remain absent and will report SKIPPED. |
+
+Phase 1's Terraform can be written and gated offline (fmt · init -backend=false · validate ·
+tflint · gitleaks). Nothing can `plan`/`apply` until B1–B3 exist; `/implement-phase` writes
+BLOCKED reports for those verification steps.
+
+**Open, non-halting for Phase 1:** R4 (inbound Entra bearer auth — halts infra 3.5 +
+backend 5.6) and C13 (quality-gate `actionlint` defect — blocks a *green* Phase 1; see
+Blockers).
 
 ## Phase Gate Ledger
 
@@ -53,17 +69,18 @@ External dependencies that halt verification. Mirror any task-level BLOCKED here
 
 | # | Blocker | Blocks | Owner | Status |
 |---|---------|--------|-------|--------|
-| B1 | Azure subscription + `sentinel-rg` resource group | All infra apply/verify (§10 bootstrap) | Keshav | open |
+| B1 | ~~Azure subscription~~ + `sentinel-rg` resource group | All infra apply/verify (§10 bootstrap) | Keshav | **partly closed 2026-08-15** — subscription exists (Azure for Students `174e25ca-…`, Owner, Active). `sentinel-rg` in `canadacentral` still to create. |
 | B2 | Terraform state storage bootstrapped (state-rg + storage + container) | infra 1.2 verify, all applies | Keshav | open |
-| B3 | OIDC SP + first federated credential created via `az` | infra 1.3 verify | Keshav | open |
+| B3 | `sentinel-gha` **UAMI** + 2 role assignments + first 2 federated credentials via `az`, then the 5-object import (`infra.md` §4.3.1) | infra 1.3 verify | Keshav | open — **now achievable**; rev-9 replaced the app registration with a UAMI, needing no directory rights |
 | B4 | Anthropic API key | backend LLM calls; Key Vault seed | Keshav | open |
 | B5 | OpenAI API key | backend fallback; Key Vault seed | Keshav | open |
 | B6 | Datadog account + API key + app key + site | deployment pipeline + monitors; backend fetch_logs | Keshav | open |
 | B7 | LangFuse cloud account (public + secret key) | backend tracing | Keshav | open |
 | B8 | Microsoft Teams incoming webhook URL | notifications (GHA) | Keshav | open |
 | B9 | GitHub PAT (`repo` scope) for cross-repo secret push + Function bridge | infra 4.1, Function bridge | Keshav | open |
-| B10 | Entra `sentinel-db-admins` security group created + set as Postgres Entra admin; SP + backend UAMI added; DB roles created (`pgaadauth_create_principal`) | infra Postgres (Entra-only auth), all DB access | Keshav | open |
-| B11 | Backend Entra app registration (`api://sentinel-backend` + `Incident.Write` role) + role grant to `sentinel-gha` SP | backend inbound auth, incident workflow token | Keshav | open |
+| B10 | ~~Entra `sentinel-db-admins` security group~~ → record your own Entra user object ID + UPN (`az ad signed-in-user show`); DB roles still created via `pgaadauth_create_principal` | infra Postgres (Entra-only auth), all DB access | Keshav | ✅ **CLOSED 2026-08-15 — superseded by rev-9.** No group is created; Postgres Entra admins are attached directly (human + backend UAMI). Needs no directory write. |
+| B11 | Backend Entra app registration (`api://sentinel-backend` + `Incident.Write` role) + role grant to the GHA identity | backend inbound auth, incident workflow token | Keshav | ⛔ **BLOCKED on R4** — requires a directory write the uwindsor.ca tenant denies. rev-9 cannot rescue this one. Halts infra 3.5 + backend 5.6. |
+| B15 | `quality_gate.py` runs `actionlint` as a **required** check with no argv path, so `resolve_argv` never prunes it; on a repo with no `.github/workflows/` it exits 3 → hard FAIL | **green** gate for infra phases 1–3 and deployment phase 1 | Keshav (decision) / Claude (fix) | open — conflict **C13**. Contradicts the gate's own docstring (lines 16–18). Fix: give `MATRIX` entries an implicit-path guard. Lands in `../Sentinel`, outside the infra phase branch — awaiting go-ahead. |
 | B12 | AKS OIDC issuer + workload identity enabled; backend UAMI + federated credential; `sentinel-backend` ServiceAccount annotated | backend runtime KV/DB access (no pod secret) | Keshav | open |
 | B13 | ~~`release-phase-2` created in `Sentinel-infra` + `Sentinel-deployment`~~ | — | Keshav | ✅ **CLOSED 2026-07-26 — obsolete.** Branch model changed: those two repos have no release train, `dev/*` PRs into their own `main`. Nothing to create. |
 | B14 | ~~Updated `guard-main-source.yml` + `ci.yml` merged into `release-phase-2` **and** `main` of `Sentinel`~~ | — | Keshav | ✅ **CLOSED 2026-07-26.** `planning/phase-2-e2e` merged to `main` (PR #14, `5b97232`); `release-phase-2` fast-forwarded to match. Both protected branches now carry the rewritten guard, `ci.yml` and `scripts/quality_gate.py`. |
@@ -74,9 +91,38 @@ External dependencies that halt verification. Mirror any task-level BLOCKED here
 |---|------|---------|---------------------|
 | R1 | GitHub owner `keshxvDev` in arch docs vs real `Keshav0375`; repo casing | infra 1.3, 4.1, 3.3 | ✅ **RESOLVED 2026-07-11** — all arch docs updated to `Keshav0375` + real repo casing via `/sentinel-planner`; OIDC subjects noted case-sensitive. |
 | R2 | Backend repo GitHub name = `Sentinel` (capital S) | infra 4.1, Function bridge dispatch target | ✅ **RESOLVED 2026-07-11** — all three remotes confirmed `Keshav0375/Sentinel-infra`, `.../Sentinel-deployment`, `.../Sentinel`. |
-| R3 | Azure region for all resources (arch examples use `eastus`) | all infra modules | **OPEN** — confirm free-tier availability of B2ats_v2 + F1 in chosen region before infra Phase 2/3. |
+| R3 | Azure region for all resources (arch examples use `eastus`) | all infra modules | ✅ **RESOLVED 2026-08-15 → `canadacentral`.** Chosen for proximity, Canadian residency, and lower burstable-SKU contention than `eastus`. `var.location` still has **no default** — supplied via the `AZURE_LOCATION` GitHub variable (C5). ⚠️ Still to confirm on a live subscription: **BASv2** vCPU quota ≥ 2 (AKS `B2ats_v2`) and F1 availability. Azure-for-Students quota is low and increase requests on sponsored offers are usually declined — verify before infra Phase 3. |
+| R4 | Inbound Entra bearer auth (`api://sentinel-backend` + `Incident.Write`) needs an app registration — a directory write the uwindsor.ca tenant denies | infra 3.5, backend 5.6, B11 | **OPEN** — halts those two tasks; Phases 1–2 unaffected. Routes (`infra.md` §4.4): (1) obtain `Application Developer` from UWindsor IT — preferred, leaves the design intact; (2) personally-owned tenant — same, but abandons the student credit at ~$50–60/mo; (3) downgrade to a Key Vault shared secret — partially reverts rev-5, record as an accepted regression. **Decide before infra Phase 3.** |
 
 ## Change Log
+
+- **2026-08-15** — **rev-9: identity plane rebuilt on managed identities; R3 closed;
+  C1–C9 resolved.** Triggered by discovering the subscription is **Azure for Students inside
+  the uwindsor.ca tenant** — Owner on the subscription, **no directory rights**. Every rev-5
+  identity construct was a directory object, so B3/B10/B11 were unbuildable as designed.
+  **(a)** CI identity → `azurerm_user_assigned_identity.sentinel_gha` + 5
+  `azurerm_federated_identity_credential` children (was `azuread_application` + SP + 5 app
+  federated creds). Closes B3's design gap.
+  **(b)** `sentinel-db-admins` group deleted → two direct Postgres Entra admins (human as
+  `User`, backend UAMI as `ServicePrincipal`). **Closes B10.** Cost: admin changes are now a
+  Terraform apply, not an Entra membership edit.
+  **(c)** **B11 cannot be rescued** — only an app registration can define an API audience +
+  app role. New **R4**; `infra.md` §4.4 carries a ⛔ banner; halts infra 3.5 + backend 5.6.
+  **(d)** **R3 → `canadacentral`.** `var.location` keeps no default; CI supplies it via the
+  new `AZURE_LOCATION` GitHub variable.
+  **(e)** **C1–C9 resolved** before a line of code (see decisions.md): RG is a **data source**
+  (C1); state account gets **Storage Blob Data Contributor** + backend `use_azuread_auth`/
+  `use_oidc` — without which *every* CI `terraform init` fails (C2); **all five** bootstrap
+  objects imported, not one (C3); `subscription_id` wired into the provider (C4); `location`
+  passed as `-var` (C5); **`GITHUB_PAT` → `GH_PAT`**, the old name being illegal under
+  GitHub's reserved prefix (C6); `AZURE_*` are `vars.` not `secrets.` (C7); `github_owner`
+  stays a variable (C8); versions pinned — `terraform >= 1.9`, `azurerm ~> 4.0`,
+  `integrations/github ~> 6.0`, **`azuread` dropped entirely** (C9).
+  **(f)** New **B15/C13** — `quality_gate.py` fails `actionlint` on any repo without
+  `.github/workflows/`, contradicting its own docstring and making infra phases 1–3 and
+  deployment phase 1 unable to report green. Fix pending go-ahead.
+  **(g)** Local toolchain installed: terraform, az, tflint, gitleaks, actionlint.
+  Unchanged: 58 tasks, 16 phases, branch model, HITL, the human phase gate.
 
 - **2026-07-26** — **rev-8: per-repo branch model + agents on Opus.** The single "all repos use
   `release-phase-2`" rule is replaced by a per-repo integration branch:

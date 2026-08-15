@@ -1,6 +1,6 @@
 # Sentinel Phase 2 — Planning State
 
-> Last updated: 2026-07-12
+> Last updated: 2026-08-15 (rev-9 — identity plane on managed identities; C1–C9 resolved)
 
 ## Current Phase
 
@@ -33,10 +33,13 @@ Note: There is no separate sentinel-backend repo. The sentinel repo IS the backe
 
 ## Open Decisions
 
-None — all architectural decisions resolved (rev 5 secrets/auth/ground-truth overhaul
-approved 2026-07-12). Implementation can begin once blockers are cleared. New setup
-prerequisites (Entra DB admin group, backend app registration, AKS workload identity)
-are folded into the blockers/bootstrap, not open decisions.
+- **R4 — inbound Entra bearer auth has no home tenant.** Defining `api://sentinel-backend`
+  + the `Incident.Write` app role requires an `azuread_application`, a directory object the
+  uwindsor.ca tenant denies. The rev-9 managed-identity rebuild rescues CI auth and the
+  Postgres admin, but **not** this. Halts infra task 3.5 and backend task 5.6. Three routes
+  in `infra.md` §4.4: obtain `Application Developer` from UWindsor IT · move to a personal
+  tenant · downgrade to a Key Vault shared secret (accepted regression). **Decide before
+  infra Phase 3.** Phases 1 and 2 are unaffected.
 
 ## Blockers
 
@@ -47,6 +50,57 @@ are folded into the blockers/bootstrap, not open decisions.
 - [ ] OpenAI API key — who: Keshav — impact: blocks fallback LLM calls
 
 ## Decision Log
+
+### 2026-08-15: rev-9 — identity plane rebuilt on managed identities (Option 3)
+
+**Context:** The Azure subscription is **Azure for Students** (`174e25ca-…`) inside the
+**University of Windsor** tenant (`uwindsor.ca`, `12f933b3-…`). Azure exposes two
+independent permission planes: **Azure RBAC** on the subscription, and **Microsoft Entra**
+on the directory. The owner holds **Owner on the subscription** and **no directory rights** —
+confirmed by a portal 401. Every rev-5 identity construct (`sentinel-gha-oidc` app,
+`sentinel-db-admins` group, `sentinel-backend-api` app) is a *directory* object, so B3, B10
+and B11 were all unbuildable as designed. Options weighed: (1) ask UWindsor IT for
+`Application Developer`; (2) abandon the student credit for a personally-owned tenant at
+~$50–60/mo; (3) rebuild the identity plane on Azure-RBAC primitives; (4) self-hosted runner
+on a VM with a system-assigned identity — rejected (24/7 cost, and self-hosted runners on a
+public repo execute arbitrary PR code).
+
+**Decision:** Option 3. The CI identity becomes a **User-Assigned Managed Identity**
+(`azurerm_user_assigned_identity.sentinel_gha`) carrying five
+`azurerm_federated_identity_credential` children. A UAMI is an ordinary Azure resource
+governed by RBAC; its federated credentials are child resources, not directory objects, and
+`azure/login@v2` cannot tell the difference. **B3 solved.** The `sentinel-db-admins` group is
+deleted in favour of two direct `..._active_directory_administrator` resources — the human
+owner (`principal_type = "User"`) and the backend UAMI (`ServicePrincipal`). **B10 solved.**
+
+**Consequences / costs, stated plainly:**
+- **B11 is not solved and cannot be** — only an app registration can *define* an API audience
+  and app role. Raised as **R4**; `infra.md` §4.4 carries a ⛔ banner.
+- Postgres admin membership is now a Terraform change instead of an Entra group edit. Worse
+  day-2 operability, accepted in exchange for needing zero directory rights.
+- `bootstrap-oidc.sh` must use `az role assignment create --assignee-object-id` +
+  `--assignee-principal-type`; plain `--assignee` performs a Graph lookup that fails without
+  directory read.
+- Upside: managed-identity resources import by **derivable Azure resource ID**, not opaque
+  directory object IDs — which is what makes the five-object import in §4.3.1 tractable.
+- The `azuread` provider is no longer needed anywhere in infra Phases 1–2.
+
+### 2026-08-15: Nine architecture conflicts resolved before first code (C1–C9)
+
+Surfaced by `architecture-warden` (distill) against infra Phase 1; all would have produced
+broken or unverifiable infra. Resolved as follows:
+
+| # | Conflict | Resolution |
+|---|----------|------------|
+| C1 | §4.2 scoped Contributor to `azurerm_resource_group.sentinel` (managed) while §10 creates the RG by hand and §7.3 deletes it with `az group delete` | **Data source.** Terraform reads `sentinel-rg`, never owns it — otherwise `destroy` deletes it and the follow-up `az group delete` fails |
+| C2 | Contributor scoped to `sentinel-rg`, but state lives in `sentinel-state-rg`, and `backend.tf` set no auth flags — **every CI `terraform init` would fail** | Bootstrap grants **Storage Blob Data Contributor** on `sentineltfstate`; backend gains `use_azuread_auth` + `use_oidc`; ARM_* env supplies the IDs |
+| C3 | Bootstrap creates 5 objects; §4.3 documented importing 1, with the wrong ID form | All five imports documented in new §4.3.1, by Azure resource ID. Acceptance: `plan` shows no destroy **and no replace** |
+| C4 | `subscription_id` declared but never consumed | Wired into `provider "azurerm"` — mandatory under v4 anyway, so C4 and C9 resolve together |
+| C5 | CI passed 2 `-var` flags; `location` has no default and tfvars is gitignored → missing-variable failure every run | New `AZURE_LOCATION` GitHub *variable*, passed as `-var="location=…"`. `var.location` keeps **no default** (R3) |
+| C6 | `GITHUB_PAT` — GitHub **rejects** the reserved `GITHUB_` prefix; the secret was uncreatable | Renamed **`GH_PAT`** everywhere |
+| C7 | §9 classed `AZURE_*` as variables; every §7 workflow read them as `secrets.` | §9 is authoritative — they are `vars.`. Under OIDC these are identifiers, not credentials |
+| C8 | §5.1 hardcoded `owner = "Keshav0375"`; task 1.1 required `var.github_owner` | Follow the task (variable, defaulted). Accepted deviation, not a violation |
+| C9 | No `required_version`, no provider pins anywhere | `terraform >= 1.9`, `azurerm ~> 4.0`, `integrations/github ~> 6.0`. **No `azuread`** — rev-9 removed the need |
 
 ### 2026-07-12: Master ARCHITECTURE.md reshaped into a high-level Architecture Index
 **Context:** The master doc had drifted into a fourth full architecture, duplicating detail

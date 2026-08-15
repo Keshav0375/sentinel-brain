@@ -7,61 +7,88 @@
 | **Local path** | `../Sentinel-infra` |
 | **Phase branch** | `dev/infra-phase-1-foundations` |
 | **Commit prefix** | `feat:` |
-| **Arch refs** | architecture/infra.md §2, §8.1 |
+| **Arch refs** | architecture/infra.md §2, §4.2, §8.1, §9 |
 | **Depends on** | — |
 | **Referenced by** | [[task-3-oidc-federation]], all phase-2/3/4 module tasks |
 
-> ⚠ **rev-5 (2026-07-12):** **no `db_password` variable** — PostgreSQL is Entra-only
-> (`password_auth_enabled=false`), so no password exists to pass in. The Entra admin group's
-> object id takes its place. See sentinel-infra §3.2 and [[task-2-postgresql-module]].
+> ✅ **R3 RESOLVED 2026-08-15 → `canadacentral`.** `var.location` still carries **no
+> default** — the value reaches CI through the `AZURE_LOCATION` GitHub variable (C5).
 >
-> ⚠ **R3 is OPEN — `location` is a halting prerequisite.** Do **not** default the region to
-> `eastus` on your own; B2ats_v2 (AKS) and F1 (App Service) free-tier availability is
-> region-dependent. Confirm the region with the user first (STATE.md → Open Reconciliations).
+> ⚠ **rev-9 (2026-08-15):** no `azuread` provider, and **no
+> `postgres_entra_admin_group_object_id`**. The `sentinel-db-admins` group was removed —
+> Postgres Entra admins are now attached directly, so the variables are the admin's
+> **object id + UPN**. See infra.md §3.2 / §4.2 and [[task-2-postgresql-module]].
+>
+> ⚠ **rev-5:** still **no `db_password`** — PostgreSQL is Entra-only
+> (`password_auth_enabled=false`), so no password exists to pass in.
 
 ## Spec
 Lay down the root Terraform layout that every module wires into. No resources yet beyond
 the provider/backend plumbing.
 
 **Files created:**
-- `main.tf` — `terraform{}` required_providers (`azurerm`, `azuread`, `github`), provider blocks (`azurerm` features{}, `github` owner=`Keshav0375`), `data "azurerm_client_config" "current"`, and the `azurerm_resource_group` reference (name from var). Module call stubs commented for phases 2–3.
-- `variables.tf` — `subscription_id`, `location` (**R3 — confirm with the user, do not default**), `resource_group_name` (default `sentinel-rg`), `postgres_entra_admin_group_object_id`, `github_pat` (sensitive), `github_owner` (default `Keshav0375`). **No `db_password`** (Entra-only Postgres).
+- `main.tf` — provider blocks (`azurerm` with `features {}` **and `subscription_id`**,
+  `github` with `owner = var.github_owner`), `data "azurerm_client_config" "current"`, and
+  `data "azurerm_resource_group" "sentinel"` — a **data source, not a resource** (C1: the RG
+  is created by the bootstrap and deleted by `ci_destroy_infra`; Terraform reads it, never
+  owns it). Module call stubs commented for phases 2–3.
+- `versions.tf` — `required_version >= 1.9` and pinned `required_providers` (C9):
+  `azurerm ~> 4.0`, `integrations/github ~> 6.0`. **No `azuread`** — rev-9 removed every
+  directory object from phases 1–2.
+- `variables.tf` — see the contract below.
 - `outputs.tf` — empty scaffold with header comment (populated in task 4.4).
-- `backend.tf` — `backend "azurerm"` block per §8.1 (state-rg / sentineltfstate / tfstate / sentinel.terraform.tfstate).
-- `terraform.tfvars.example` — every non-secret var with placeholder values; real `terraform.tfvars` gitignored.
-- `.gitignore` — `.terraform/`, `*.tfstate*`, `terraform.tfvars`, `.env`, `*.tfplan`.
-- `versions.tf` (optional) — pin provider versions.
+- `backend.tf` — `backend "azurerm"` per §8.1, **including `use_azuread_auth = true` and
+  `use_oidc = true`** (C2 — without these CI cannot reach the state blob at all).
+- `terraform.tfvars.example` — every non-secret var with placeholder values; real
+  `terraform.tfvars` gitignored.
+- `.gitignore` — **extend** the existing Python template, don't replace it: add
+  `.terraform/`, `*.tfstate*`, `terraform.tfvars`, `*.tfplan` (`.env` is already there).
 
-**Contract:**
-```hcl
-provider "github" { owner = var.github_owner }   # Keshav0375, NOT keshxvDev (R1)
-terraform { backend "azurerm" { ... } }            # §8.1
-```
+**Variable contract (binding — later phases inherit these names):**
+
+| Name | Type | Default | Notes |
+|------|------|---------|-------|
+| `subscription_id` | string | — | wired into `provider "azurerm"`; mandatory under azurerm v4 (C4) |
+| `location` | string | **none** | R3 = `canadacentral`, but **never defaulted in HCL** |
+| `resource_group_name` | string | `sentinel-rg` | |
+| `postgres_entra_admin_object_id` | string | — | rev-9 — replaces the group object id |
+| `postgres_entra_admin_principal_name` | string | — | rev-9 — the admin's UPN |
+| `github_owner` | string | `Keshav0375` | case-sensitive (R1) |
+| `github_pat` | string, `sensitive = true` | — | |
+
+**No `db_password`. No `postgres_entra_admin_group_object_id`. No `azuread` provider.**
 
 ## Prerequisites
-- [ ] `terraform` CLI installed (for fmt/validate).
-- [ ] Repo cloned locally (present, bare).
-- [x] **Branch base** — `Sentinel-infra` has no release train; this phase branches from `main`
-      and PRs back into `main`. (Former B13 — closed 2026-07-26, model changed.)
-- [ ] ⛔ **R3 RESOLVED** — the user has named the Azure region. **Halt if open**; do not default it.
+- [x] `terraform` CLI installed — v1.15.8, 2026-08-15.
+- [x] Repo cloned locally (present, bare — one `Initial commit`).
+- [x] **Branch base** — `Sentinel-infra` has no release train; branch from `main`, PR to `main`.
+- [x] **R3 RESOLVED** — `canadacentral`.
 
 ## Acceptance Criteria
 - [ ] `terraform fmt -check -recursive` clean.
-- [ ] `terraform init -backend=false && terraform validate` passes (offline validate; real init needs state — task 1.2 / B2). This is exactly what `quality_gate.py --repo infra` runs.
-- [ ] `terraform.tfvars` and `.env` are gitignored.
-- [ ] Provider `github.owner` = `Keshav0375`.
-- [ ] No `db_password` variable anywhere; `location` carries the region the user confirmed.
+- [ ] `terraform init -backend=false && terraform validate` passes (offline validate; real
+      init needs state — task 1.2 / B2).
+- [ ] `terraform.tfvars` and `.env` are gitignored; the Python template's entries survive.
+- [ ] Provider `github.owner` resolves to `Keshav0375`.
+- [ ] `azurerm_resource_group` appears **only** as a `data` block.
+- [ ] `backend.tf` carries `use_azuread_auth` + `use_oidc`.
+- [ ] Providers pinned; **no `azuread` provider declared**.
+- [ ] No `db_password`, no `postgres_entra_admin_group_object_id`; `location` has no default.
 
 ## Tests
 - **Unit/validate:** `terraform fmt -check`, `terraform validate` (with `-backend=false`).
-- **Quality gate:** `python ../Sentinel/scripts/quality_gate.py --repo infra --path <repo>` (fmt · validate · tflint · gitleaks).
+- **Quality gate:** `python ../Sentinel/scripts/quality_gate.py --repo infra --path <repo>`.
+  Expect `tfsec` + `yamllint` SKIPPED (not installed) and `actionlint` to FAIL until
+  **B15/C13** is fixed — the repo ships no `.github/workflows/` until task 4.3.
 
 ## How to Verify (phase gate)
 1. `cd Sentinel-infra && terraform fmt -check -recursive` → clean.
 2. `terraform init -backend=false && terraform validate` → "Success".
+3. `grep -c azuread *.tf` → 0.
 
 ## Report   ·   _filled on completion_
 _not yet implemented_
 
 ## BLOCKED   ·   _only if halted_
-_none — code is writable offline. Full `terraform init` with remote state is BLOCKED on B2 until task 1.2 bootstraps state storage._
+_none — code is writable and gateable offline. Full `terraform init` with remote state is
+BLOCKED on B2 until task 1.2 bootstraps state storage._
