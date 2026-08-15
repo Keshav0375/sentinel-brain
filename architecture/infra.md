@@ -1520,9 +1520,20 @@ the Postgres Entra admin is now a principal set directly (§3.2).
 > **Run every `az` command in PowerShell.** Git Bash rewrites `/subscriptions/...` scope
 > arguments into Windows paths (§4.3). Region is `canadacentral` throughout (R3).
 
-1. [ ] Create Azure resource group:
+1. [ ] Create the resource group **and register the resource providers**. A fresh
+   subscription has nearly every provider `NotRegistered`; the first `apply` then fails
+   with a "subscription is not registered to use namespace" error that reads like a
+   Terraform bug. Registration is idempotent and takes a minute or two.
    ```bash
    az group create --name sentinel-rg --location canadacentral
+
+   for ns in Microsoft.Compute Microsoft.ContainerService Microsoft.ContainerRegistry \
+             Microsoft.DBforPostgreSQL Microsoft.KeyVault Microsoft.EventGrid \
+             Microsoft.Web Microsoft.Storage Microsoft.ManagedIdentity \
+             Microsoft.OperationalInsights; do
+     az provider register --namespace "$ns"
+   done
+   az provider show --namespace Microsoft.Compute --query registrationState -o tsv  # → Registered
    ```
 
 2. [ ] Create state storage (§8.1) — note its **own** resource group:

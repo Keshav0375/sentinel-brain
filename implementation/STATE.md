@@ -42,7 +42,11 @@ Start **infra Phase 1** — branch `dev/infra-phase-1-foundations` off `Sentinel
 | Tenant | University of Windsor · `uwindsor.ca` · `12f933b3-3d61-4b19-9a4d-689021de8cc9` |
 | Subscription | Azure for Students · `174e25ca-ab82-4671-a913-9c2f66e5924d` · **Owner** · Active · $0 spent |
 | Region | `canadacentral` |
-| Directory rights | **None** — portal 401. Drives the entire rev-9 rebuild. |
+| `sentinel-rg` | ✅ created 2026-08-15, `provisioningState: Succeeded` |
+| Entra admin principal | `245bb98a-95a4-4f9d-930a-fcf3122dcea1` · `arri@uwindsor.ca` (→ `PG_ADMIN_OBJECT_ID` / `PG_ADMIN_PRINCIPAL_NAME`) |
+| **Directory policy** | **Proven 2026-08-15** via `GET /v1.0/policies/authorizationPolicy`: `allowedToCreateApps: false`, `allowedToCreateSecurityGroups: false`, `allowedToReadOtherUsers: true`, `allowedToCreateTenants: true`. Read works; **all directory writes are denied at tenant-policy level.** This is the hard evidence that rev-9 was necessary, not precautionary. |
+| Quota (`canadacentral`) | ✅ `Standard Basv2 Family vCPUs` limit **10** (AKS `B2ats_v2` needs 2) · `Total Regional vCPUs` limit **6** — the binding cap · all used = 0 |
+| Resource providers | Registered 2026-08-15: Compute, ContainerService, ContainerRegistry, DBforPostgreSQL, KeyVault, EventGrid, Web, Storage, ManagedIdentity, OperationalInsights. A fresh subscription has these **unregistered**, which fails the first apply with a misleading error. |
 | Local toolchain | terraform 1.15.8 · az 2.89.1 · tflint 0.64.0 · gitleaks 8.30.1 · actionlint 1.7.12 — all installed 2026-08-15. `tfsec` (optional, unavailable on winget) and `yamllint` (optional) remain absent and will report SKIPPED. |
 
 Phase 1's Terraform can be written and gated offline (fmt · init -backend=false · validate ·
@@ -69,7 +73,7 @@ External dependencies that halt verification. Mirror any task-level BLOCKED here
 
 | # | Blocker | Blocks | Owner | Status |
 |---|---------|--------|-------|--------|
-| B1 | ~~Azure subscription~~ + `sentinel-rg` resource group | All infra apply/verify (§10 bootstrap) | Keshav | **partly closed 2026-08-15** — subscription exists (Azure for Students `174e25ca-…`, Owner, Active). `sentinel-rg` in `canadacentral` still to create. |
+| B1 | ~~Azure subscription + `sentinel-rg` resource group~~ | — | Keshav | ✅ **CLOSED 2026-08-15.** Subscription `174e25ca-…` (Owner, Active); `sentinel-rg` created in `canadacentral`; 10 resource providers registered. |
 | B2 | Terraform state storage bootstrapped (state-rg + storage + container) | infra 1.2 verify, all applies | Keshav | open |
 | B3 | `sentinel-gha` **UAMI** + 2 role assignments + first 2 federated credentials via `az`, then the 5-object import (`infra.md` §4.3.1) | infra 1.3 verify | Keshav | open — **now achievable**; rev-9 replaced the app registration with a UAMI, needing no directory rights |
 | B4 | Anthropic API key | backend LLM calls; Key Vault seed | Keshav | open |
@@ -91,8 +95,8 @@ External dependencies that halt verification. Mirror any task-level BLOCKED here
 |---|------|---------|---------------------|
 | R1 | GitHub owner `keshxvDev` in arch docs vs real `Keshav0375`; repo casing | infra 1.3, 4.1, 3.3 | ✅ **RESOLVED 2026-07-11** — all arch docs updated to `Keshav0375` + real repo casing via `/sentinel-planner`; OIDC subjects noted case-sensitive. |
 | R2 | Backend repo GitHub name = `Sentinel` (capital S) | infra 4.1, Function bridge dispatch target | ✅ **RESOLVED 2026-07-11** — all three remotes confirmed `Keshav0375/Sentinel-infra`, `.../Sentinel-deployment`, `.../Sentinel`. |
-| R3 | Azure region for all resources (arch examples use `eastus`) | all infra modules | ✅ **RESOLVED 2026-08-15 → `canadacentral`.** Chosen for proximity, Canadian residency, and lower burstable-SKU contention than `eastus`. `var.location` still has **no default** — supplied via the `AZURE_LOCATION` GitHub variable (C5). ⚠️ Still to confirm on a live subscription: **BASv2** vCPU quota ≥ 2 (AKS `B2ats_v2`) and F1 availability. Azure-for-Students quota is low and increase requests on sponsored offers are usually declined — verify before infra Phase 3. |
-| R4 | Inbound Entra bearer auth (`api://sentinel-backend` + `Incident.Write`) needs an app registration — a directory write the uwindsor.ca tenant denies | infra 3.5, backend 5.6, B11 | **OPEN** — halts those two tasks; Phases 1–2 unaffected. Routes (`infra.md` §4.4): (1) obtain `Application Developer` from UWindsor IT — preferred, leaves the design intact; (2) personally-owned tenant — same, but abandons the student credit at ~$50–60/mo; (3) downgrade to a Key Vault shared secret — partially reverts rev-5, record as an accepted regression. **Decide before infra Phase 3.** |
+| R3 | Azure region for all resources (arch examples use `eastus`) | all infra modules | ✅ **RESOLVED 2026-08-15 → `canadacentral`.** Chosen for proximity, Canadian residency, and lower burstable-SKU contention than `eastus`. `var.location` still has **no default** — supplied via the `AZURE_LOCATION` GitHub variable (C5). ✅ **Quota confirmed 2026-08-15:** `Standard Basv2 Family vCPUs` limit **10** (AKS `B2ats_v2` needs 2) and `Total Regional vCPUs` limit **6** — the real cap, and enough for the single-node scale-to-zero design. No quota-increase request needed. |
+| R4 | Inbound Entra bearer auth (`api://sentinel-backend` + `Incident.Write`) needs an app registration — a directory write the uwindsor.ca tenant denies | infra 3.5, backend 5.6, B11 | **OPEN** — halts those two tasks; Phases 1–2 unaffected. **Confirmed denied at tenant policy 2026-08-15** (`allowedToCreateApps: false`) — there is no self-service route. Options (`infra.md` §4.4): (1) ask UWindsor IT for the **`Application Developer`** Entra role — narrow, standard, leaves the design intact; (2) **create a personal Entra tenant** — the same policy shows `allowedToCreateTenants: true`, so this needs no permission, but the app would live in a different tenant from the resources and GHA would need client-credentials auth to reach it, reintroducing a stored secret that rev-5 deliberately removed; (3) downgrade to a Key Vault shared secret — simplest, partially reverts rev-5, record as an accepted regression. **Decide before infra Phase 3.** |
 
 ## Change Log
 
