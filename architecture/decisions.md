@@ -33,26 +33,8 @@ Note: There is no separate sentinel-backend repo. The sentinel repo IS the backe
 
 ## Open Decisions
 
-- **R4 — inbound Entra bearer auth has no home tenant.** Defining `api://sentinel-backend`
-  + the `Incident.Write` app role requires an `azuread_application`, a directory object the
-  uwindsor.ca tenant denies. The rev-9 managed-identity rebuild rescues CI auth and the
-  Postgres admin, but **not** this. Halts infra task 3.5 and backend task 5.6. Three routes
-  in `infra.md` §4.4: obtain `Application Developer` from UWindsor IT · move it to a personal
-  tenant · downgrade to a Key Vault shared secret (accepted regression). **Decide before
-  infra Phase 3.** Phases 1 and 2 are unaffected.
-
-  **Two-tenant split — evaluated 2026-08-15, viable.** Only B11 needs to move. The CI
-  identity (B3), Postgres Entra admin (B10) and AKS workload identity (B12) are all Azure
-  *resources* and must stay in the school tenant with the resources they govern — moving them
-  would break their RBAC. So the personal tenant holds exactly two app registrations and no
-  resources: `sentinel-backend-api` (defines `api://sentinel-backend` + `Incident.Write`) and
-  a client app carrying a **federated credential** for `repo:Keshav0375/Sentinel`. GitHub
-  mints one OIDC token and exchanges it with each tenant separately; the backend validates
-  against the personal tenant's JWKS with its tenant id as explicit config. Token validation
-  is independent of where the compute runs, so this is arguably a cleaner boundary. **No
-  stored secret and no subscription in the second tenant** — correcting an earlier note here
-  that wrongly assumed client-credentials auth. Costs: two tenants to reason about, an
-  aliased `azuread` provider, and a second bootstrap seam.
+None. **R4 resolved 2026-08-15** — see the decision log entry below. Its remaining work is
+execution, tracked as blocker **B11** in `implementation/STATE.md`, not an open question.
 
 ## Blockers
 
@@ -63,6 +45,48 @@ Note: There is no separate sentinel-backend repo. The sentinel repo IS the backe
 - [ ] OpenAI API key — who: Keshav — impact: blocks fallback LLM calls
 
 ## Decision Log
+
+### 2026-08-15: R4 resolved — two-tenant identity split (no institutional involvement)
+
+**Context:** `api://sentinel-backend` + the `Incident.Write` app role require an
+`azuread_application` — a directory object. `uwindsor.ca` denies app registration at tenant
+policy (`allowedToCreateApps: false`, proven via Graph). The rev-9 managed-identity rebuild
+rescued the CI identity and the Postgres admin but structurally **cannot** rescue this: a
+managed identity can *hold* an app role, never *define* one. Requesting the
+`Application Developer` role from UWindsor IT was ruled out by the owner — **no institutional
+involvement**. That left the personal tenant or a shared-secret downgrade.
+
+**Decision:** Two tenants, split by *kind of object* rather than by convenience.
+
+| Tenant | Holds | Why | Cost |
+|--------|-------|-----|------|
+| School (`uwindsor.ca`) | every Azure resource; `sentinel-gha`, backend and rotator UAMIs | they hold RBAC on school resources and break if relocated | $100 credit |
+| Identity (personal) | exactly 2 app registrations: `sentinel-backend-api`, `sentinel-gha-client` | only a tenant we own permits app registration | **$0** |
+
+**Why this is not a security regression.** The client app carries a **federated credential**
+trusting GitHub OIDC — the same trust source as the UAMI. GitHub mints one OIDC token per job
+and exchanges it with each tenant independently; `azure/login@v2` supports
+`allow-no-subscriptions`, so the identity tenant needs no subscription. rev-5's "no stored
+Azure credential" invariant survives. An earlier note in this file wrongly assumed
+client-credentials auth would be required; that was corrected before any code was written.
+
+**A trap this decision creates.** The `sentinel-gha` UAMI **cannot** be granted the
+`Incident.Write` role: app-role assignment is a within-tenant directory operation and has no
+cross-tenant form. The caller must be its own registration in the identity tenant. Writing
+`principal_object_id = azurerm_user_assigned_identity.sentinel_gha.principal_id` would fail
+at apply with a misleading "principal not found".
+
+**Accepted costs:** two tenants to reason about — every future auth bug now starts with
+"which tenant?"; an aliased `azuread` provider (`provider = azuread.identity`) so the
+boundary is explicit in every resource; a second one-time bootstrap seam
+(`sentinel-tf-identity` + Application Administrator) mirroring §4.3; and one more admin
+account to keep secure. `SENTINEL_API_TENANT_ID` is a required backend setting with **no
+default**, since a wrong issuer is the most likely misconfiguration.
+
+**Consequences:** `azuread ~> 3.0` returns to `required_providers` at infra task 3.5 (absent
+in phases 1-2). New root variable `identity_tenant_id` + `AZURE_IDENTITY_TENANT_ID` GitHub
+variable. Backend task 5.6 validates against the identity tenant's JWKS. Blocker **B11**
+rewritten as "create the personal tenant", needed before infra Phase 3.
 
 ### 2026-08-15: rev-9 — identity plane rebuilt on managed identities (Option 3)
 

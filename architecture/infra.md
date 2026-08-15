@@ -934,34 +934,48 @@ not its principal ID). Then `ci_infra.yml` runs and Terraform manages the rest.
 
 ### 4.4 Backend API app registration (inbound Entra bearer auth)
 
-> ⛔ **BLOCKED — open reconciliation R4 (2026-08-15). Do not implement (infra task 3.5)
-> until resolved.** This section is the one part of the identity plane that the rev-9
-> managed-identity rebuild **cannot** rescue. Defining an API audience
+> ✅ **R4 RESOLVED 2026-08-15 → two-tenant identity split.** Defining an API audience
 > (`api://sentinel-backend`) and an app role (`Incident.Write`) requires an
 > `azuread_application` — a **directory** object. A managed identity is a subscription
-> resource; it can *hold* an app role but cannot *define* one. There is no Azure-RBAC
-> equivalent.
+> resource: it can *hold* an app role but cannot *define* one, so the rev-9 rebuild could
+> not rescue this. `uwindsor.ca` denies app registration at tenant policy
+> (`allowedToCreateApps: false`) and **UWindsor IT is not an option**. Therefore these two
+> app registrations — and **only** these two — live in a **personally-owned Entra tenant**.
 >
-> Three ways out, to be decided before infra Phase 3:
-> 1. **Obtain the `Application Developer` Entra role** from University of Windsor IT.
->    Narrow, standard, and leaves this section exactly as written below. Preferred.
-> 2. **Move to a personally-owned tenant** — also leaves this section intact, but means
->    abandoning the Azure-for-Students credit.
-> 3. **Downgrade inbound auth** to a shared secret held in Key Vault. This partially
->    reverts the rev-5 overhaul and reinstates something close to `sentinel-api-token`.
->    Cheapest, and the weakest — record it as an accepted regression if chosen.
+> **What does NOT move.** The CI identity (`sentinel-gha` UAMI), the Postgres Entra admin,
+> and the backend AKS workload identity are Azure *resources*. They hold RBAC on
+> school-tenant resources and must stay there. Relocating any of them breaks it.
 >
-> Until R4 closes, backend task 5.6 (`api/auth.py`) has no audience to validate against
-> and inherits this blocker.
+> | Tenant | Holds | Cost |
+> |--------|-------|------|
+> | **School** (`uwindsor.ca`) | every Azure resource + all three UAMIs | $100 credit |
+> | **Identity** (personal) | 2 app registrations, no resources, no subscription | **$0** |
+>
+> **No stored secret.** The client app carries a *federated credential* trusting GitHub
+> OIDC, exactly like the UAMI does. GitHub mints one OIDC token and exchanges it with each
+> tenant separately; `azure/login@v2` takes `allow-no-subscriptions: true` for the identity
+> tenant. rev-5's "no stored Azure credential" invariant survives intact.
+>
+> **Cost of the split, stated plainly:** two tenants to reason about (every future auth bug
+> starts with "which tenant?"), an aliased `azuread` provider, and a second one-time
+> bootstrap seam. Accepted knowingly — the alternative was reverting rev-5's inbound auth to
+> a shared secret.
 
 The sentinel backend is registered as its own Entra app so callers can obtain
 tokens **scoped to it** and the backend can validate them against Entra JWKS —
 no shared static token (this is what deleted `sentinel-api-token`).
 
 ```hcl
-# The backend API as an Entra app: audience = api://sentinel-backend, with an
-# app role that callers must hold.
+# Every resource in this section targets the IDENTITY tenant, never the school
+# tenant. The alias is what keeps that boundary explicit and reviewable.
+provider "azuread" {
+  alias     = "identity"
+  tenant_id = var.identity_tenant_id
+}
+
+# ── 1. The API definition: the audience, and the role callers must hold ───────
 resource "azuread_application" "sentinel_backend" {
+  provider        = azuread.identity
   display_name    = "sentinel-backend-api"
   identifier_uris = ["api://sentinel-backend"]
 
@@ -970,41 +984,93 @@ resource "azuread_application" "sentinel_backend" {
     display_name         = "Incident.Write"
     description          = "Call the incident pipeline and write results"
     value                = "Incident.Write"
-    id                   = "11111111-1111-1111-1111-111111111111"  # stable GUID
+    id                   = "11111111-1111-1111-1111-111111111111" # stable GUID
     enabled              = true
   }
 }
 
 resource "azuread_service_principal" "sentinel_backend" {
+  provider  = azuread.identity
   client_id = azuread_application.sentinel_backend.client_id
 }
 
-# Grant the GHA identity the Incident.Write app role on the backend API.
+# ── 2. The caller ─────────────────────────────────────────────────────────────
+# The `sentinel-gha` UAMI CANNOT be used here. It is a service principal in the
+# SCHOOL tenant, and an app-role assignment is a directory operation *within a
+# single tenant* — there is no cross-tenant form. So the caller is its own
+# registration in the identity tenant, federated to the same GitHub repo.
+#
+# Still no stored secret: GitHub mints one OIDC token per job and exchanges it
+# with each tenant independently. Two identities, one trust source.
+resource "azuread_application" "sentinel_gha_client" {
+  provider     = azuread.identity
+  display_name = "sentinel-gha-client"
+}
+
+resource "azuread_service_principal" "sentinel_gha_client" {
+  provider  = azuread.identity
+  client_id = azuread_application.sentinel_gha_client.client_id
+}
+
+resource "azuread_application_federated_identity_credential" "gha_client_main" {
+  provider       = azuread.identity
+  application_id = azuread_application.sentinel_gha_client.id
+  display_name   = "sentinel-main"
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  subject        = "repo:Keshav0375/Sentinel:ref:refs/heads/main"
+}
+
+# ── 3. Grant the caller the role ──────────────────────────────────────────────
 resource "azuread_app_role_assignment" "gha_incident_write" {
+  provider            = azuread.identity
   app_role_id         = "11111111-1111-1111-1111-111111111111"
-  principal_object_id = azuread_service_principal.sentinel_gha.object_id
+  principal_object_id = azuread_service_principal.sentinel_gha_client.object_id
   resource_object_id  = azuread_service_principal.sentinel_backend.object_id
 }
 ```
 
-**What the backend validates** (FastAPI dependency, sentinel repo §—): signature
-against `https://login.microsoftonline.com/<tenant>/discovery/v2.0/keys`, `iss` =
-your tenant, `aud` = `api://sentinel-backend`, `exp` not passed, and the
-`roles` claim contains `Incident.Write`. `/health` and `/ready` stay open (K8s
-probes can't carry tokens). Tenant ID + audience are **public config, not
-secrets** — pushed to the sentinel repo as GitHub *variables*, not secrets.
+**Bootstrap seam (same shape as §4.3).** Terraform cannot create its own permission to
+manage the identity tenant. One-time, by hand there: register `sentinel-tf-identity`, give
+it a federated credential for `repo:Keshav0375/Sentinel-infra`, and assign it the
+**Application Administrator** directory role — which you can do because you are Global Admin
+of a tenant you own. Terraform then authenticates to the identity tenant as that app.
+`identity_tenant_id` becomes a new root variable plus an `AZURE_IDENTITY_TENANT_ID` GitHub
+variable, and `azuread ~> 3.0` returns to `required_providers` at this phase (task 3.5) —
+it is deliberately absent in phases 1–2.
+
+**What the backend validates** (FastAPI dependency, backend task 5.6): signature against
+`https://login.microsoftonline.com/<IDENTITY-tenant>/discovery/v2.0/keys`, `iss` = the
+**identity** tenant, `aud` = `api://sentinel-backend`, `exp` not passed, and the `roles`
+claim contains `Incident.Write`. `/health` and `/ready` stay open (K8s probes can't carry
+tokens).
+
+> **The tenant in that URL is the identity tenant, not the one the pod runs in.** Token
+> validation is pure signature + claims checking and is entirely independent of where the
+> compute lives. Making the issuer explicit configuration rather than ambient tenancy is
+> arguably the cleaner design — but it is also the single most likely thing to be
+> misconfigured, so `SENTINEL_API_TENANT_ID` is a required setting with no default.
+
+Tenant ID + audience are **public config, not secrets** — pushed to the sentinel repo as
+GitHub *variables*.
 
 ### 4.5 One identity, many audience-scoped tokens
 
-The `sentinel-gha` **UAMI** is a **single identity** that requests a **different token
-per destination**. A token stamped for one audience is rejected by another —
-this is by design and limits blast radius. There is no single reusable token.
+The `sentinel-gha` **UAMI** requests a **different token per destination**. A token stamped
+for one audience is rejected by another — by design, limiting blast radius. There is no
+single reusable token.
+
+> **rev-9 caveat:** "one identity" is no longer strictly true. Everything in the school
+> tenant uses the `sentinel-gha` UAMI; the backend API audience lives in the identity tenant
+> and is reached as `sentinel-gha-client` (§4.4). Two identities, but still **one trust
+> source** — the same GitHub OIDC token is exchanged with each tenant — and still no stored
+> credential anywhere.
 
 | GHA is talking to… | `--resource` / audience | How obtained |
 |--------------------|-------------------------|--------------|
 | Azure control plane (terraform, `az keyvault`, `az aks`) | `https://management.azure.com` | `azure/login` default |
 | Terraform state blob | `https://storage.azure.com` | backend `use_azuread_auth` (§8.1) |
-| Sentinel backend API ⛔ **R4** | `api://sentinel-backend` | `az account get-access-token --resource api://sentinel-backend` — audience does not exist until R4 closes (§4.4) |
+| Sentinel backend API | `api://sentinel-backend` | **Different tenant, different identity** — a second `azure/login` as `sentinel-gha-client` against the identity tenant (§4.4), then `az account get-access-token --resource api://sentinel-backend` |
 | PostgreSQL | `https://ossrdbms-aad.database.windows.net` | `az account get-access-token --resource <that>` |
 
 The backend pod does the same via **workload identity** (§3.7): one UAMI, two

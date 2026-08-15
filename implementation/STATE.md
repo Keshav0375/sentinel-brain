@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Active category** | infra (not yet started) |
+| **Active category** | infra — **in progress** |
 | **Active phase** | 1 — Foundations & Bootstrap |
 | **Active branch** | `dev/infra-phase-1-foundations` (cut 2026-08-15) |
 | **Active PR** | _none yet — `gh` not authenticated_ |
@@ -22,9 +22,11 @@
 
 ## Next Action
 
-Start **infra Phase 1** — branch `dev/infra-phase-1-foundations` off `Sentinel-infra` `main`.
+**Build task 1.3 — OIDC federation.** Tasks 1.1 and 1.2 are `done-pending-review` on
+`dev/infra-phase-1-foundations`; 1.3 is the last of the phase, then the PR + phase gate.
 
-**The git workflow is clear.** B13 and B14 are both closed (2026-07-26).
+**The git workflow is clear.** B13 and B14 closed (2026-07-26). `fix/*` may now target
+`release-phase-2` (2026-08-15).
 
 **Halting prerequisites for Phase 1: none remaining.**
 - **R3 (region) — RESOLVED 2026-08-15 → `canadacentral`.**
@@ -49,13 +51,19 @@ Start **infra Phase 1** — branch `dev/infra-phase-1-foundations` off `Sentinel
 | Resource providers | Registered 2026-08-15: Compute, ContainerService, ContainerRegistry, DBforPostgreSQL, KeyVault, EventGrid, Web, Storage, ManagedIdentity, OperationalInsights. A fresh subscription has these **unregistered**, which fails the first apply with a misleading error. |
 | Local toolchain | terraform 1.15.8 · az 2.89.1 · tflint 0.64.0 · gitleaks 8.30.1 · actionlint 1.7.12 — all installed 2026-08-15. `tfsec` (optional, unavailable on winget) and `yamllint` (optional) remain absent and will report SKIPPED. |
 
-Phase 1's Terraform can be written and gated offline (fmt · init -backend=false · validate ·
-tflint · gitleaks). Nothing can `plan`/`apply` until B1–B3 exist; `/implement-phase` writes
-BLOCKED reports for those verification steps.
+**B1 and B2 are closed**, so Phase 1 is no longer offline-only: state storage exists and a
+real `terraform init` succeeds against it. **B3** (the `sentinel-gha` UAMI bootstrap) is the
+last one, and task 1.3 both writes and executes it.
 
-**Open, non-halting for Phase 1:** R4 (inbound Entra bearer auth — halts infra 3.5 +
-backend 5.6) and C13 (quality-gate `actionlint` defect — blocks a *green* Phase 1; see
-Blockers).
+**Open, non-halting for Phase 1:**
+- **R4 — RESOLVED 2026-08-15** (two-tenant split). Its *execution* is **B11**, needed before
+  infra Phase 3, not now.
+- **C13 — FIXED 2026-08-15.** `actionlint` is skipped when a repo has no `.github/workflows/`.
+  On branch `fix/quality-gate-implicit-paths` in `Sentinel`; **PR not yet open — `gh` is not
+  authenticated.**
+
+**Owner action outstanding:** `gh auth login` (needed to open the C13 PR *and* the Phase 1
+phase-gate PR) and, before Phase 3, create the personal Entra tenant (**B11**).
 
 ## Phase Gate Ledger
 
@@ -83,8 +91,8 @@ External dependencies that halt verification. Mirror any task-level BLOCKED here
 | B8 | Microsoft Teams incoming webhook URL | notifications (GHA) | Keshav | open |
 | B9 | GitHub PAT (`repo` scope) for cross-repo secret push + Function bridge | infra 4.1, Function bridge | Keshav | open |
 | B10 | ~~Entra `sentinel-db-admins` security group~~ → record your own Entra user object ID + UPN (`az ad signed-in-user show`); DB roles still created via `pgaadauth_create_principal` | infra Postgres (Entra-only auth), all DB access | Keshav | ✅ **CLOSED 2026-08-15 — superseded by rev-9.** No group is created; Postgres Entra admins are attached directly (human + backend UAMI). Needs no directory write. |
-| B11 | Backend Entra app registration (`api://sentinel-backend` + `Incident.Write` role) + role grant to the GHA identity | backend inbound auth, incident workflow token | Keshav | ⛔ **BLOCKED on R4** — requires a directory write the uwindsor.ca tenant denies. rev-9 cannot rescue this one. Halts infra 3.5 + backend 5.6. |
-| B15 | `quality_gate.py` runs `actionlint` as a **required** check with no argv path, so `resolve_argv` never prunes it; on a repo with no `.github/workflows/` it exits 3 → hard FAIL | **green** gate for infra phases 1–3 and deployment phase 1 | Keshav (decision) / Claude (fix) | open — conflict **C13**. Contradicts the gate's own docstring (lines 16–18). Fix: give `MATRIX` entries an implicit-path guard. Lands in `../Sentinel`, outside the infra phase branch — awaiting go-ahead. |
+| B11 | ~~Personal Entra tenant created~~ → register `sentinel-tf-identity` there with a federated credential for `Keshav0375/Sentinel-infra` + the **Application Administrator** directory role | infra 3.5, backend 5.6 | Keshav | **partly closed 2026-08-15.** Tenant exists: `eae0d3c6-af22-4b70-ad3b-12d625a06139` · `keshavk5655gmail.onmicrosoft.com` · **Entra ID Free** · no subscription (intended). Everything Sentinel needs there is free-tier: app registrations, service principals, **federated credentials**, app-role definition, and service-principal→app role assignment. Paid features (Conditional Access P1, group-based assignment P1, PIM P2) are unused. Remaining: the `sentinel-tf-identity` bootstrap, before infra Phase 3. |
+| B15 | ~~`quality_gate.py` runs `actionlint` as a **required** check with no argv path, so it never gets pruned and hard-FAILs on a repo with no `.github/workflows/`~~ | — | Claude | ✅ **CLOSED 2026-08-15 — conflict C13 fixed.** `IMPLICIT_PATHS` extends the gate's existing "no such path yet" skip semantics to tools that discover their own inputs. Verified both ways: SKIPPED against workflow-less `Sentinel-infra`, still runs and reports findings where workflows exist. On `fix/quality-gate-implicit-paths`; **PR still to be opened — `gh` not authenticated.** |
 | B12 | AKS OIDC issuer + workload identity enabled; backend UAMI + federated credential; `sentinel-backend` ServiceAccount annotated | backend runtime KV/DB access (no pod secret) | Keshav | open |
 | B13 | ~~`release-phase-2` created in `Sentinel-infra` + `Sentinel-deployment`~~ | — | Keshav | ✅ **CLOSED 2026-07-26 — obsolete.** Branch model changed: those two repos have no release train, `dev/*` PRs into their own `main`. Nothing to create. |
 | B14 | ~~Updated `guard-main-source.yml` + `ci.yml` merged into `release-phase-2` **and** `main` of `Sentinel`~~ | — | Keshav | ✅ **CLOSED 2026-07-26.** `planning/phase-2-e2e` merged to `main` (PR #14, `5b97232`); `release-phase-2` fast-forwarded to match. Both protected branches now carry the rewritten guard, `ci.yml` and `scripts/quality_gate.py`. |
@@ -96,7 +104,7 @@ External dependencies that halt verification. Mirror any task-level BLOCKED here
 | R1 | GitHub owner `keshxvDev` in arch docs vs real `Keshav0375`; repo casing | infra 1.3, 4.1, 3.3 | ✅ **RESOLVED 2026-07-11** — all arch docs updated to `Keshav0375` + real repo casing via `/sentinel-planner`; OIDC subjects noted case-sensitive. |
 | R2 | Backend repo GitHub name = `Sentinel` (capital S) | infra 4.1, Function bridge dispatch target | ✅ **RESOLVED 2026-07-11** — all three remotes confirmed `Keshav0375/Sentinel-infra`, `.../Sentinel-deployment`, `.../Sentinel`. |
 | R3 | Azure region for all resources (arch examples use `eastus`) | all infra modules | ✅ **RESOLVED 2026-08-15 → `canadacentral`.** Chosen for proximity, Canadian residency, and lower burstable-SKU contention than `eastus`. `var.location` still has **no default** — supplied via the `AZURE_LOCATION` GitHub variable (C5). ✅ **Quota confirmed 2026-08-15:** `Standard Basv2 Family vCPUs` limit **10** (AKS `B2ats_v2` needs 2) and `Total Regional vCPUs` limit **6** — the real cap, and enough for the single-node scale-to-zero design. No quota-increase request needed. |
-| R4 | Inbound Entra bearer auth (`api://sentinel-backend` + `Incident.Write`) needs an app registration — a directory write the uwindsor.ca tenant denies | infra 3.5, backend 5.6, B11 | **OPEN** — halts those two tasks; Phases 1–2 unaffected. **Confirmed denied at tenant policy 2026-08-15** (`allowedToCreateApps: false`) — there is no self-service route. Options (`infra.md` §4.4): (1) ask UWindsor IT for the **`Application Developer`** Entra role — narrow, standard, leaves the design intact; (2) **create a personal Entra tenant** — the policy shows `allowedToCreateTenants: true`, so this needs no permission. ⚠️ **Corrected 2026-08-15:** an earlier version of this row claimed this route "reintroduces a stored secret". **That was wrong.** In a tenant you own you can put a *federated credential* on the app registration — the same GitHub OIDC trust used for the UAMI — so GHA exchanges its OIDC token with the personal tenant directly. No client secret, and no subscription needed there (`azure/login@v2` supports `allow-no-subscriptions: true`). Real costs are two tenants to reason about, an aliased `azuread` provider pointed at the second tenant, and a second bootstrap seam — not a credential regression; (3) downgrade to a Key Vault shared secret — simplest, partially reverts rev-5, record as an accepted regression. **Recommended: request (1) now since it is one email and keeps a single tenant, and stand up (2) in parallel as the free fallback. Decide before infra Phase 3.** |
+| R4 | Inbound Entra bearer auth (`api://sentinel-backend` + `Incident.Write`) needs an app registration — a directory write the uwindsor.ca tenant denies | infra 3.5, backend 5.6, B11 | ✅ **RESOLVED 2026-08-15 → two-tenant identity split.** UWindsor IT is **not an option** (owner decision: no institutional involvement). The two app registrations — and only those two — move to a **personally-owned Entra tenant**; every Azure resource and all three UAMIs stay in the school tenant, because they hold RBAC on school resources and would break if relocated. **No stored secret:** the caller is a `sentinel-gha-client` app registration carrying a GitHub-OIDC federated credential — the same trust source as the UAMI — and `azure/login@v2` supports `allow-no-subscriptions`, so the identity tenant needs no subscription and costs $0. Note the `sentinel-gha` UAMI **cannot** hold the app role: app-role assignment is a within-tenant directory operation with no cross-tenant form. Accepted costs: two tenants to reason about, an aliased `azuread` provider, a second bootstrap seam. Design in `infra.md` §4.4; execution tracked as **B11**. |
 
 ## Change Log
 
