@@ -37,9 +37,22 @@ Note: There is no separate sentinel-backend repo. The sentinel repo IS the backe
   + the `Incident.Write` app role requires an `azuread_application`, a directory object the
   uwindsor.ca tenant denies. The rev-9 managed-identity rebuild rescues CI auth and the
   Postgres admin, but **not** this. Halts infra task 3.5 and backend task 5.6. Three routes
-  in `infra.md` §4.4: obtain `Application Developer` from UWindsor IT · move to a personal
+  in `infra.md` §4.4: obtain `Application Developer` from UWindsor IT · move it to a personal
   tenant · downgrade to a Key Vault shared secret (accepted regression). **Decide before
   infra Phase 3.** Phases 1 and 2 are unaffected.
+
+  **Two-tenant split — evaluated 2026-08-15, viable.** Only B11 needs to move. The CI
+  identity (B3), Postgres Entra admin (B10) and AKS workload identity (B12) are all Azure
+  *resources* and must stay in the school tenant with the resources they govern — moving them
+  would break their RBAC. So the personal tenant holds exactly two app registrations and no
+  resources: `sentinel-backend-api` (defines `api://sentinel-backend` + `Incident.Write`) and
+  a client app carrying a **federated credential** for `repo:Keshav0375/Sentinel`. GitHub
+  mints one OIDC token and exchanges it with each tenant separately; the backend validates
+  against the personal tenant's JWKS with its tenant id as explicit config. Token validation
+  is independent of where the compute runs, so this is arguably a cleaner boundary. **No
+  stored secret and no subscription in the second tenant** — correcting an earlier note here
+  that wrongly assumed client-credentials auth. Costs: two tenants to reason about, an
+  aliased `azuread` provider, and a second bootstrap seam.
 
 ## Blockers
 
