@@ -797,7 +797,7 @@ resource "azurerm_role_assignment" "gha_contributor" {
 # scope. Without this, `terraform init` fails in CI — the backend uses Entra auth
 # (use_azuread_auth), so blob-level RBAC is the credential path.
 resource "azurerm_role_assignment" "gha_state_blob" {
-  scope                = "/subscriptions/${var.subscription_id}/resourceGroups/sentinel-state-rg/providers/Microsoft.Storage/storageAccounts/sentineltfstate"
+  scope                = "/subscriptions/${var.subscription_id}/resourceGroups/sentinel-state-rg/providers/Microsoft.Storage/storageAccounts/sentineltfstate0375"
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_user_assigned_identity.sentinel_gha.principal_id
 }
@@ -889,7 +889,7 @@ az role assignment create --assignee-object-id $PRINCIPAL_ID \
 
 az role assignment create --assignee-object-id $PRINCIPAL_ID \
   --assignee-principal-type ServicePrincipal --role "Storage Blob Data Contributor" \
-  --scope /subscriptions/$SUB_ID/resourceGroups/sentinel-state-rg/providers/Microsoft.Storage/storageAccounts/sentineltfstate
+  --scope /subscriptions/$SUB_ID/resourceGroups/sentinel-state-rg/providers/Microsoft.Storage/storageAccounts/sentineltfstate0375
 
 # First two federated credentials, so ci_infra_dry.yml (PR) and ci_infra.yml (main) run.
 az identity federated-credential create --name sentinel-infra-main \
@@ -1430,7 +1430,7 @@ jobs:
 terraform {
   backend "azurerm" {
     resource_group_name  = "sentinel-state-rg"
-    storage_account_name = "sentineltfstate"
+    storage_account_name = "sentineltfstate0375"
     container_name       = "tfstate"
     key                  = "sentinel.terraform.tfstate"
 
@@ -1454,12 +1454,12 @@ resource group so that `terraform destroy` / `az group delete` on `sentinel-rg` 
 cannot destroy the state that describes it:
 ```bash
 az group create --name sentinel-state-rg --location canadacentral
-az storage account create --name sentineltfstate --resource-group sentinel-state-rg \
+az storage account create --name sentineltfstate0375 --resource-group sentinel-state-rg \
   --sku Standard_LRS --encryption-services blob
-az storage container create --name tfstate --account-name sentineltfstate --auth-mode login
+az storage container create --name tfstate --account-name sentineltfstate0375 --auth-mode login
 ```
 
-> **`sentineltfstate` is a globally unique name across all of Azure.** If it is taken,
+> **`sentineltfstate0375` is a globally unique name across all of Azure.** If it is taken,
 > change it in `backend.tf`, `scripts/bootstrap-state.sh`, `docs/BOOTSTRAP.md`, the
 > §4.2 `gha_state_blob` scope, and this section — together, in one commit.
 
@@ -1539,13 +1539,13 @@ the Postgres Entra admin is now a principal set directly (§3.2).
 2. [ ] Create state storage (§8.1) — note its **own** resource group:
    ```bash
    az group create --name sentinel-state-rg --location canadacentral
-   az storage account create --name sentineltfstate --resource-group sentinel-state-rg \
+   az storage account create --name sentineltfstate0375 --resource-group sentinel-state-rg \
      --sku Standard_LRS --encryption-services blob
-   az storage container create --name tfstate --account-name sentineltfstate --auth-mode login
+   az storage container create --name tfstate --account-name sentineltfstate0375 --auth-mode login
 
    # Control plane ≠ data plane: Owner does NOT grant blob access. Without this,
    # `terraform init` fails with a 403 that reads like a bug.
-   SA_ID=$(az storage account show -n sentineltfstate -g sentinel-state-rg --query id -o tsv)
+   SA_ID=$(az storage account show -n sentineltfstate0375 -g sentinel-state-rg --query id -o tsv)
    az role assignment create \
      --assignee-object-id $(az ad signed-in-user show --query id -o tsv) \
      --assignee-principal-type User \

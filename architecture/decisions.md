@@ -93,7 +93,7 @@ broken or unverifiable infra. Resolved as follows:
 | # | Conflict | Resolution |
 |---|----------|------------|
 | C1 | §4.2 scoped Contributor to `azurerm_resource_group.sentinel` (managed) while §10 creates the RG by hand and §7.3 deletes it with `az group delete` | **Data source.** Terraform reads `sentinel-rg`, never owns it — otherwise `destroy` deletes it and the follow-up `az group delete` fails |
-| C2 | Contributor scoped to `sentinel-rg`, but state lives in `sentinel-state-rg`, and `backend.tf` set no auth flags — **every CI `terraform init` would fail** | Bootstrap grants **Storage Blob Data Contributor** on `sentineltfstate`; backend gains `use_azuread_auth` + `use_oidc`; ARM_* env supplies the IDs |
+| C2 | Contributor scoped to `sentinel-rg`, but state lives in `sentinel-state-rg`, and `backend.tf` set no auth flags — **every CI `terraform init` would fail** | Bootstrap grants **Storage Blob Data Contributor** on `sentineltfstate0375`; backend gains `use_azuread_auth` + `use_oidc`; ARM_* env supplies the IDs |
 | C3 | Bootstrap creates 5 objects; §4.3 documented importing 1, with the wrong ID form | All five imports documented in new §4.3.1, by Azure resource ID. Acceptance: `plan` shows no destroy **and no replace** |
 | C4 | `subscription_id` declared but never consumed | Wired into `provider "azurerm"` — mandatory under v4 anyway, so C4 and C9 resolve together |
 | C5 | CI passed 2 `-var` flags; `location` has no default and tfvars is gitignored → missing-variable failure every run | New `AZURE_LOCATION` GitHub *variable*, passed as `-var="location=…"`. `var.location` keeps **no default** (R3) |

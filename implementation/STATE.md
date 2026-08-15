@@ -11,9 +11,9 @@
 |-------|-------|
 | **Active category** | infra (not yet started) |
 | **Active phase** | 1 — Foundations & Bootstrap |
-| **Active branch** | _none — phase not started_ |
-| **Active PR** | _none_ |
-| **Current task** | 1.1 — Repo skeleton + provider/backend/vars config |
+| **Active branch** | `dev/infra-phase-1-foundations` (cut 2026-08-15) |
+| **Active PR** | _none yet — `gh` not authenticated_ |
+| **Current task** | 1.3 — OIDC federation (1.1 and 1.2 both `done-pending-review`) |
 | **Tasks verified** | 0 / 58 |
 | **Phases merged** | 0 / 16 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
@@ -74,7 +74,7 @@ External dependencies that halt verification. Mirror any task-level BLOCKED here
 | # | Blocker | Blocks | Owner | Status |
 |---|---------|--------|-------|--------|
 | B1 | ~~Azure subscription + `sentinel-rg` resource group~~ | — | Keshav | ✅ **CLOSED 2026-08-15.** Subscription `174e25ca-…` (Owner, Active); `sentinel-rg` created in `canadacentral`; 10 resource providers registered. |
-| B2 | Terraform state storage bootstrapped (state-rg + storage + container) | infra 1.2 verify, all applies | Keshav | open |
+| B2 | ~~Terraform state storage bootstrapped (state-rg + storage + container)~~ | — | Keshav | ✅ **CLOSED 2026-08-15.** `sentinel-state-rg` + `sentineltfstate0375` + `tfstate` container + operator blob RBAC, all created by `scripts/bootstrap-state.sh` and verified by a real `terraform init` reporting "Successfully configured the backend". **C12 materialized** — `sentineltfstate` was taken by another tenant; renamed across 7 files. |
 | B3 | `sentinel-gha` **UAMI** + 2 role assignments + first 2 federated credentials via `az`, then the 5-object import (`infra.md` §4.3.1) | infra 1.3 verify | Keshav | open — **now achievable**; rev-9 replaced the app registration with a UAMI, needing no directory rights |
 | B4 | Anthropic API key | backend LLM calls; Key Vault seed | Keshav | open |
 | B5 | OpenAI API key | backend fallback; Key Vault seed | Keshav | open |

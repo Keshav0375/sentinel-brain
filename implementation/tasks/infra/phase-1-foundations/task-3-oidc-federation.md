@@ -26,7 +26,7 @@ hand, import all five objects into Terraform, then TF manages the rest.
 **Files created:**
 - `oidc.tf` — `azurerm_user_assigned_identity "sentinel_gha"`; `azurerm_role_assignment`
   **Contributor** on the RG (via `data.azurerm_resource_group.sentinel`, C1);
-  `azurerm_role_assignment` **Storage Blob Data Contributor** on `sentineltfstate` (C2 —
+  `azurerm_role_assignment` **Storage Blob Data Contributor** on `sentineltfstate0375` (C2 —
   the state account is outside the Contributor scope, and without this every CI
   `terraform init` fails); and one `azurerm_federated_identity_credential` per repo+trigger
   (§4.2): `Sentinel-infra` main+pr, `Sentinel` main+pr, `Sentinel-deployment` main.

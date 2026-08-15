@@ -28,7 +28,7 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 | # | Task | File | Status |
 |---|------|------|--------|
 | 1.1 | Repo skeleton + provider/backend/vars config | [task-1](tasks/infra/phase-1-foundations/task-1-repo-skeleton-and-providers.md) | 🟡 |
-| 1.2 | Remote state bootstrap (script + doc) | [task-2](tasks/infra/phase-1-foundations/task-2-remote-state-bootstrap.md) | ⬜ |
+| 1.2 | Remote state bootstrap (script + doc) | [task-2](tasks/infra/phase-1-foundations/task-2-remote-state-bootstrap.md) | 🟡 |
 | 1.3 | OIDC federation (bootstrap + TF federated creds) | [task-3](tasks/infra/phase-1-foundations/task-3-oidc-federation.md) | ⬜ |
 
 ### Phase 2 — Core Resource Modules  ·  branch `dev/infra-phase-2-core-modules`  ·  Gate: 🔒
