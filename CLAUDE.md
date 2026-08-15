@@ -98,6 +98,14 @@ Phase 2.** Never PR `dev/*` to `Sentinel` `main`; `../Sentinel/.github/workflows
 rejects it. The two sibling repos have no release branch and no protection: `dev/*` merges
 straight into their `main`, one PR per phase.
 
+**`fix/*` → `release-phase-2` is also allowed** (2026-08-15). A repair that belongs to no
+phase — a tooling or CI defect found mid-build, e.g. `fix/quality-gate-implicit-paths` —
+goes on a `fix/` branch and PRs into `release-phase-2` like a phase branch does. Without
+this the only route was to disguise the repair as a `dev/*` phase branch, which would make
+the tracker lie about what a phase branch means. `main` is unaffected and stays strict.
+Use `dev/*` for phase work and `fix/*` only for out-of-phase repairs — do not reach for
+`fix/` to dodge the phase model.
+
 `planning/phase-2-e2e` is **retired** — merged into `Sentinel` `main` on 2026-07-26. Planning
 lives in this repo now; do not branch from it or PR to it.
 
