@@ -11,9 +11,9 @@
 |-------|-------|
 | **Active category** | infra — **in progress** |
 | **Active phase** | 2 — Core Resource Modules |
-| **Active branch** | _none — phase 2 not started_ |
+| **Active branch** | `dev/infra-phase-2-core-modules` |
 | **Active PR** | _none_ |
-| **Current task** | 2.1 — ACR module |
+| **Current task** | 2.3 — Key Vault module (2.1 and 2.2 `done-pending-review`) |
 | **Tasks verified** | 3 / 58 |
 | **Phases merged** | 1 / 16 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
@@ -22,9 +22,21 @@
 
 ## Next Action
 
-**Build infra Phase 2 — Core Resource Modules** (2.1 ACR, 2.2 PostgreSQL + pgvector,
-2.3 Key Vault). Phase 1 is **verified and merged**; branch `dev/infra-phase-2-core-modules`
-off `Sentinel-infra` `main`.
+**⚠ FIRST: start the database.** It was stopped 2026-08-16 to conserve the free grant.
+
+```powershell
+az postgres flexible-server start -n sentinel-pg-0375 -g sentinel-rg
+```
+
+**`terraform plan` FAILS while it is stopped** — not "plans a change", *errors*:
+`400 ServerStoppedError` when the provider tries to refresh the administrator and database
+sub-resources. Start it before running any Terraform, not just before connecting. Azure
+auto-starts it after 7 days regardless.
+
+**Then: build task 2.3 — Key Vault module.** 2.1 (ACR) and 2.2 (PostgreSQL) are
+`done-pending-review` and applied. 2.3 is the last of the phase, then review + PR + gate.
+It is also the **first thing that exercises R5's RBAC Administrator grant** — if it ever
+fails in CI with `AuthorizationFailed`, R5 is the diagnosis.
 
 > **Process note (2026-08-15):** commit `1c8e41d` (the `azq` helper fix + runbook correction)
 > landed **directly on `Sentinel-infra` `main`** after PR #1 merged, outside the one-phase-one-PR

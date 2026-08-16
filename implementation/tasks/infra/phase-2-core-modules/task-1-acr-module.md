@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel-infra` |
 | **Phase branch** | `dev/infra-phase-2-core-modules` |
 | **Commit prefix** | `feat:` |
