@@ -34,9 +34,11 @@ hand, import all five objects into Terraform, then TF manages the rest.
   the two `Sentinel-infra` federated credentials (§4.3), then prints all five
   `terraform import` commands. Must:
   - set **`MSYS_NO_PATHCONV=1`** so `--scope /subscriptions/...` survives Git Bash;
-  - use **`--assignee-object-id` + `--assignee-principal-type ServicePrincipal`**, never
-    bare `--assignee` — the latter does a Microsoft Graph lookup that fails without
-    directory read rights;
+  - on **`az role assignment create`**, use `--assignee-object-id` +
+    `--assignee-principal-type ServicePrincipal`, never bare `--assignee` — the latter
+    does a Microsoft Graph lookup that fails without directory write rights. (Scoped to
+    `create` deliberately: `az role assignment list --assignee` degrades to the literal
+    GUID and is fine, which is what the idempotency probes use.)
   - be re-runnable (idempotent).
 - `docs/BOOTSTRAP.md` / README: the import step + the GitHub **variables** and the one
   `GH_PAT` **secret** (§9 — note the classification, C7).
@@ -50,7 +52,9 @@ Azure matches these case-sensitively; older arch text showed `keshxvDev` — do 
 issuer   = https://token.actions.githubusercontent.com
 audience = ["api://AzureADTokenExchange"]        # azurerm arg is `audience`, singular
 subject  = repo:Keshav0375/<Repo>:<ref:refs/heads/main|pull_request>
-parent_id = azurerm_user_assigned_identity.sentinel_gha.id
+user_assigned_identity_id = azurerm_user_assigned_identity.sentinel_gha.id
+#          ^ NOT `parent_id` — renamed in azurerm v4, and `resource_group_name`
+#            is unused on this resource. Both emit deprecation warnings.
 ```
 
 **The import set (C3 — all five, or the first apply collides):**

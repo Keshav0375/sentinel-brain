@@ -87,18 +87,31 @@ only — app manifests live in the sentinel repo (k8s/).
 
 One module per Azure resource group concern. Flat structure — no nested modules.
 7 modules total. Beyond the modules, the root also declares the **identity plane**
-(§4): the OIDC SP + federated creds, the backend API app registration (§4.4), the
+(§4): the `sentinel-gha` UAMI + federated creds, the backend API app registration (§4.4), the
 backend workload-identity UAMI + federated credential (§3.7), and the Key Vault
 rotation Function + system topic (§3.8) — the last two live in the `functions/`
 module.
 
 ```
 sentinel-infra/
-├── main.tf                    # Provider config, resource group, module calls
+├── main.tf                    # Provider config, RG data source, module calls
+├── versions.tf                # required_version + pinned required_providers (C9)
 ├── variables.tf               # Input variables (subscription_id, location, etc.)
-├── outputs.tf                 # Outputs (ACR URL, DB host, etc.)
+├── outputs.tf                 # Outputs (ACR URL, DB host, etc.) — populated in task 4.4
+├── oidc.tf                    # sentinel-gha UAMI + role assignments + fed creds (§4.2)
+├── identity.tf                # backend API app regs, IDENTITY tenant (§4.4, task 3.5)
 ├── terraform.tfvars           # Dev environment values (gitignored)
+├── terraform.tfvars.example   # Committed template
 ├── backend.tf                 # Remote state config (Azure Storage)
+├── .terraform.lock.hcl        # Provider hash lock — commit it, or the C9 pins are
+│                              #   aspirational rather than reproducible
+│
+├── scripts/
+│   ├── bootstrap-state.sh     # One-time: state RG + storage + container (§8.1)
+│   └── bootstrap-oidc.sh      # One-time: UAMI + roles + first 2 fed creds (§4.3)
+│
+├── docs/
+│   └── BOOTSTRAP.md           # The ordered manual runbook (§10)
 │
 ├── modules/
 │   ├── acr/                   # Container Registry
@@ -616,7 +629,7 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
   principal_id         = azurerm_kubernetes_cluster.sentinel.kubelet_identity[0].object_id
 }
 
-# GHA OIDC SP can deploy (az aks get-credentials + kubectl)
+# The sentinel-gha UAMI can deploy (az aks get-credentials + kubectl)
 resource "azurerm_role_assignment" "gha_aks_user" {
   scope                = azurerm_kubernetes_cluster.sentinel.id
   role_definition_name = "Azure Kubernetes Service Cluster User Role"
@@ -635,10 +648,11 @@ resource "azurerm_user_assigned_identity" "backend" {
 # Federate the K8s service account to the UAMI. Subject is the SA that the
 # Deployment runs under; audience is the workload-identity exchange audience.
 resource "azurerm_federated_identity_credential" "backend" {
-  name                = "sentinel-backend-fic"
-  resource_group_name = var.resource_group_name
-  parent_id           = azurerm_user_assigned_identity.backend.id
-  audience            = ["api://AzureADTokenExchange"]
+  name = "sentinel-backend-fic"
+  # `resource_group_name` is unused and `parent_id` is renamed in azurerm v4 — both
+  # emit deprecation warnings. Corrected 2026-08-15 after infra 1.3 hit them live.
+  user_assigned_identity_id = azurerm_user_assigned_identity.backend.id
+  audience                  = ["api://AzureADTokenExchange"]
   issuer              = azurerm_kubernetes_cluster.sentinel.oidc_issuer_url
   subject             = "system:serviceaccount:sentinel:sentinel-backend"  # namespace:sa
 }
@@ -762,7 +776,7 @@ GHA workflow                Azure AD
 > registration.** See `decisions.md` "Identity plane rebuilt on managed identities". The
 > Sentinel subscription lives in the **University of Windsor** Entra tenant
 > (`uwindsor.ca`, `12f933b3-3d61-4b19-9a4d-689021de8cc9`), where the owner holds
-> **Owner on the subscription but no directory rights** — `azuread_application` cannot be
+> **Owner on the subscription but no directory WRITE rights** — `azuread_application` cannot be
 > created. A UAMI is an ordinary Azure resource governed by Azure RBAC, and it carries
 > federated identity credentials exactly like an app registration does. `azure/login@v2`
 > treats the two identically.
@@ -876,7 +890,8 @@ CLIENT_ID=$(az identity show -n sentinel-gha -g sentinel-rg --query clientId -o 
 PRINCIPAL_ID=$(az identity show -n sentinel-gha -g sentinel-rg --query principalId -o tsv)
 
 # --assignee-object-id + --assignee-principal-type skip the Microsoft Graph lookup that
-# plain --assignee performs. In a tenant where you hold no directory read rights, that
+# plain --assignee performs. Reads of your own user work (default User.Read), but the
+# Graph lookup --assignee needs is denied here, so use the explicit form. That
 # lookup fails; this form does not.
 az role assignment create --assignee-object-id $PRINCIPAL_ID \
   --assignee-principal-type ServicePrincipal --role Contributor \
@@ -1104,7 +1119,7 @@ automatically using the GitHub provider — no manual copy-paste.
 ```hcl
 provider "github" {
   token = var.github_pat
-  owner = "Keshav0375"
+  owner = var.github_owner # C8: variable, defaulted to "Keshav0375". Do NOT re-hardcode
 }
 ```
 
@@ -1271,9 +1286,9 @@ jobs:
 
       - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - run: az acr login --name sentinelacr
 
@@ -1345,9 +1360,9 @@ jobs:
 
       - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Init
         run: terraform init
@@ -1368,9 +1383,9 @@ jobs:
 
       - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Init
         run: terraform init
@@ -1423,9 +1438,9 @@ jobs:
 
       - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Init
         run: terraform init
@@ -1439,7 +1454,7 @@ jobs:
 **Name:** `[infra] terraform — destroy (full teardown)`
 
 The mirror of `ci_infra.yml`. **Decision: "everything, always"** — one run frees
-*all* Sentinel resources from Azure, including the OIDC app registration and the
+*all* Sentinel resources from Azure, including the `sentinel-gha` UAMI and the
 Terraform state. Use it to end the project, or to reset to a clean slate before
 re-bootstrapping. It is **manual-only** (`workflow_dispatch`) with a typed
 confirmation + environment protection so it can never fire on a push.
@@ -1477,9 +1492,9 @@ jobs:
       # in with.
       - uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       # ── Stage 1: destroy everything Terraform manages (incl. imported OIDC app,
       #    federated creds, all 8 modules) ──────────────────────────────────────
@@ -1600,6 +1615,14 @@ the Postgres Entra admin is now a principal set directly (§3.2).
 
 > **Run every `az` command in PowerShell.** Git Bash rewrites `/subscriptions/...` scope
 > arguments into Windows paths (§4.3). Region is `canadacentral` throughout (R3).
+
+> **⚠ Both bootstrap scripts assert the expected subscription ID before doing anything**
+> (`EXPECTED_SUB`, overridable). Since R4, Sentinel spans **two tenants**, and `az` keeps a
+> single shared context in `~/.azure` — an `az login` to the identity tenant in *any* other
+> terminal silently repoints every other session. This happened during infra 1.3, and the
+> assertion is what stopped `sentinel-gha` being created in the wrong tenant. The subscription
+> ID is a non-secret identifier (§9 classifies it as a GitHub *variable*), so hardcoding the
+> default is deliberate, not a leak.
 
 1. [ ] Create the resource group **and register the resource providers**. A fresh
    subscription has nearly every provider `NotRegistered`; the first `apply` then fails

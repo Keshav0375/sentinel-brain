@@ -93,7 +93,7 @@ rewritten as "create the personal tenant", needed before infra Phase 3.
 **Context:** The Azure subscription is **Azure for Students** (`174e25ca-…`) inside the
 **University of Windsor** tenant (`uwindsor.ca`, `12f933b3-…`). Azure exposes two
 independent permission planes: **Azure RBAC** on the subscription, and **Microsoft Entra**
-on the directory. The owner holds **Owner on the subscription** and **no directory rights** —
+on the directory. The owner holds **Owner on the subscription** and **no directory write rights** (own-user reads via `User.Read` do work — that is how `PG_ADMIN_OBJECT_ID` was obtained) —
 confirmed by a portal 401. Every rev-5 identity construct (`sentinel-gha-oidc` app,
 `sentinel-db-admins` group, `sentinel-backend-api` app) is a *directory* object, so B3, B10
 and B11 were all unbuildable as designed. Options weighed: (1) ask UWindsor IT for
