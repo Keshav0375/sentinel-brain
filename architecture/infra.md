@@ -806,8 +806,7 @@ resource "azurerm_role_assignment" "gha_state_blob" {
 # so they are plain Azure resources (RBAC), not directory objects.
 resource "azurerm_federated_identity_credential" "sentinel_infra_main" {
   name                = "sentinel-infra-main"
-  resource_group_name = data.azurerm_resource_group.sentinel.name
-  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  user_assigned_identity_id = azurerm_user_assigned_identity.sentinel_gha.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
   subject             = "repo:Keshav0375/Sentinel-infra:ref:refs/heads/main"
@@ -815,8 +814,7 @@ resource "azurerm_federated_identity_credential" "sentinel_infra_main" {
 
 resource "azurerm_federated_identity_credential" "sentinel_infra_pr" {
   name                = "sentinel-infra-pr"
-  resource_group_name = data.azurerm_resource_group.sentinel.name
-  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  user_assigned_identity_id = azurerm_user_assigned_identity.sentinel_gha.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
   subject             = "repo:Keshav0375/Sentinel-infra:pull_request"
@@ -824,8 +822,7 @@ resource "azurerm_federated_identity_credential" "sentinel_infra_pr" {
 
 resource "azurerm_federated_identity_credential" "sentinel_main" {
   name                = "sentinel-main"
-  resource_group_name = data.azurerm_resource_group.sentinel.name
-  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  user_assigned_identity_id = azurerm_user_assigned_identity.sentinel_gha.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
   subject             = "repo:Keshav0375/Sentinel:ref:refs/heads/main"
@@ -833,8 +830,7 @@ resource "azurerm_federated_identity_credential" "sentinel_main" {
 
 resource "azurerm_federated_identity_credential" "sentinel_pr" {
   name                = "sentinel-pr"
-  resource_group_name = data.azurerm_resource_group.sentinel.name
-  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  user_assigned_identity_id = azurerm_user_assigned_identity.sentinel_gha.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
   subject             = "repo:Keshav0375/Sentinel:pull_request"
@@ -842,8 +838,7 @@ resource "azurerm_federated_identity_credential" "sentinel_pr" {
 
 resource "azurerm_federated_identity_credential" "sentinel_deployment_main" {
   name                = "sentinel-deployment-main"
-  resource_group_name = data.azurerm_resource_group.sentinel.name
-  parent_id           = azurerm_user_assigned_identity.sentinel_gha.id
+  user_assigned_identity_id = azurerm_user_assigned_identity.sentinel_gha.id
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
   subject             = "repo:Keshav0375/Sentinel-deployment:ref:refs/heads/main"
@@ -926,8 +921,28 @@ terraform import azurerm_role_assignment.gha_contributor  <contributor-assignmen
 terraform import azurerm_role_assignment.gha_state_blob   <blob-assignment-id>
 ```
 
+> **⚠ Two traps, both hit for real on 2026-08-15.**
+>
+> **1. Resource-ID casing.** `az identity show --query id` returns the id with
+> **`resourcegroups`** (lowercase g). The azurerm provider's ID parser is case-sensitive and
+> rejects it with *"parsing segment 'subscriptions': the segment at position 0 didn't
+> match"* — an error that points nowhere near the real cause. Build the id by hand with
+> **`resourceGroups`**. `scripts/bootstrap-oidc.sh` does this rather than echoing what `az`
+> returned.
+>
+> **2. MSYS path mangling applies to `terraform`, not just `az`.** In Git Bash,
+> `/subscriptions/...` is rewritten to `C:/Program Files/Git/subscriptions/...` for **any**
+> command. Run the imports in PowerShell, or `export MSYS_NO_PATHCONV=1` first.
+
 **Acceptance:** `terraform plan` after the imports shows **no destroy and no replace**.
 Anything else means an attribute drifted between the `az` call and the HCL.
+
+> **Do not set `skip_service_principal_aad_check` on these two role assignments.** It guards
+> the PrincipalNotFound race when *Terraform* creates an assignment against a still-
+> replicating principal — but these are always created by the bootstrap script and only
+> imported, so the race cannot occur. It is also **create-only**: on an imported assignment
+> it plans as an in-place update that then fails with `doesn't support update`. Phase 2/3
+> assignments (AcrPull, Key Vault) *do* create against fresh identities and should set it.
 
 After this, set the GitHub *variables* in §9 (`AZURE_CLIENT_ID` = the UAMI's `clientId`,
 not its principal ID). Then `ci_infra.yml` runs and Terraform manages the rest.
