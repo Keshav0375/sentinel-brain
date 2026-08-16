@@ -13,7 +13,7 @@
 > **Status:** ⬜ not-started · 🔵 in-progress · ⛔ blocked · 🟡 done-pending-review · ✅ verified
 > **Legend:** 🔒 = phase locked until the previous phase gate is signed off.
 
-**Overall:** 0 / 58 tasks verified · 0 / 16 phases merged.
+**Overall:** 3 / 58 tasks verified · 1 / 16 phases merged.
 > **rev-5 (2026-07-12):** tasks added/modified for the security + ground-truth overhaul —
 > Entra-only Postgres, Key Vault rotation, backend Entra app + AKS workload identity,
 > `ci_destroy_infra`, 30 scenario branches (replaces demo PRs), inbound Entra bearer auth.
@@ -24,18 +24,18 @@
 ## Category 1 — sentinel-infra  ·  `Keshav0375/Sentinel-infra`
 _Implement first — provisions the ground truth every other repo depends on._ · [Index](tasks/infra/README.md)
 
-### Phase 1 — Foundations & Bootstrap  ·  branch `dev/infra-phase-1-foundations`  ·  Gate: ⬜
+### Phase 1 — Foundations & Bootstrap  ·  branch `dev/infra-phase-1-foundations`  ·  Gate: ✅ 2026-08-15
 | # | Task | File | Status |
 |---|------|------|--------|
-| 1.1 | Repo skeleton + provider/backend/vars config | [task-1](tasks/infra/phase-1-foundations/task-1-repo-skeleton-and-providers.md) | 🟡 |
-| 1.2 | Remote state bootstrap (script + doc) | [task-2](tasks/infra/phase-1-foundations/task-2-remote-state-bootstrap.md) | 🟡 |
-| 1.3 | OIDC federation (bootstrap + TF federated creds) | [task-3](tasks/infra/phase-1-foundations/task-3-oidc-federation.md) | 🟡 |
+| 1.1 | Repo skeleton + provider/backend/vars config | [task-1](tasks/infra/phase-1-foundations/task-1-repo-skeleton-and-providers.md) | ✅ |
+| 1.2 | Remote state bootstrap (script + doc) | [task-2](tasks/infra/phase-1-foundations/task-2-remote-state-bootstrap.md) | ✅ |
+| 1.3 | OIDC federation (bootstrap + TF federated creds) | [task-3](tasks/infra/phase-1-foundations/task-3-oidc-federation.md) | ✅ |
 
-### Phase 2 — Core Resource Modules  ·  branch `dev/infra-phase-2-core-modules`  ·  Gate: 🔒
+### Phase 2 — Core Resource Modules  ·  branch `dev/infra-phase-2-core-modules`  ·  Gate: ⬜
 | # | Task | File | Status |
 |---|------|------|--------|
 | 2.1 | ACR module | [task-1](tasks/infra/phase-2-core-modules/task-1-acr-module.md) | ⬜ |
-| 2.2 | PostgreSQL module (+ pgvector, **Entra-only auth** + admin group, firewall) | [task-2](tasks/infra/phase-2-core-modules/task-2-postgresql-module.md) | ⬜ |
+| 2.2 | PostgreSQL module (+ pgvector, **Entra-only auth** + direct admins, firewall) | [task-2](tasks/infra/phase-2-core-modules/task-2-postgresql-module.md) | ⬜ |
 | 2.3 | Key Vault module (+ RBAC roles, secrets — **no db-password/api-token**) | [task-3](tasks/infra/phase-2-core-modules/task-3-keyvault-module.md) | ⬜ |
 
 ### Phase 3 — Compute & Networking Modules  ·  branch `dev/infra-phase-3-compute-modules`  ·  Gate: 🔒
@@ -45,7 +45,7 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 | 3.2 | Event Grid module (+ **two-signal routing**) | [task-2](tasks/infra/phase-3-compute-modules/task-2-event-grid-module.md) | ⬜ |
 | 3.3 | Azure Function bridge module (+ Python source, **stamps `signal_type`**) | [task-3](tasks/infra/phase-3-compute-modules/task-3-functions-bridge-module.md) | ⬜ |
 | 3.4 | App Service module (F1 target) | [task-4](tasks/infra/phase-3-compute-modules/task-4-app-service-module.md) | ⬜ |
-| 3.5 | **Identity plane** — backend Entra app (`api://sentinel-backend` + `Incident.Write`) + role grant to `sentinel-gha` | [task-5](tasks/infra/phase-3-compute-modules/task-5-backend-entra-app.md) | ⬜ |
+| 3.5 | **Identity plane** — backend Entra app in the IDENTITY tenant (`api://sentinel-backend` + `Incident.Write`) + `sentinel-gha-client` | [task-5](tasks/infra/phase-3-compute-modules/task-5-backend-entra-app.md) | ⬜ |
 | 3.6 | **Key Vault rotation** — rotation policy + rotator Function (`SecretNearExpiry` → new version) | [task-6](tasks/infra/phase-3-compute-modules/task-6-keyvault-rotation.md) | ⬜ |
 
 ### Phase 4 — Cross-Repo Wiring & CI  ·  branch `dev/infra-phase-4-wiring-and-ci`  ·  Gate: 🔒

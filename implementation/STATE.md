@@ -10,12 +10,12 @@
 | Field | Value |
 |-------|-------|
 | **Active category** | infra — **in progress** |
-| **Active phase** | 1 — Foundations & Bootstrap |
-| **Active branch** | `dev/infra-phase-1-foundations` (cut 2026-08-15) |
-| **Active PR** | [Sentinel-infra#1](https://github.com/Keshav0375/Sentinel-infra/pull/1) → `main` — **awaiting phase gate** |
-| **Current task** | _phase complete, reviewed_ — awaiting owner sign-off on PR #1 |
-| **Tasks verified** | 0 / 58 |
-| **Phases merged** | 0 / 16 |
+| **Active phase** | 2 — Core Resource Modules |
+| **Active branch** | _none — phase 2 not started_ |
+| **Active PR** | _none_ |
+| **Current task** | 2.1 — ACR module |
+| **Tasks verified** | 3 / 58 |
+| **Phases merged** | 1 / 16 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
@@ -79,7 +79,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
-| — | — | — | — | — | — | _no phases completed yet_ |
+| 2026-08-15 | infra | 1 — Foundations & Bootstrap | `dev/infra-phase-1-foundations` | [#1](https://github.com/Keshav0375/Sentinel-infra/pull/1) | Keshav | `terraform plan` → **No changes**; both bootstrap scripts idempotent; gate PASS (5 ran); 5 federated credentials verified in Azure. Resolved R3, R4, R5, C1–C9, C12, C13. Closed B1, B2, B3, B10, B15. |
 
 ## Blockers
 
