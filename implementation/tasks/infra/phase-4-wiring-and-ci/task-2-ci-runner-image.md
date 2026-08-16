@@ -16,7 +16,7 @@ CLI) so sentinel workflows don't reinstall tools each run.
 
 **Files created:**
 - `ci-images/ci-runner.Dockerfile` — per §6.1 (python:3.12-slim; apt curl gcc libpq-dev git docker.io; pip ruff pyright pytest pytest-asyncio asyncpg pgvector alembic; Azure CLI).
-- `ci-images/build-push.sh` — `az acr login`, docker build, docker push `sentinelacr.azurecr.io/ci-runner:latest` (the one-time manual bootstrap, §6.2).
+- `ci-images/build-push.sh` — `az acr login`, docker build, docker push `sentinelacr0375.azurecr.io/ci-runner:latest` (the one-time manual bootstrap, §6.2).
 
 ## Prerequisites
 - [ ] Docker installed. [ ] task 2.1 ACR exists (⛔ B1 to push).

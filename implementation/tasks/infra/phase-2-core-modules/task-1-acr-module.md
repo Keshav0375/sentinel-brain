@@ -14,11 +14,11 @@
 Standard-tier Container Registry that stores `sentinel-backend` + `ci-runner` images.
 
 **Files created:** `modules/acr/{main.tf,variables.tf,outputs.tf}`
-- `main.tf` — `azurerm_container_registry "sentinel"` name `sentinelacr`, sku `Standard`, `admin_enabled = true`.
+- `main.tf` — `azurerm_container_registry "sentinel"` name `sentinelacr0375`, sku `Standard`, `admin_enabled = true`.
 - `variables.tf` — `resource_group_name`, `location`.
 - `outputs.tf` — `acr_login_server`, `acr_admin_username`, `acr_admin_password` (sensitive).
 
-**Contract:** name `sentinelacr` (globally unique — adjust if taken, propagate to R-notes).
+**Contract:** name `sentinelacr0375` (globally unique — adjust if taken, propagate to R-notes).
 
 ## Prerequisites
 - [ ] terraform CLI. [ ] task 1.1 root scaffold. [ ] ACR name available (verify at apply, ⛔ B1).
@@ -34,7 +34,7 @@ Standard-tier Container Registry that stores `sentinel-backend` + `ci-runner` im
 
 ## How to Verify (phase gate)
 1. `terraform plan -target=module.acr` → creates 1 registry, no errors.
-2. (post-apply) `az acr show --name sentinelacr` returns the registry.
+2. (post-apply) `az acr show --name sentinelacr0375` returns the registry.
 
 ## Report   ·   _filled on completion_
 _not yet implemented_

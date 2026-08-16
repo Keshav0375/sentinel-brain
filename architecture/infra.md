@@ -64,7 +64,7 @@ sentinel-infra repo
 │  ┌─────────────────────────┐                                      │
 │  │  App Service (F1)       │                                      │
 │  │  (always free)          │                                      │
-│  │  dummy-api              │    ← sentinel-deployment target      │
+│  │  dummy-api-0375              │    ← sentinel-deployment target      │
 │  └─────────────────────────┘                                      │
 │                                                                   │
 │  ┌─────────────────────────┐                                      │
@@ -181,15 +181,35 @@ workspace (e.g., for different lifecycle), the module boundary is already there.
 
 ## 3. Module Details
 
+> **Globally-unique names carry a `0375` suffix.** ACR, Key Vault, PostgreSQL, Function App,
+> App Service and Storage names are unique across **all of Azure**, not per-tenant. Checked
+> 2026-08-15: `sentinelacr`, `sentinel-pg`, `sentinel-kv`, `sentineltfstate` and `dummy-api`
+> were **all already taken** by other tenants. The suffix is therefore applied to every
+> globally-scoped name — **including ones currently free**, because availability today is not
+> a reservation and a collision found mid-phase costs a multi-file rename (C12 cost 20
+> occurrences across 7 files). Each module takes its name as a **validated variable**, so the
+> next collision is a `tfvars` change rather than a code change.
+>
+> Resource-group-scoped names (`sentinel-rg`, `sentinel-aks`, `sentinel-backend-wi`,
+> `sentinel-gha`) need no suffix — they are only unique within the subscription.
+
 ### 3.1 ACR Module
 
 ```hcl
 resource "azurerm_container_registry" "sentinel" {
-  name                = "sentinelacr"
+  name                = "sentinelacr0375"
   resource_group_name = var.resource_group_name
   location            = var.location
-  sku                 = "Standard"    # Free 100 GB for 12 months
-  admin_enabled       = true
+
+  # Basic, not Standard (owner decision 2026-08-15). The original "free 100 GB
+  # for 12 months" note describes the **Azure free account** offer; this
+  # subscription is **Azure for Students**, a different SKU where that inclusion
+  # is unverified. Standard would bill ~$20/mo against a $100 credit for capacity
+  # Sentinel does not use — it pushes one backend image plus the CI runner image.
+  # Basic gives 10 GB and 2 webhooks for ~$5/mo. Auth, AcrPull and the login
+  # server are identical; the SKU can be raised in place later with no data loss.
+  sku           = "Basic"
+  admin_enabled = true
 }
 ```
 
@@ -207,7 +227,7 @@ resource "azurerm_container_registry" "sentinel" {
 
 ```hcl
 resource "azurerm_postgresql_flexible_server" "sentinel" {
-  name                   = "sentinel-pg"
+  name                   = "sentinel-pg-0375"
   resource_group_name    = var.resource_group_name
   location               = var.location
   version                = "16"
@@ -321,7 +341,7 @@ the role by the principal's Entra object ID, not its name.
 PGPASSWORD=$(az account get-access-token \
   --resource https://ossrdbms-aad.database.windows.net \
   --query accessToken -o tsv)
-psql "host=sentinel-pg.postgres.database.azure.com dbname=sentinel \
+psql "host=sentinel-pg-0375.postgres.database.azure.com dbname=sentinel \
       user=sentinel-gha sslmode=require"   # token supplied via PGPASSWORD
 ```
 
@@ -331,12 +351,24 @@ psql "host=sentinel-pg.postgres.database.azure.com dbname=sentinel \
 
 ```hcl
 resource "azurerm_key_vault" "sentinel" {
-  name                       = "sentinel-kv"
+  name                       = "sentinel-kv-0375"
   location                   = var.location
   resource_group_name        = var.resource_group_name
   tenant_id                  = data.azurerm_client_config.current.tenant_id
   sku_name                   = "standard"  # Always free (10K txns)
-  enable_rbac_authorization  = true
+  # Renamed in azurerm v4 — `enable_rbac_authorization` is deprecated and removed in
+  # v5. Verified against the pinned 4.81.0 binary, 2026-08-15.
+  rbac_authorization_enabled = true
+
+  # Soft-delete is NOT optional on Key Vault (owner decision 2026-08-15). Azure's
+  # default of 90 days + purge protection would leave this vault's globally unique
+  # name reserved after any teardown, so `ci_destroy_infra`'s "everything, always"
+  # rebuild could never recreate it under the same name. 7 days + purge allowed
+  # makes the designed loop work. Accepted cost: a mistaken destroy can be purged
+  # for real — tolerable because all 9 secrets are re-seedable from their external
+  # sources (§10 step 7); the vault holds no generated state.
+  soft_delete_retention_days = 7
+  purge_protection_enabled   = false
 }
 
 # Terraform SP — full secret management (set secrets during apply)
@@ -500,7 +532,7 @@ resource "azurerm_service_plan" "functions" {
 }
 
 resource "azurerm_linux_function_app" "bridge" {
-  name                = "sentinel-bridge"
+  name                = "sentinel-bridge-0375"
   location            = var.location
   resource_group_name = var.resource_group_name
   service_plan_id     = azurerm_service_plan.functions.id
@@ -515,7 +547,7 @@ resource "azurerm_linux_function_app" "bridge" {
   }
 
   app_settings = {
-    "GITHUB_TOKEN"      = "@Microsoft.KeyVault(VaultName=sentinel-kv;SecretName=github-pat)"
+    "GITHUB_TOKEN"      = "@Microsoft.KeyVault(VaultName=sentinel-kv-0375;SecretName=github-pat)"
     "GITHUB_REPO"       = "Keshav0375/Sentinel"
     "GITHUB_EVENT_TYPE" = "incident-alert"
   }
@@ -568,7 +600,7 @@ resource "azurerm_service_plan" "deployment" {
 }
 
 resource "azurerm_linux_web_app" "dummy_api" {
-  name                = "dummy-api"
+  name                = "dummy-api-0375"
   location            = var.location
   resource_group_name = var.resource_group_name
   service_plan_id     = azurerm_service_plan.deployment.id
@@ -581,7 +613,7 @@ resource "azurerm_linux_web_app" "dummy_api" {
 
   app_settings = {
     "APP_VERSION" = "initial"
-    "DD_SERVICE"  = "dummy-api"
+    "DD_SERVICE"  = "dummy-api-0375"
     "DD_ENV"      = "dev"
     "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
   }
@@ -693,7 +725,7 @@ resource "azurerm_key_vault_secret" "anthropic" {
 
 # A second Function App (Consumption, always free) with a system-assigned MI.
 resource "azurerm_linux_function_app" "rotator" {
-  name                = "sentinel-rotator"
+  name                = "sentinel-rotator-0375"
   location            = var.location
   resource_group_name = var.resource_group_name
   service_plan_id     = azurerm_service_plan.functions.id   # shares the bridge's Y1 plan
@@ -708,7 +740,7 @@ resource "azurerm_linux_function_app" "rotator" {
 
 # Event Grid: Key Vault SecretNearExpiry → rotator Function.
 resource "azurerm_eventgrid_system_topic" "kv" {
-  name                   = "sentinel-kv-events"
+  name                   = "sentinel-kv-0375-events"
   location               = var.location
   resource_group_name    = var.resource_group_name
   source_arm_resource_id = azurerm_key_vault.sentinel.id
@@ -1283,9 +1315,9 @@ Terraform, which needs ACR to exist first. Sequence:
 1. `terraform apply` creates ACR
 2. **Manually** build and push the first `ci-runner` image:
    ```bash
-   az acr login --name sentinelacr
-   docker build -f ci-images/ci-runner.Dockerfile -t sentinelacr.azurecr.io/ci-runner:latest .
-   docker push sentinelacr.azurecr.io/ci-runner:latest
+   az acr login --name sentinelacr0375
+   docker build -f ci-images/ci-runner.Dockerfile -t sentinelacr0375.azurecr.io/ci-runner:latest .
+   docker push sentinelacr0375.azurecr.io/ci-runner:latest
    ```
 3. After that, `build-runners.yml` handles all subsequent updates automatically
 
@@ -1320,12 +1352,12 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - run: az acr login --name sentinelacr
+      - run: az acr login --name sentinelacr0375
 
       - run: |
           docker build -f ci-images/ci-runner.Dockerfile \
-            -t sentinelacr.azurecr.io/ci-runner:latest .
-          docker push sentinelacr.azurecr.io/ci-runner:latest
+            -t sentinelacr0375.azurecr.io/ci-runner:latest .
+          docker push sentinelacr0375.azurecr.io/ci-runner:latest
 ```
 
 ### 6.4 Usage in sentinel repo workflows
@@ -1538,6 +1570,12 @@ jobs:
       - name: Delete bootstrap resource groups
         run: |
           az group delete --name sentinel-rg        --yes --no-wait || true
+          az keyvault purge --name sentinel-kv-0375 --location canadacentral || true
+          # ^ soft-deleted vaults hold their globally unique name. Without this,
+          #   the next bootstrap fails with "vault name already in use" (§3.3).
+          # Soft-deleted vaults keep their globally unique name. Without this purge
+          # the next bootstrap fails with "vault name already in use" (§3.3).
+          az keyvault purge --name sentinel-kv-0375 --location canadacentral || true
           az group delete --name sentinel-state-rg  --yes --no-wait || true
 ```
 
@@ -1716,13 +1754,13 @@ the Postgres Entra admin is now a principal set directly (§3.2).
 7. [ ] Populate Key Vault with runtime secrets (no `db-password`, no
    `sentinel-api-token` — both eliminated):
    ```bash
-   az keyvault secret set --vault-name sentinel-kv --name anthropic-api-key --value "sk-ant-..." --expires "$(date -u -d '+90 days' +%Y-%m-%dT%H:%M:%SZ)"
-   az keyvault secret set --vault-name sentinel-kv --name openai-api-key --value "sk-..." --expires "$(date -u -d '+90 days' +%Y-%m-%dT%H:%M:%SZ)"
-   az keyvault secret set --vault-name sentinel-kv --name dd-api-key --value "..."
-   az keyvault secret set --vault-name sentinel-kv --name dd-app-key --value "..."
-   az keyvault secret set --vault-name sentinel-kv --name teams-webhook-url --value "https://..."
-   az keyvault secret set --vault-name sentinel-kv --name langfuse-secret-key --value "sk-lf-..."
-   az keyvault secret set --vault-name sentinel-kv --name langfuse-public-key --value "pk-lf-..."
+   az keyvault secret set --vault-name sentinel-kv-0375 --name anthropic-api-key --value "sk-ant-..." --expires "$(date -u -d '+90 days' +%Y-%m-%dT%H:%M:%SZ)"
+   az keyvault secret set --vault-name sentinel-kv-0375 --name openai-api-key --value "sk-..." --expires "$(date -u -d '+90 days' +%Y-%m-%dT%H:%M:%SZ)"
+   az keyvault secret set --vault-name sentinel-kv-0375 --name dd-api-key --value "..."
+   az keyvault secret set --vault-name sentinel-kv-0375 --name dd-app-key --value "..."
+   az keyvault secret set --vault-name sentinel-kv-0375 --name teams-webhook-url --value "https://..."
+   az keyvault secret set --vault-name sentinel-kv-0375 --name langfuse-secret-key --value "sk-lf-..."
+   az keyvault secret set --vault-name sentinel-kv-0375 --name langfuse-public-key --value "pk-lf-..."
    ```
 
 8. [ ] Create Entra DB roles: connect to PostgreSQL as the group admin (token as

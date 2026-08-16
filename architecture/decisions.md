@@ -46,6 +46,38 @@ execution, tracked as blocker **B11** in `implementation/STATE.md`, not an open 
 
 ## Decision Log
 
+### 2026-08-15: infra phase 2 — three cost/lifecycle decisions
+
+**1. ACR Basic, not Standard.** §11 claimed Postgres B1MS and ACR Standard are free, citing
+the **Azure free account** 12-month grant. This subscription is **Azure for Students**
+(MS-AZR-0170P) — a different offer whose headline is "$100 credit + always-free services",
+and Key Vault is on that always-free list while ACR and Postgres are not. If the grant does
+not apply, phase 2 alone bills **~$39/mo** and the credit is gone in ~2.5 months, before
+phase 3 adds AKS. ACR Standard (~$20/mo) is the one avoidable line: nothing in §3.1 or §6
+needs 100 GB or 10 webhooks for two images. **Basic (~$5/mo)** — identical auth, AcrPull and
+login server; SKU raises in place with no data loss. Deviation from §3.1, recorded here.
+**Still to verify:** what the Students offer actually includes free — §11's AKS note says
+"expires 05/2027", implying a free window *was* observed, so it may cover more than assumed.
+
+**2. Globally-unique names take a `0375` suffix, systematically.** `sentinelacr`,
+`sentinel-pg`, `sentinel-kv`, `sentineltfstate` and `dummy-api` were **all** already taken by
+other tenants. Applied to every globally-scoped name including ones currently free —
+availability is not reservation, and a collision found mid-phase costs a multi-file rename
+(C12 cost 20 occurrences across 7 files). Each module takes its name as a validated variable,
+so the next collision is a `tfvars` change rather than a code change.
+
+**3. Key Vault: 7-day soft-delete, purge protection off.** Soft-delete is mandatory on Key
+Vault; the Azure default (90 days + purge protection) would leave `sentinel-kv-0375`'s name
+reserved after any teardown, making `ci_destroy_infra`'s "everything, always" rebuild
+impossible under the same name. 7 days + purge allowed + an explicit `az keyvault purge` in
+§7.3 makes the designed loop work. **Accepted cost:** a mistaken destroy can be purged for
+real. Acceptable because all 9 secrets are re-seedable from their external sources — the
+vault holds no generated state.
+
+**Also corrected:** `enable_rbac_authorization` → `rbac_authorization_enabled`, deprecated in
+azurerm v4 and removed in v5. Verified against the pinned 4.81.0 binary — same class as the
+`parent_id` / `resource_group_name` deprecations found during infra 1.3.
+
 ### 2026-08-15: R5 — the CI identity could not create role assignments
 
 **Context:** Surfaced by `code-reviewer` at the infra Phase 1 gate. `sentinel-gha` held exactly

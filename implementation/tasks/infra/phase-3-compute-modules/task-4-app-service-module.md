@@ -11,16 +11,16 @@
 | **Referenced by** | [[task-1-fastapi-app]], [[task-2-ci-app-deployment]] (deploy target) |
 
 ## Spec
-Free F1 Linux web app that hosts the dummy-api (deployment repo's zip-deploy target).
+Free F1 Linux web app that hosts the dummy-api-0375 (deployment repo's zip-deploy target).
 
 **Files created:** `modules/app-service/{main.tf,variables.tf,outputs.tf}`
 - `azurerm_service_plan "deployment"` — name `sentinel-deploy-plan`, Linux, sku `F1`.
-- `azurerm_linux_web_app "dummy_api"` — name `dummy-api`, python 3.12, app_settings: `APP_VERSION=initial`, `DD_SERVICE=dummy-api`, `DD_ENV=dev`, `SCM_DO_BUILD_DURING_DEPLOYMENT=true`; startup command (gunicorn+uvicorn worker, §2.5) via `site_config.app_command_line`.
+- `azurerm_linux_web_app "dummy_api"` — name `dummy-api-0375`, python 3.12, app_settings: `APP_VERSION=initial`, `DD_SERVICE=dummy-api-0375`, `DD_ENV=dev`, `SCM_DO_BUILD_DURING_DEPLOYMENT=true`; startup command (gunicorn+uvicorn worker, §2.5) via `site_config.app_command_line`.
 - `variables.tf` — `resource_group_name`, `location`.
-- `outputs.tf` — `app_url` (`https://dummy-api.azurewebsites.net`), `app_name`.
+- `outputs.tf` — `app_url` (`https://dummy-api-0375.azurewebsites.net`), `app_name`.
 
 ## Prerequisites
-- [ ] terraform CLI. [ ] `dummy-api` name available (⛔ B1 to apply). [ ] F1 available in region (R3).
+- [ ] terraform CLI. [ ] `dummy-api-0375` name available (⛔ B1 to apply). [ ] F1 available in region (R3).
 
 ## Acceptance Criteria
 - [ ] Validates; F1 plan + web app; startup command set for gunicorn/uvicorn; DD_* app settings present.
@@ -28,7 +28,7 @@ Free F1 Linux web app that hosts the dummy-api (deployment repo's zip-deploy tar
 
 ## Tests
 - **Validate:** validate, tflint, tfsec.
-- **Integration (⛔ B1):** apply; `curl https://dummy-api.azurewebsites.net` (404/placeholder pre-deploy is fine — app ships from deployment repo).
+- **Integration (⛔ B1):** apply; `curl https://dummy-api-0375.azurewebsites.net` (404/placeholder pre-deploy is fine — app ships from deployment repo).
 - **Quality gate:** `--repo infra`.
 
 ## How to Verify (phase gate)

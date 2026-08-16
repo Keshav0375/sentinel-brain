@@ -19,7 +19,7 @@
 Central secret store, RBAC-authorized. Terraform writes, GHA SP + backend UAMI read, rotator writes.
 
 **Files created:** `modules/keyvault/{main.tf,variables.tf,outputs.tf}`
-- `azurerm_key_vault "sentinel"` — name `sentinel-kv`, sku `standard`, `enable_rbac_authorization = true`, tenant from client config.
+- `azurerm_key_vault "sentinel"` — name `sentinel-kv-0375`, sku `standard`, `enable_rbac_authorization = true`, tenant from client config.
 - `azurerm_role_assignment "terraform_kv_admin"` — `Key Vault Secrets Officer` to `data.azurerm_client_config.current.object_id`.
 - `azurerm_role_assignment "gha_kv_reader"` — `Key Vault Secrets User` to the GHA SP object id (task 1.3 output).
 - `azurerm_role_assignment "backend_kv_reader"` — `Key Vault Secrets User` to the backend UAMI (task 3.1).
@@ -54,7 +54,7 @@ teams-webhook-url, langfuse-secret-key, langfuse-public-key, acr-password, githu
 
 ## How to Verify (phase gate)
 1. `terraform plan -target=module.keyvault` → vault + 4 role assignments, **no secret resources**.
-2. (post-apply) `az keyvault secret list --vault-name sentinel-kv`; confirm GHA SP read-only via `az role assignment list`.
+2. (post-apply) `az keyvault secret list --vault-name sentinel-kv-0375`; confirm GHA SP read-only via `az role assignment list`.
 
 ## Report   ·   _filled on completion_
 _not yet implemented_

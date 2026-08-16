@@ -64,7 +64,7 @@ image pull before the pipeline starts. For live demos, set the repo variable
 │                                                                   │
 │  ┌─────────────────────────────────────────────────────────┐     │
 │  │  Deployment: sentinel-backend (replicas: 1)              │     │
-│  │  Image: sentinelacr.azurecr.io/sentinel-backend:sha-X    │     │
+│  │  Image: sentinelacr0375.azurecr.io/sentinel-backend:sha-X    │     │
 │  │                                                          │     │
 │  │  FastAPI app (src/sentinel/main.py):                     │     │
 │  │  ├── POST /webhooks/incident   (trigger run)             │     │
@@ -243,7 +243,7 @@ X-Correlation-ID: {correlation_id}
   "title": "Deploy FAILED for PR #5",
   "severity": "error",
   "tags": {
-    "service": "dummy-api",
+    "service": "dummy-api-0375",
     "deploy_status": "failed",
     "failed_stage": "verify",
     "version": "pr-5-a3f9c2"
@@ -343,7 +343,7 @@ Authorization: Bearer {entra-jwt}
 Response 200:
 {
   "title": "revert: roll back PR #5 — health endpoint 503s (incident inc-uuid)",
-  "description": "## Incident\n\nSentinel detected failed health checks on dummy-api starting 12:02 UTC...\n\n## Root Cause\n\nPR #5 (a3f9c2) changed /health to return 503 when any dependency is degraded...\n\n## Evidence\n\n- 3/3 verify health checks failed post-deploy\n- 503s in Datadog logs begin exactly at deploy time\n\n## Rollback\n\nThis PR reverts a3f9c2. Confidence: 0.85. Merge to deploy the fix; close to reject and handle manually.",
+  "description": "## Incident\n\nSentinel detected failed health checks on dummy-api-0375 starting 12:02 UTC...\n\n## Root Cause\n\nPR #5 (a3f9c2) changed /health to return 503 when any dependency is degraded...\n\n## Evidence\n\n- 3/3 verify health checks failed post-deploy\n- 503s in Datadog logs begin exactly at deploy time\n\n## Rollback\n\nThis PR reverts a3f9c2. Confidence: 0.85. Merge to deploy the fix; close to reject and handle manually.",
   "model_used": "anthropic/claude-haiku-4-5",
   "tokens_used": 245
 }
@@ -908,7 +908,7 @@ spec:
       serviceAccountName: sentinel-backend     # annotated with the backend UAMI client-id
       containers:
         - name: sentinel-backend
-          image: sentinelacr.azurecr.io/sentinel-backend:sha-PLACEHOLDER  # set by CI via kubectl set image
+          image: sentinelacr0375.azurecr.io/sentinel-backend:sha-PLACEHOLDER  # set by CI via kubectl set image
           ports: [{ containerPort: 8000 }]
           envFrom:
             - configMapRef: { name: sentinel-config }   # NON-secret config only (see §8.2)
@@ -955,8 +955,8 @@ kubectl create configmap sentinel-config \
   --from-literal=SENTINEL_PRIMARY_PROVIDER="anthropic" \
   --from-literal=AZURE_TENANT_ID="<tenant-id>" \
   --from-literal=SENTINEL_API_AUDIENCE="api://sentinel-backend" \
-  --from-literal=KEY_VAULT_URL="https://sentinel-kv.vault.azure.net" \
-  --from-literal=PGHOST="sentinel-pg.postgres.database.azure.com" \
+  --from-literal=KEY_VAULT_URL="https://sentinel-kv-0375.vault.azure.net" \
+  --from-literal=PGHOST="sentinel-pg-0375.postgres.database.azure.com" \
   --from-literal=PGDATABASE="sentinel" \
   --from-literal=PGUSER="sentinel-backend-wi" \
   --dry-run=client -o yaml | kubectl apply -f -
@@ -1216,11 +1216,11 @@ Jobs:
 
 ```bash
 # Keep latest 3 tags, delete the rest
-TAGS=$(az acr repository show-tags --name sentinelacr --repository sentinel-backend \
+TAGS=$(az acr repository show-tags --name sentinelacr0375 --repository sentinel-backend \
   --orderby time_desc --output tsv)
 KEEP=3
 echo "$TAGS" | tail -n +$((KEEP+1)) | while read TAG; do
-  az acr repository delete --name sentinelacr --image sentinel-backend:$TAG --yes
+  az acr repository delete --name sentinelacr0375 --image sentinel-backend:$TAG --yes
 done
 ```
 
@@ -1378,7 +1378,7 @@ jobs:
         id: fetch
         run: |
           SERVICE="${{ github.event.client_payload.tags.service }}"
-          # DD_API_KEY=$(az keyvault secret show --vault-name sentinel-kv --name dd-api-key --query value -o tsv)
+          # DD_API_KEY=$(az keyvault secret show --vault-name sentinel-kv-0375 --name dd-api-key --query value -o tsv)
           # curl Datadog Logs API → last 30 min of errors (truncate: job outputs max 1 MB)
 
   # ─── Job 2: Run agent pipeline on the AKS backend ─────────────────

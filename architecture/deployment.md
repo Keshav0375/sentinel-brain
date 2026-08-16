@@ -47,7 +47,7 @@ PR merged to main
                     ┌──────────────────┐
                     │  Azure App       │
                     │  Service (F1)    │
-                    │  dummy-api       │
+                    │  dummy-api-0375       │
                     │  GET /health     │
                     │  GET /version    │
                     │  GET /           │
@@ -72,9 +72,9 @@ The app exists only to be deployed to and verified against. No business logic.
 
 | Method | Path | Response | Purpose |
 |--------|------|----------|---------|
-| `GET` | `/` | `{"message": "ok", "service": "dummy-api"}` | Basic hello-world |
+| `GET` | `/` | `{"message": "ok", "service": "dummy-api-0375"}` | Basic hello-world |
 | `GET` | `/health` | `{"status": "ok", "uptime_seconds": N}` | Deploy verification target |
-| `GET` | `/version` | `{"version": "pr-47-a3f9c2", "service": "dummy-api"}` | Confirm which PR/SHA is live |
+| `GET` | `/version` | `{"version": "pr-47-a3f9c2", "service": "dummy-api-0375"}` | Confirm which PR/SHA is live |
 
 ### 2.2 Startup Behavior
 
@@ -86,7 +86,7 @@ On boot, emit ONE structured log line to stdout:
   "level": "info",
   "message": "app.startup",
   "app_version": "pr-47-a3f9c2",
-  "dd.service": "dummy-api",
+  "dd.service": "dummy-api-0375",
   "dd.env": "dev",
   "dd.version": "pr-47-a3f9c2"
 }
@@ -111,7 +111,7 @@ class AppConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_version: str = "local-dev"
-    dd_service: str = "dummy-api"
+    dd_service: str = "dummy-api-0375"
     dd_env: str = "dev"
     port: int = 8000
 ```
@@ -170,7 +170,7 @@ POST https://api.datadoghq.com/api/v1/events
 {
   "title": "Build FAILED for PR #${PR_NUMBER}: ${PR_TITLE}",
   "text": "${BUILD_ERROR_OUTPUT}",
-  "tags": ["version:${APP_VERSION}", "service:dummy-api", "env:dev",
+  "tags": ["version:${APP_VERSION}", "service:dummy-api-0375", "env:dev",
            "stage:build", "deploy_status:failed"],
   "alert_type": "error"
 }
@@ -185,13 +185,13 @@ POST https://api.datadoghq.com/api/v1/events
 # Set app version env var
 az webapp config appsettings set \
   --resource-group $AZURE_RG \
-  --name dummy-api \
+  --name dummy-api-0375 \
   --settings APP_VERSION="${APP_VERSION}"
 
 # Deploy zip package
 az webapp deploy \
   --resource-group $AZURE_RG \
-  --name dummy-api \
+  --name dummy-api-0375 \
   --src-path deploy.zip \
   --type zip
 ```
@@ -247,11 +247,11 @@ PGPASSWORD=$(az account get-access-token \
   --query accessToken -o tsv)
 
 PGPASSWORD="$PGPASSWORD" psql \
-  "host=sentinel-pg.postgres.database.azure.com dbname=sentinel user=sentinel-gha sslmode=require" <<SQL
+  "host=sentinel-pg-0375.postgres.database.azure.com dbname=sentinel user=sentinel-gha sslmode=require" <<SQL
 INSERT INTO deployments
   (service, pr_number, commit_sha, author, deploy_status, gha_run_id, files_changed, metadata)
 VALUES
-  ('dummy-api', ${PR_NUMBER}, '${SHORT_SHA}', '${PR_AUTHOR}', '${STATUS}',
+  ('dummy-api-0375', ${PR_NUMBER}, '${SHORT_SHA}', '${PR_AUTHOR}', '${STATUS}',
    ${GITHUB_RUN_ID}, '${FILES_CHANGED_JSON}'::jsonb,
    jsonb_build_object('failed_stage', '${FAILED_STAGE:-none}', 'version', '${APP_VERSION}'));
 SQL
@@ -276,7 +276,7 @@ Runs regardless of which stage succeeded or failed.
 ```json
 {
   "title": "Deployment ${STATUS} for PR #${PR_NUMBER}: ${PR_TITLE}",
-  "tags": ["version:${APP_VERSION}", "service:dummy-api", "env:dev",
+  "tags": ["version:${APP_VERSION}", "service:dummy-api-0375", "env:dev",
            "deploy_status:${STATUS}", "failed_stage:${FAILED_STAGE:-none}"],
   "alert_type": "info or error"
 }
@@ -288,9 +288,9 @@ Also ships a structured log line via the Datadog Log Intake API:
 {
   "message": "deploy.completed",
   "ddsource": "github-actions",
-  "ddtags": "version:pr-47-a3f9c2,service:dummy-api,env:dev",
+  "ddtags": "version:pr-47-a3f9c2,service:dummy-api-0375,env:dev",
   "hostname": "gha-runner",
-  "service": "dummy-api",
+  "service": "dummy-api-0375",
   "deploy": {
     "pr_number": 47,
     "version": "pr-47-a3f9c2",
@@ -342,7 +342,7 @@ on:
 
 env:
   DD_SITE: datadoghq.com
-  DD_SERVICE: dummy-api
+  DD_SERVICE: dummy-api-0375
   DD_ENV: dev
 
 jobs:
@@ -380,7 +380,7 @@ Sentinel's agents correlate incidents against.
 | `AZURE_TENANT_ID` | Azure AD tenant ID | Auto-pushed by sentinel-infra Terraform |
 | `AZURE_SUBSCRIPTION_ID` | Azure subscription ID | Auto-pushed by sentinel-infra Terraform |
 | `DD_API_KEY` | Datadog API key | Manual |
-| `DEPLOYED_APP_URL` | Public URL (e.g. `https://dummy-api.azurewebsites.net`) | Manual |
+| `DEPLOYED_APP_URL` | Public URL (e.g. `https://dummy-api-0375.azurewebsites.net`) | Manual |
 
 DB access for the record-deployment stage needs no GitHub secret — the OIDC
 identity mints a short-lived Entra DB token at runtime (Postgres is Entra-only).
@@ -506,7 +506,7 @@ Every deploy produces at least one Datadog Event. Failed deploys produce two
 | Tag | Value | Example |
 |-----|-------|---------|
 | `version` | PR number + SHA | `version:pr-47-a3f9c2` |
-| `service` | Fixed | `service:dummy-api` |
+| `service` | Fixed | `service:dummy-api-0375` |
 | `env` | Fixed | `env:dev` |
 | `deploy_status` | `succeeded` or `failed` | `deploy_status:failed` |
 | `failed_stage` | Which stage failed | `failed_stage:build` / `failed_stage:none` |
@@ -574,10 +574,10 @@ When the full Sentinel pipeline is connected:
 ### Azure
 - [ ] Create resource group: `az group create --name sentinel-rg --location eastus`
 - [ ] Create App Service plan (F1): `az appservice plan create --name sentinel-plan --resource-group sentinel-rg --sku F1 --is-linux`
-- [ ] Create web app: `az webapp create --resource-group sentinel-rg --plan sentinel-plan --name dummy-api --runtime "PYTHON:3.12"`
-- [ ] Configure startup command: `az webapp config set --resource-group sentinel-rg --name dummy-api --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 -k uvicorn.workers.UvicornWorker app.main:app"`
+- [ ] Create web app: `az webapp create --resource-group sentinel-rg --plan sentinel-plan --name dummy-api-0375 --runtime "PYTHON:3.12"`
+- [ ] Configure startup command: `az webapp config set --resource-group sentinel-rg --name dummy-api-0375 --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 -k uvicorn.workers.UvicornWorker app.main:app"`
 - [ ] OIDC federated credential for this repo — provisioned by sentinel-infra Terraform (see sentinel-infra ARCHITECTURE.md §4); no service principal secret to create
-- [ ] Note the app URL: `https://dummy-api.azurewebsites.net`
+- [ ] Note the app URL: `https://dummy-api-0375.azurewebsites.net`
 
 ### GitHub (sentinel-deployment repo)
 - [ ] Create repo manually
