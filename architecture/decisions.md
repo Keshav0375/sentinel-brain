@@ -48,7 +48,24 @@ execution, tracked as blocker **B11** in `implementation/STATE.md`, not an open 
 
 ### 2026-08-15: infra phase 2 — three cost/lifecycle decisions
 
-**1. ACR Basic, not Standard.** §11 claimed Postgres B1MS and ACR Standard are free, citing
+**1. ACR Standard — free. (Reversed 2026-08-16; the original decision below was wrong.)**
+The Azure for Students entitlement was read directly: `AzureForStudents_2018-01-01`, spending
+limit **On**, and its 12-month free grant **does** cover the stack — *"Azure Database for
+PostgreSQL: 750 hours of Flexible Server Burstable B1MS, 32 GB storage, 32 GB backup"* and
+*"Container Registry: 1 **Standard** tier registry with 100 GB storage and 10 webhooks"*,
+plus 750 h/month of **B2ats_v2** (the AKS node SKU), a free AKS control plane, and 750 h of
+Standard Load Balancer.
+
+So phase 2 costs **$0**, not ~$39/mo — and **Basic would have cost more than Standard**,
+because the free grant is scoped to the Standard meter. Reverted to Standard in place (ACR
+SKU changes are non-destructive). Spending limit On means the subscription pauses rather than
+billing if credit is exhausted.
+
+**The lesson, recorded because it will recur:** on a subsidised subscription, *cheaper SKU*
+and *free SKU* are different questions, and optimising price without reading the entitlement
+can cost money. The original reasoning follows, kept because the failure mode is instructive:
+
+~~**1. ACR Basic, not Standard.**~~ §11 claimed Postgres B1MS and ACR Standard are free, citing
 the **Azure free account** 12-month grant. This subscription is **Azure for Students**
 (MS-AZR-0170P) — a different offer whose headline is "$100 credit + always-free services",
 and Key Vault is on that always-free list while ACR and Postgres are not. If the grant does

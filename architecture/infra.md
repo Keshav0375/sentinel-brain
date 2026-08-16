@@ -201,14 +201,13 @@ resource "azurerm_container_registry" "sentinel" {
   resource_group_name = var.resource_group_name
   location            = var.location
 
-  # Basic, not Standard (owner decision 2026-08-15). The original "free 100 GB
-  # for 12 months" note describes the **Azure free account** offer; this
-  # subscription is **Azure for Students**, a different SKU where that inclusion
-  # is unverified. Standard would bill ~$20/mo against a $100 credit for capacity
-  # Sentinel does not use — it pushes one backend image plus the CI runner image.
-  # Basic gives 10 GB and 2 webhooks for ~$5/mo. Auth, AcrPull and the login
-  # server are identical; the SKU can be raised in place later with no data loss.
-  sku           = "Basic"
+  # Standard — and it is FREE, verified 2026-08-16. The subscription is
+  # AzureForStudents_2018-01-01, whose 12-month grant covers "1 Standard tier
+  # registry with 100 GB storage and 10 webhooks". Basic is a different meter and
+  # is NOT covered: the cheaper SKU would have cost ~$5/mo where this costs $0.
+  # On a subsidised subscription, "cheaper SKU" and "free SKU" are different
+  # questions — check the entitlement before optimising the price.
+  sku           = "Standard"
   admin_enabled = true
 }
 ```
