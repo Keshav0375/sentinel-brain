@@ -19,7 +19,14 @@
 Central secret store, RBAC-authorized. Terraform writes, GHA SP + backend UAMI read, rotator writes.
 
 **Files created:** `modules/keyvault/{main.tf,variables.tf,outputs.tf}`
-- `azurerm_key_vault "sentinel"` — name `sentinel-kv-0375`, sku `standard`, `enable_rbac_authorization = true`, tenant from client config.
+- `azurerm_key_vault "sentinel"` — name `sentinel-kv-0375`, sku `standard`,
+  **`rbac_authorization_enabled = true`** (NOT `enable_rbac_authorization` — deprecated in
+  azurerm v4, removed in v5; verified against the pinned 4.81.0), tenant from a
+  **module-local** `data "azurerm_client_config" "current"` (data sources do not inherit
+  across module boundaries), plus `soft_delete_retention_days = 7` and
+  `purge_protection_enabled = false` (owner decision 2026-08-15 — Azure's 90-day +
+  purge-protection default would leave the vault name reserved after any `ci_destroy_infra`
+  teardown, making the rebuild impossible under the same name).
 - `azurerm_role_assignment "terraform_kv_admin"` — `Key Vault Secrets Officer` to `data.azurerm_client_config.current.object_id`.
 - `azurerm_role_assignment "gha_kv_reader"` — `Key Vault Secrets User` to the GHA SP object id (task 1.3 output).
 - `azurerm_role_assignment "backend_kv_reader"` — `Key Vault Secrets User` to the backend UAMI (task 3.1).

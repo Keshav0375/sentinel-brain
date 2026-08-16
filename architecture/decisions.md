@@ -382,7 +382,7 @@ sentinel-deployment ARCHITECTURE §3.2; master §8. Implementation tracker R1/R2
 
 ### 2026-07-04: Key Vault dual access — Terraform writes, GHA reads
 **Context:** Key Vault had one access policy (Terraform SP). But incident_response.yml needs to read secrets at runtime.
-**Decision:** Two roles: Terraform SP gets `Key Vault Secrets Officer` (create/update secrets). GHA OIDC SP gets `Key Vault Secrets User` (read-only). Switched from access policies to RBAC authorization (`enable_rbac_authorization = true`).
+**Decision:** Two roles: Terraform SP gets `Key Vault Secrets Officer` (create/update secrets). GHA OIDC SP gets `Key Vault Secrets User` (read-only). Switched from access policies to RBAC authorization (`enable_rbac_authorization = true` — **the argument was renamed to `rbac_authorization_enabled` in azurerm v4; see the 2026-08-15 phase-2 entry. The decision stands, only the spelling changed**).
 **Impact:** Updated keyvault module (§3.3) with dual role assignments. Added full secret flow diagram showing Key Vault → GHA → Docker env vars.
 
 ### 2026-07-04: PostgreSQL firewall — allow all for dev
