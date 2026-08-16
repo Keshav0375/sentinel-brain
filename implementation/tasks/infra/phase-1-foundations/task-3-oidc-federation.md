@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `done-pending-review` |
+| **Status** | `verified` — owner sign-off 2026-08-15, PR #1 merged |
 | **Repo** | `Sentinel-infra` |
 | **Local path** | `../Sentinel-infra` |
 | **Phase branch** | `dev/infra-phase-1-foundations` |

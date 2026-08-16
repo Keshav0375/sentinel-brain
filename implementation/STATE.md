@@ -22,10 +22,15 @@
 
 ## Next Action
 
-**Verify and sign off infra Phase 1.** All three tasks are `done-pending-review`, both
-reviewers have run (architecture CONFORMS / code CHANGES-REQUESTED, all findings fixed), and
-[PR #1](https://github.com/Keshav0375/Sentinel-infra/pull/1) is open against `main`. On
-approval: merge, mark 1.1–1.3 ✅, append to the Phase Gate Ledger, unlock infra Phase 2.
+**Build infra Phase 2 — Core Resource Modules** (2.1 ACR, 2.2 PostgreSQL + pgvector,
+2.3 Key Vault). Phase 1 is **verified and merged**; branch `dev/infra-phase-2-core-modules`
+off `Sentinel-infra` `main`.
+
+> **Process note (2026-08-15):** commit `1c8e41d` (the `azq` helper fix + runbook correction)
+> landed **directly on `Sentinel-infra` `main`** after PR #1 merged, outside the one-phase-one-PR
+> model. Justified at the time as a post-merge repair on an unprotected repo — but it is a
+> deviation and is recorded here rather than left silent. Future out-of-phase repairs in the
+> sibling repos should use a `fix/*` branch + PR, matching the backend convention.
 
 **The git workflow is clear.** B13 and B14 closed (2026-07-26). `fix/*` may now target
 `release-phase-2` (2026-08-15).
