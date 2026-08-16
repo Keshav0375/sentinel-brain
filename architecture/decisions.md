@@ -46,6 +46,43 @@ execution, tracked as blocker **B11** in `implementation/STATE.md`, not an open 
 
 ## Decision Log
 
+### 2026-08-15: R5 — the CI identity could not create role assignments
+
+**Context:** Surfaced by `code-reviewer` at the infra Phase 1 gate. `sentinel-gha` held exactly
+`Contributor` on `sentinel-rg` + `Storage Blob Data Contributor` on the state account. The
+built-in **Contributor** role's `notActions` include `Microsoft.Authorization/*/Write` and
+`/Delete` — it cannot create or delete role assignments at all.
+
+Phases 2-3 declare **six** Terraform-managed `azurerm_role_assignment` resources (Key Vault
+Secrets Officer/User ×4, `AcrPull`, AKS Cluster User). The first `ci_infra.yml` apply touching
+any of them would have failed with `AuthorizationFailed`, and `ci_destroy_infra` could not have
+deleted them either. Separately, §7.3's `az group delete sentinel-state-rg` would have failed —
+the identity had only *data-plane* rights there — silently, since §7.3 masks it with `|| true`.
+
+**Why Phase 1 did not catch it:** every apply so far ran locally as subscription **Owner**. CI
+has never once authenticated as this identity. A phase can be fully green and still not have
+exercised the thing it built.
+
+**Decision:** grant **Role Based Access Control Administrator** scoped to `sentinel-rg`, plus
+**Contributor** on `sentinel-state-rg`.
+
+Chosen over Owner and User Access Administrator because the built-in RBAC Administrator role
+carries an ABAC condition forbidding the assignment of **Owner, User Access Administrator and
+itself**. The identity can grant the roles the modules need but cannot escalate its own
+privileges — which matters concretely: these credentials are reachable from
+`pull_request`-triggered workflows on a public repo, so a wider grant would mean a leaked token
+could self-promote.
+
+**Accepted tension:** Contributor on `sentinel-state-rg` lets CI delete the very state that
+protects it — the thing putting state in a separate resource group was meant to prevent. The
+isolation that matters still holds (`terraform destroy` cannot delete the state describing the
+run in progress); the "everything, always" teardown is a deliberate, separate, final step. Noted
+in `infra.md` §4.2 rather than left implicit.
+
+**Rejected:** moving all role assignments into the bootstrap scripts. It would have avoided the
+grant entirely, but the RBAC graph would stop being version-controlled and drift silently — a
+real regression for a project whose point is infrastructure-as-code.
+
 ### 2026-08-15: R4 resolved — two-tenant identity split (no institutional involvement)
 
 **Context:** `api://sentinel-backend` + the `Incident.Write` app role require an

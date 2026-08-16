@@ -816,6 +816,34 @@ resource "azurerm_role_assignment" "gha_state_blob" {
   principal_id         = azurerm_user_assigned_identity.sentinel_gha.principal_id
 }
 
+# R5 (2026-08-15). Contributor CANNOT create role assignments — its notActions
+# include Microsoft.Authorization/*/Write and /Delete. Phases 2-3 declare six
+# Terraform-managed assignments (Key Vault Secrets Officer/User, AcrPull, AKS
+# Cluster User), so without this the first CI apply touching any of them fails
+# with AuthorizationFailed, and ci_destroy_infra cannot tear them down either.
+#
+# "Role Based Access Control Administrator", not Owner or User Access
+# Administrator: its built-in definition carries an ABAC condition forbidding the
+# assignment of Owner, User Access Administrator and itself. CI can grant what the
+# modules need but cannot escalate its own privileges — which matters because
+# these credentials are reachable from pull_request-triggered workflows.
+resource "azurerm_role_assignment" "gha_rbac_admin" {
+  scope                = data.azurerm_resource_group.sentinel.id
+  role_definition_name = "Role Based Access Control Administrator"
+  principal_id         = azurerm_user_assigned_identity.sentinel_gha.principal_id
+}
+
+# §7.3 finishes with `az group delete sentinel-state-rg`. The blob grant above
+# covers data inside the account, not the group. TENSION accepted knowingly: this
+# lets CI delete the state that protects it. The isolation that matters still
+# holds — `terraform destroy` cannot delete the state describing the run in
+# progress — but the full teardown is a deliberate, separate, final step.
+resource "azurerm_role_assignment" "gha_state_rg_contributor" {
+  scope                = "/subscriptions/${var.subscription_id}/resourceGroups/sentinel-state-rg"
+  role_definition_name = "Contributor"
+  principal_id         = azurerm_user_assigned_identity.sentinel_gha.principal_id
+}
+
 # Federated credentials — one per repo + trigger combination. Children of the UAMI,
 # so they are plain Azure resources (RBAC), not directory objects.
 resource "azurerm_federated_identity_credential" "sentinel_infra_main" {
@@ -915,10 +943,10 @@ az identity federated-credential create --name sentinel-infra-pr \
   --audiences api://AzureADTokenExchange
 ```
 
-#### 4.3.1 The import set (all five — partial import breaks the first apply)
+#### 4.3.1 The import set (all seven — partial import breaks the first apply)
 
-The bootstrap creates five objects Terraform also declares. Importing only the identity
-leaves four to collide on the first `apply`. Managed-identity resources import by Azure
+The bootstrap creates seven objects Terraform also declares. Importing only the identity
+leaves six to collide on the first `apply`. Managed-identity resources import by Azure
 resource ID, which is derivable — one practical advantage over app registrations, whose
 import ID is an opaque directory object ID.
 
@@ -932,8 +960,10 @@ terraform import azurerm_federated_identity_credential.sentinel_infra_pr   $UAMI
 
 # Role assignments import by assignment GUID — list them first:
 #   az role assignment list --assignee $PRINCIPAL_ID --all --query "[].id" -o tsv
-terraform import azurerm_role_assignment.gha_contributor  <contributor-assignment-id>
-terraform import azurerm_role_assignment.gha_state_blob   <blob-assignment-id>
+terraform import azurerm_role_assignment.gha_contributor            <contributor-assignment-id>
+terraform import azurerm_role_assignment.gha_state_blob             <blob-assignment-id>
+terraform import azurerm_role_assignment.gha_rbac_admin             <rbac-admin-assignment-id>
+terraform import azurerm_role_assignment.gha_state_rg_contributor   <state-rg-assignment-id>
 ```
 
 > **⚠ Two traps, both hit for real on 2026-08-15.**
