@@ -164,7 +164,6 @@ sentinel-infra/
 │   └── workflows/
 │       ├── ci_infra_dry.yml   # terraform validate + plan on push/PR (dry run)
 │       ├── ci_infra.yml       # terraform apply on merge to main
-│       ├── ci_destroy_infra.yml # manual full teardown — destroy + az cleanup (§7.3)
 │       └── ci_runners.yml     # Build + push CI runner images when Dockerfile changes
 │
 ├── .gitignore
@@ -242,6 +241,12 @@ resource "azurerm_postgresql_flexible_server" "sentinel" {
   authentication {
     active_directory_auth_enabled = true
     password_auth_enabled         = false
+    # REQUIRED in practice: Azure populates this server-side once an Entra admin
+    # attaches, so omitting it gives a perpetual diff proposing to null it.
+    # Passed from a pinned root variable, not data.azurerm_client_config — an
+    # `az login` to the identity tenant elsewhere would otherwise repoint it, and
+    # tenant_id is ForceNew here.
+    tenant_id = var.tenant_id
   }
 }
 
@@ -361,8 +366,9 @@ resource "azurerm_key_vault" "sentinel" {
 
   # Soft-delete is NOT optional on Key Vault (owner decision 2026-08-15). Azure's
   # default of 90 days + purge protection would leave this vault's globally unique
-  # name reserved after any teardown, so `ci_destroy_infra`'s "everything, always"
-  # rebuild could never recreate it under the same name. 7 days + purge allowed
+  # name reserved after any teardown, so the "everything, always" rebuild could
+  # never recreate it under the same name. The purge that reclaims it needs
+  # SUBSCRIPTION scope, which is why teardown is Owner-run and local (R6, §7.3). 7 days + purge allowed
   # makes the designed loop work. Accepted cost: a mistaken destroy can be purged
   # for real — tolerable because all 9 secrets are re-seedable from their external
   # sources (§10 step 7); the vault holds no generated state.
@@ -819,7 +825,7 @@ GHA workflow                Azure AD
 
 ```hcl
 # The resource group is created out-of-band by the bootstrap (§10 step 1) and deleted
-# by ci_destroy_infra (§7.3). Terraform reads it, never owns it.
+# by the teardown procedure (§7.3). Terraform reads it, never owns it.
 data "azurerm_resource_group" "sentinel" {
   name = var.resource_group_name
 }
@@ -851,7 +857,7 @@ resource "azurerm_role_assignment" "gha_state_blob" {
 # include Microsoft.Authorization/*/Write and /Delete. Phases 2-3 declare six
 # Terraform-managed assignments (Key Vault Secrets Officer/User, AcrPull, AKS
 # Cluster User), so without this the first CI apply touching any of them fails
-# with AuthorizationFailed, and ci_destroy_infra cannot tear them down either.
+# with AuthorizationFailed, and the teardown could not remove them either.
 #
 # "Role Based Access Control Administrator", not Owner or User Access
 # Administrator: its built-in definition carries an ABAC condition forbidding the
@@ -1385,7 +1391,7 @@ Follows the cross-repo standard (defined in architecture/backend.md §9):
 |------|------|---------|
 | `ci_infra_dry.yml` | `[infra] terraform — validate and plan` | Dry run on push/PR |
 | `ci_infra.yml` | `[infra] terraform — apply` | Apply on merge to main |
-| `ci_destroy_infra.yml` | `[infra] terraform — destroy (full teardown)` | Manual full teardown (§7.3) |
+| _(none)_ | — | Full teardown is a **local Owner-run procedure**, not a workflow (R6, §7.3) |
 | `ci_runners.yml` | `[infra] runners — build and push` | Build + push CI runner images |
 
 Job IDs: `kebab-case` verb-noun. Job names: Title case.
@@ -1453,7 +1459,7 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -var="github_pat=${{ secrets.GH_PAT }}" -var="location=${{ vars.AZURE_LOCATION }}" -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" -var="postgres_entra_admin_object_id=${{ vars.PG_ADMIN_OBJECT_ID }}" -var="postgres_entra_admin_principal_name=${{ vars.PG_ADMIN_PRINCIPAL_NAME }}" -no-color -out=tfplan
+        run: terraform plan -var="github_pat=${{ secrets.GH_PAT }}" -var="location=${{ vars.AZURE_LOCATION }}" -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" -var="postgres_entra_admin_object_id=${{ vars.PG_ADMIN_OBJECT_ID }}" -var="postgres_entra_admin_principal_name=${{ vars.PG_ADMIN_PRINCIPAL_NAME }}" -var="kv_admin_object_id=${{ vars.KV_ADMIN_OBJECT_ID }}" -no-color -out=tfplan
 
       - name: Post Plan to PR
         if: github.event_name == 'pull_request'
@@ -1507,81 +1513,59 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var="github_pat=${{ secrets.GH_PAT }}" -var="location=${{ vars.AZURE_LOCATION }}" -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" -var="postgres_entra_admin_object_id=${{ vars.PG_ADMIN_OBJECT_ID }}" -var="postgres_entra_admin_principal_name=${{ vars.PG_ADMIN_PRINCIPAL_NAME }}"
+        run: terraform apply -auto-approve -var="github_pat=${{ secrets.GH_PAT }}" -var="location=${{ vars.AZURE_LOCATION }}" -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" -var="postgres_entra_admin_object_id=${{ vars.PG_ADMIN_OBJECT_ID }}" -var="postgres_entra_admin_principal_name=${{ vars.PG_ADMIN_PRINCIPAL_NAME }}" -var="kv_admin_object_id=${{ vars.KV_ADMIN_OBJECT_ID }}"
 ```
 
-### 7.3 `ci_destroy_infra.yml` — Full teardown (manual)
+### 7.3 Full teardown — **local, Owner-run. Not a workflow.** (R6, 2026-08-16)
 
-**Name:** `[infra] terraform — destroy (full teardown)`
+> **This was a `ci_destroy_infra.yml` workflow until R6.** It cannot be one, for a reason
+> that is not about policy: a soft-deleted Key Vault lives at **subscription scope**
+> (`/subscriptions/{sub}/providers/Microsoft.KeyVault/locations/{loc}/deletedVaults/{name}`),
+> and the `sentinel-gha` identity holds nothing at subscription scope — every one of its five
+> grants is scoped to `sentinel-rg`, `sentinel-state-rg`, or the state storage account.
+>
+> From CI the sequence fails silently and then fatally: `terraform destroy` soft-deletes the
+> vault → `az keyvault purge` returns **403**, swallowed by `|| true` → the globally unique
+> name stays reserved for 7 days → the next `terraform apply` fails, because the azurerm
+> provider's `recover_soft_deleted_key_vaults` default *also* reads deleted vaults at
+> subscription scope.
+>
+> The alternatives were a subscription-scope `Key Vault Contributor` grant (lets CI manage
+> **any** vault in the subscription — too wide for credentials reachable from
+> `pull_request`-triggered workflows on a public repo) or a custom purge-only role. **Owner-run
+> teardown was chosen instead:** "destroy everything, always" is the most destructive operation
+> in the project, and requiring a human with Owner rights is a feature, not a limitation. It
+> also removes a standing privilege rather than adding one.
 
-The mirror of `ci_infra.yml`. **Decision: "everything, always"** — one run frees
-*all* Sentinel resources from Azure, including the `sentinel-gha` UAMI and the
-Terraform state. Use it to end the project, or to reset to a clean slate before
-re-bootstrapping. It is **manual-only** (`workflow_dispatch`) with a typed
-confirmation + environment protection so it can never fire on a push.
+Run locally, signed in as an Owner of the subscription:
 
-**Two-stage destroy** (the state storage is a *manually*-bootstrapped resource
-that lives outside the Terraform state it holds, so `terraform destroy` alone
-can't remove it):
+```bash
+# 0. Confirm you are in the SCHOOL tenant — az keeps one shared context (§4.3).
+az account set --subscription 174e25ca-ab82-4671-a913-9c2f66e5924d
 
-```yaml
-name: "[infra] terraform — destroy (full teardown)"
+# 1. Destroy everything Terraform manages, including the imported UAMI and its
+#    federated credentials. Acquire the token first so the destroy survives
+#    deleting the identity it authenticated with.
+terraform destroy -auto-approve   -var="github_pat=$GH_PAT" -var="location=canadacentral"   -var="subscription_id=$SUB_ID"   -var="postgres_entra_admin_object_id=$PG_ADMIN_OBJECT_ID"   -var="postgres_entra_admin_principal_name=$PG_ADMIN_UPN"   -var="kv_admin_object_id=$KV_ADMIN_OBJECT_ID"
 
-on:
-  workflow_dispatch:
-    inputs:
-      confirm:
-        description: 'Type DESTROY to confirm full teardown'
-        required: true
+# 2. Purge the soft-deleted vault. REQUIRES OWNER — this is the step CI cannot do.
+#    Without it the name is held for 7 days (§3.3) and the rebuild fails.
+az keyvault purge --name sentinel-kv-0375 --location canadacentral
 
-permissions:
-  id-token: write
-  contents: read
+# 3. Delete the resource groups Terraform does not own (C1).
+az group delete --name sentinel-rg        --yes --no-wait
+az group delete --name sentinel-state-rg  --yes --no-wait
 
-jobs:
-  destroy:
-    name: Full Teardown
-    runs-on: ubuntu-latest
-    environment: destroy          # protection rule → manual approval
-    if: ${{ inputs.confirm == 'DESTROY' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-
-      # Auth is acquired HERE, at job start. The ARM token stays valid ~1 h, so
-      # the job completes even after stage 1 deletes the very OIDC app it logged
-      # in with.
-      - uses: azure/login@v2
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      # ── Stage 1: destroy everything Terraform manages (incl. imported OIDC app,
-      #    federated creds, all 8 modules) ──────────────────────────────────────
-      - name: Terraform Init
-        run: terraform init
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve -var="github_pat=${{ secrets.GH_PAT }}" -var="location=${{ vars.AZURE_LOCATION }}" -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" -var="postgres_entra_admin_object_id=${{ vars.PG_ADMIN_OBJECT_ID }}" -var="postgres_entra_admin_principal_name=${{ vars.PG_ADMIN_PRINCIPAL_NAME }}"
-
-      # ── Stage 2: az cleanup of the manual bootstrap resources Terraform can't
-      #    reach — the resource group leftovers and the state storage RG ─────────
-      - name: Delete bootstrap resource groups
-        run: |
-          az group delete --name sentinel-rg        --yes --no-wait || true
-          az keyvault purge --name sentinel-kv-0375 --location canadacentral || true
-          # ^ soft-deleted vaults hold their globally unique name. Without this,
-          #   the next bootstrap fails with "vault name already in use" (§3.3).
-          # Soft-deleted vaults keep their globally unique name. Without this purge
-          # the next bootstrap fails with "vault name already in use" (§3.3).
-          az keyvault purge --name sentinel-kv-0375 --location canadacentral || true
-          az group delete --name sentinel-state-rg  --yes --no-wait || true
+# 4. Verify nothing is stranded before re-bootstrapping.
+az keyvault list-deleted --query "[?name=='sentinel-kv-0375']" -o tsv   # → empty
 ```
 
-> **Restart cost (accepted with "everything, always"):** because the OIDC app +
-> federated creds + state are gone, bringing Sentinel back requires re-running the
-> manual bootstrap (§4.3 + §10 steps 1–4) before `ci_infra.yml` can authenticate
-> again. This is deliberate — the trade for the simplest teardown mental model.
+Then re-bootstrap from §10 step 1. **Do not skip step 2** — it is the only step whose
+omission fails *later*, during the next apply, rather than immediately.
+
+> **Unverified:** whether PostgreSQL Flexible Server reserves `sentinel-pg-0375` during its
+> dropped-server restore window. ACR has no soft-delete and re-applies cleanly. If the
+> Postgres name turns out to be held, the same suffix-bump remedy applies (§3 naming).
 
 ---
 
@@ -1650,6 +1634,7 @@ Azure Storage provides native state locking via blob leases. No DynamoDB needed.
 | `AZURE_LOCATION` | Azure region — `canadacentral` (R3, resolved 2026-08-15) | Manual |
 | `PG_ADMIN_OBJECT_ID` | Object ID of the PostgreSQL Entra admin **principal** (§3.2) | Manual (`az ad signed-in-user show --query id`) |
 | `PG_ADMIN_PRINCIPAL_NAME` | That principal's UPN, e.g. `you@uwindsor.ca` | Manual |
+| `KV_ADMIN_OBJECT_ID` | Object ID of the human who seeds Key Vault secrets (§10 step 7). **Required, no default** — deliberately NOT `data.azurerm_client_config.current.object_id`, which resolves to the CI identity when CI applies and would destroy the human's Officer rights | Manual |
 
 **GitHub *secrets* (`secrets.` — genuine credentials):**
 
@@ -1762,7 +1747,7 @@ the Postgres Entra admin is now a principal set directly (§3.2).
    az keyvault secret set --vault-name sentinel-kv-0375 --name langfuse-public-key --value "pk-lf-..."
    ```
 
-8. [ ] Create Entra DB roles: connect to PostgreSQL as the group admin (token as
+8. [ ] Create Entra DB roles: connect to PostgreSQL as an Entra admin (§3.2) (token as
    password) and map the SP + backend UAMI to DB roles with grants:
    ```sql
    SELECT * FROM pgaadauth_create_principal('sentinel-gha', false, false);

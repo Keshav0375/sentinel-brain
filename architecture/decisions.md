@@ -46,6 +46,40 @@ execution, tracked as blocker **B11** in `implementation/STATE.md`, not an open 
 
 ## Decision Log
 
+### 2026-08-16: R6 — full teardown is Owner-run and local, not a workflow
+
+**Context:** Found by `code-reviewer` at the infra Phase 2 gate, and *reproduced* rather than
+reasoned about. `modules/keyvault/main.tf` asserted that 7-day soft-delete + purge-allowed
+"makes the designed teardown loop actually work". It does not, from CI.
+
+A soft-deleted Key Vault lives at **subscription scope**
+(`/subscriptions/{sub}/providers/Microsoft.KeyVault/locations/{loc}/deletedVaults/{name}`).
+A live check of every grant `sentinel-gha` holds returned five assignments, **all** scoped to
+`sentinel-rg`, `sentinel-state-rg`, or the state storage account — **none at subscription
+scope**. So from CI: `terraform destroy` soft-deletes the vault → `az keyvault purge` returns
+403, **silently swallowed by `|| true`** → the globally unique name is reserved for 7 days →
+the next `terraform apply` fails, because the provider's `recover_soft_deleted_key_vaults`
+default *also* reads deleted vaults at subscription scope. The justification for the
+soft-delete decision (2026-08-15) was therefore falsified.
+
+**Decision:** `ci_destroy_infra.yml` is **removed**. Full teardown becomes a documented
+local procedure run as subscription Owner (§7.3). Infra ships **three** workflows, not four.
+
+**Rejected:** subscription-scope `Key Vault Contributor` (lets CI create, modify and delete
+**any** vault in the subscription — materially wider than the problem, for credentials
+reachable from `pull_request`-triggered workflows on a public repo); and a custom purge-only
+role at subscription scope (least-privilege and workable, but adds a bootstrap step and a
+custom role to maintain, to automate the single most destructive operation in the project).
+
+**Why this is arguably better than the thing it replaces:** "destroy everything, always" is
+the most destructive operation Sentinel has. Requiring a human with Owner rights is a feature.
+It also *removes* a standing privilege rather than adding one — the CI identity ends up with
+strictly less power than the original design gave it.
+
+**Consequence:** task 4.3 drops from four workflows to three. §7.3's runbook flags step 2
+(`az keyvault purge`) as the one whose omission fails *later*, on the next apply, rather than
+immediately.
+
 ### 2026-08-15: infra phase 2 — three cost/lifecycle decisions
 
 **1. ACR Standard — free. (Reversed 2026-08-16; the original decision below was wrong.)**

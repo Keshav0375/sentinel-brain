@@ -10,7 +10,13 @@
 | **Depends on** | [[task-3-oidc-federation]], [[task-2-ci-runner-image]] |
 | **Referenced by** | ongoing infra apply |
 
-> ⚠ **rev-5 (2026-07-12):** **four** workflows, not three — `ci_destroy_infra.yml` was added
+> ⚠ **R6 (2026-08-16): back to THREE workflows.** `ci_destroy_infra.yml` is **removed** —
+> full teardown is a local Owner-run procedure (§7.3). The CI identity holds nothing at
+> subscription scope, and purging a soft-deleted Key Vault requires it; from CI the purge
+> 403s silently and the next apply then fails on the reserved name. Chosen over granting CI a
+> subscription-scope Key Vault role, which would let it manage any vault in the subscription.
+>
+> ~~⚠ **rev-5 (2026-07-12):** **four** workflows, not three — `ci_destroy_infra.yml` was added~~
 > (§7.3). And **no `db_password`** repo secret/variable anywhere: Postgres is Entra-only, so the
 > dry-run passes only `github_pat`. See sentinel-infra §7.
 
