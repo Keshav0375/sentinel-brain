@@ -507,7 +507,7 @@ sentinel repo. The backend incident workflow branches on `signal_type`.
 
 ```hcl
 resource "azurerm_eventgrid_topic" "sentinel" {
-  name                = "sentinel-events"
+  name                = "sentinel-events-0375" # endpoint is a public DNS name → 0375 convention
   location            = var.location
   resource_group_name = var.resource_group_name
 }
@@ -536,6 +536,17 @@ resource "azurerm_service_plan" "functions" {
   sku_name            = "Y1"  # Consumption plan — always free (1M reqs)
 }
 
+# Mandatory backing storage for the Consumption plan. Globally unique name →
+# 0375 convention; was referenced but never declared before 2026-08-23.
+resource "azurerm_storage_account" "func" {
+  name                     = "sentinelfunc0375"
+  location                 = var.location
+  resource_group_name      = var.resource_group_name
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  min_tls_version          = "TLS1_2"
+}
+
 resource "azurerm_linux_function_app" "bridge" {
   name                = "sentinel-bridge-0375"
   location            = var.location
@@ -544,6 +555,15 @@ resource "azurerm_linux_function_app" "bridge" {
 
   storage_account_name       = azurerm_storage_account.func.name
   storage_account_access_key = azurerm_storage_account.func.primary_access_key
+
+  # REQUIRED (gap fixed 2026-08-23): the GITHUB_TOKEN app setting below is a
+  # Key Vault *reference*. Without an identity holding Secrets User on the
+  # vault it resolves EMPTY — silently — and the bridge 401s at runtime with
+  # nothing in the logs pointing at the cause. The keyvault module exposes
+  # enable_bridge_reader for exactly this principal.
+  identity {
+    type = "SystemAssigned"
+  }
 
   site_config {
     application_stack {
@@ -611,6 +631,12 @@ resource "azurerm_linux_web_app" "dummy_api" {
   service_plan_id     = azurerm_service_plan.deployment.id
 
   site_config {
+    # F1 REJECTS Always On (azurerm defaults it true → apply fails) and only
+    # offers a 32-bit worker. Both are hard constraints of the free tier, not
+    # preferences.
+    always_on         = false
+    use_32_bit_worker = true
+
     application_stack {
       python_version = "3.12"
     }
@@ -720,13 +746,14 @@ on a schedule — rotation, not on-demand generation (no LLM provider mints
 ephemeral keys).
 
 ```hcl
-# Rotation policy: fire SecretNearExpiry 30 days before expiry.
-resource "azurerm_key_vault_secret" "anthropic" {
-  name         = "anthropic-api-key"
-  key_vault_id = azurerm_key_vault.sentinel.id
-  value        = var.anthropic_api_key
-  expiration_date = timeadd(timestamp(), "2160h")  # ~90 days; seeded, then rotator manages
-}
+# NO azurerm_key_vault_secret HERE (corrected 2026-08-23; the original snippet
+# declared one with value = var.anthropic_api_key). Phase 2 ships ZERO secret
+# resources — a secret in HCL is plaintext state — and `timeadd(timestamp(),...)`
+# would force a new version on every apply. Expiry is a SEED-TIME concern:
+# §10 step 7 seeds with `az keyvault secret set --expires` (+90d), and the
+# rotator re-stamps a fresh 90-day expiry on every version it writes, so the
+# invariant self-maintains after the first seed. Terraform manages only the
+# rotation INFRASTRUCTURE below.
 
 # A second Function App (Consumption, always free) with a system-assigned MI.
 resource "azurerm_linux_function_app" "rotator" {
@@ -748,7 +775,9 @@ resource "azurerm_eventgrid_system_topic" "kv" {
   name                   = "sentinel-kv-0375-events"
   location               = var.location
   resource_group_name    = var.resource_group_name
-  source_arm_resource_id = azurerm_key_vault.sentinel.id
+  # `source_arm_resource_id` is deprecated in azurerm v4 (fourth deprecation of
+  # this class after enable_rbac_authorization / parent_id / resource_group_name).
+  source_resource_id = azurerm_key_vault.sentinel.id
   topic_type             = "Microsoft.KeyVault.vaults"
 }
 
@@ -1068,6 +1097,15 @@ no shared static token (this is what deleted `sentinel-api-token`).
 provider "azuread" {
   alias     = "identity"
   tenant_id = var.identity_tenant_id
+  # Auth is deliberately explicit — the default azuread provider would inherit
+  # the ambient school-tenant context and fail here.
+  #  · CI:    client_id = "8f7ff635-799b-4bdd-b1fa-2ff9bbe75560" (sentinel-tf-identity)
+  #           + use_oidc = true — the provider exchanges the GitHub OIDC token
+  #           itself; no second azure/login needed for Terraform.
+  #  · Local: az CLI auth works because the school account is invited as a B2B
+  #           GUEST with Application Administrator in the identity tenant
+  #           (decision 2026-08-23) — az mints identity-tenant tokens for the
+  #           same signed-in user.
 }
 
 # ── 1. The API definition: the audience, and the role callers must hold ───────
@@ -1634,6 +1672,7 @@ Azure Storage provides native state locking via blob leases. No DynamoDB needed.
 | `AZURE_LOCATION` | Azure region — `canadacentral` (R3, resolved 2026-08-15) | Manual |
 | `PG_ADMIN_OBJECT_ID` | Object ID of the PostgreSQL Entra admin **principal** (§3.2) | Manual (`az ad signed-in-user show --query id`) |
 | `PG_ADMIN_PRINCIPAL_NAME` | That principal's UPN, e.g. `you@uwindsor.ca` | Manual |
+| `AZURE_IDENTITY_TENANT_ID` | The personal **identity** tenant (R4) — `eae0d3c6-af22-4b70-ad3b-12d625a06139`. Consumed by the aliased `azuread` provider from task 3.5 on | Manual |
 | `KV_ADMIN_OBJECT_ID` | Object ID of the human who seeds Key Vault secrets (§10 step 7). **Required, no default** — deliberately NOT `data.azurerm_client_config.current.object_id`, which resolves to the CI identity when CI applies and would destroy the human's Officer rights | Manual |
 
 **GitHub *secrets* (`secrets.` — genuine credentials):**

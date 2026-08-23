@@ -22,72 +22,16 @@
 
 ## Next Action
 
-**⚠ FIRST: start the database.** It was stopped 2026-08-16 to conserve the free grant.
+**Build infra Phase 3 — Compute & Networking** (3.1 AKS → 3.4 App Service → 3.3 Functions →
+3.2 Event Grid → 3.6 rotation → 3.5 identity plane; 3.3 before 3.2 because the Event Grid
+subscription needs the function app id). Branch `dev/infra-phase-3-compute-modules` is cut.
 
-```powershell
-az postgres flexible-server start -n sentinel-pg-0375 -g sentinel-rg
-```
-
-**`terraform plan` FAILS while it is stopped** — not "plans a change", *errors*:
-`400 ServerStoppedError` when the provider tries to refresh the administrator and database
-sub-resources. Start it before running any Terraform, not just before connecting. Azure
-auto-starts it after 7 days regardless.
-
-**Then: build task 2.3 — Key Vault module.** 2.1 (ACR) and 2.2 (PostgreSQL) are
-`done-pending-review` and applied. 2.3 is the last of the phase, then review + PR + gate.
-It is also the **first thing that exercises R5's RBAC Administrator grant** — if it ever
-fails in CI with `AuthorizationFailed`, R5 is the diagnosis.
-
-> **Process note (2026-08-15):** commit `1c8e41d` (the `azq` helper fix + runbook correction)
-> landed **directly on `Sentinel-infra` `main`** after PR #1 merged, outside the one-phase-one-PR
-> model. Justified at the time as a post-merge repair on an unprotected repo — but it is a
-> deviation and is recorded here rather than left silent. Future out-of-phase repairs in the
-> sibling repos should use a `fix/*` branch + PR, matching the backend convention.
-
-**The git workflow is clear.** B13 and B14 closed (2026-07-26). `fix/*` may now target
-`release-phase-2` (2026-08-15).
-
-**Halting prerequisites for Phase 1: none remaining.**
-- **R3 (region) — RESOLVED 2026-08-15 → `canadacentral`.**
-- **C1–C9 — RESOLVED 2026-08-15.** Nine architecture conflicts found by
-  `architecture-warden` before any code was written; see
-  [architecture/decisions.md](../architecture/decisions.md).
-- **rev-9 identity rebuild — DECIDED 2026-08-15.** The CI identity is a User-Assigned
-  Managed Identity, not an app registration, because the subscription sits in the
-  **uwindsor.ca** tenant where the owner has no directory rights.
-
-**Environment facts (confirmed 2026-08-15):**
-
-| Field | Value |
-|-------|-------|
-| Tenant | University of Windsor · `uwindsor.ca` · `12f933b3-3d61-4b19-9a4d-689021de8cc9` |
-| Subscription | Azure for Students · `174e25ca-ab82-4671-a913-9c2f66e5924d` · **Owner** · Active · $0 spent |
-| Region | `canadacentral` |
-| `sentinel-rg` | ✅ created 2026-08-15, `provisioningState: Succeeded` |
-| Entra admin principal | `245bb98a-95a4-4f9d-930a-fcf3122dcea1` · `arri@uwindsor.ca` (→ `PG_ADMIN_OBJECT_ID` / `PG_ADMIN_PRINCIPAL_NAME`) |
-| **Directory policy** | **Proven 2026-08-15** via `GET /v1.0/policies/authorizationPolicy`: `allowedToCreateApps: false`, `allowedToCreateSecurityGroups: false`, `allowedToReadOtherUsers: true`, `allowedToCreateTenants: true`. Read works; **all directory writes are denied at tenant-policy level.** This is the hard evidence that rev-9 was necessary, not precautionary. |
-| Quota (`canadacentral`) | ✅ `Standard Basv2 Family vCPUs` limit **10** (AKS `B2ats_v2` needs 2) · `Total Regional vCPUs` limit **6** — the binding cap · all used = 0 |
-| Resource providers | Registered 2026-08-15: Compute, ContainerService, ContainerRegistry, DBforPostgreSQL, KeyVault, EventGrid, Web, Storage, ManagedIdentity, OperationalInsights. A fresh subscription has these **unregistered**, which fails the first apply with a misleading error. |
-| Local toolchain | terraform 1.15.8 · az 2.89.1 · tflint 0.64.0 · gitleaks 8.30.1 · actionlint 1.7.12 — all installed 2026-08-15. `tfsec` (optional, unavailable on winget) and `yamllint` (optional) remain absent and will report SKIPPED. |
-
-**B1 and B2 are closed**, so Phase 1 is no longer offline-only: state storage exists and a
-real `terraform init` succeeds against it. **B3** (the `sentinel-gha` UAMI bootstrap) is the
-last one, and task 1.3 both writes and executes it.
-
-**Resolved during Phase 1:** R3 (region), R4 (two-tenant identity split), R5 (CI identity
-could not create role assignments), C1–C9, C12 (storage name collision), C13 (`actionlint`
-gate defect — merged as `Sentinel` PRs #15/#16), and the shellcheck gate gap (`Sentinel`
-PR #17, open).
-
-**Owner action outstanding:**
-- Sign off [Sentinel-infra#1](https://github.com/Keshav0375/Sentinel-infra/pull/1).
-- Merge [Sentinel#17](https://github.com/Keshav0375/Sentinel/pull/17) (shellcheck in the gate).
-- Before **infra Phase 3**: finish **B11** — register `sentinel-tf-identity` in the personal
-  Entra tenant with a federated credential + Application Administrator.
-- Set the GitHub *variables* on `Sentinel-infra` (§9) before **task 4.3** —
-  `AZURE_CLIENT_ID=c9ed809b-eca3-4ecc-8678-5dbfb91be5ae`, `AZURE_TENANT_ID`,
-  `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION=canadacentral`, `PG_ADMIN_OBJECT_ID`,
-  `PG_ADMIN_PRINCIPAL_NAME`, plus the `GH_PAT` secret.
+- Phases 1–2 **verified and merged**. DB is Ready. B11 **closed** — `sentinel-tf-identity`
+  live in the identity tenant (clientId `8f7ff635-799b-4bdd-b1fa-2ff9bbe75560`).
+- **Task 3.1 also closes B12** (AKS OIDC issuer + backend UAMI + fed cred) and flips the
+  phase-2 toggles `enable_backend_admin` / `enable_backend_reader`.
+- Secrets B4–B9 still open: integration proofs for 3.2/3.3/3.6 need seeded values or
+  hand-crafted events; code + apply do not.
 
 ## Phase Gate Ledger
 

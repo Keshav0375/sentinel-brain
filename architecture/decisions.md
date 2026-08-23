@@ -16,6 +16,30 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-08-23: phase-3 pre-build decisions — identity-tenant auth, expiry, and four arch defects
+
+**1. Local access to the identity tenant = B2B guest invite.** The school account
+(`arri@uwindsor.ca`) is invited as a guest into `eae0d3c6-…` and granted **Application
+Administrator**, so one `az login` serves both tenants — the aliased `azuread` provider mints
+identity-tenant tokens for the same signed-in user. CI authenticates as `sentinel-tf-identity`
+(clientId `8f7ff635-…`) via the provider's own OIDC exchange. Rejected: a client secret on the
+app (reintroduces the stored credential the design eliminates) and CI-only-behind-a-toggle
+(defers 3.5's verification a whole phase).
+
+**2. Secret expiry is a seed-time concern.** §3.8's `azurerm_key_vault_secret` snippet
+(value from a var + `timeadd(timestamp(),…)`) is deleted as stale: it would put the value in
+plaintext state AND force a new version every apply. §10 step 7 seeds with `--expires` (+90d);
+the rotator re-stamps expiry on every version it writes, so the invariant self-maintains.
+Terraform manages rotation *infrastructure* only.
+
+**3. Arch defects fixed before building** (all found by warden distill): the bridge Function
+had **no identity** while its `GITHUB_TOKEN` is a KV reference that resolves *silently empty*
+without one → SystemAssigned + new `enable_bridge_reader` toggle on the keyvault module;
+`azurerm_storage_account.func` was referenced but **never declared** → `sentinelfunc0375`;
+`sentinel-events` → `sentinel-events-0375` (public DNS name, 0375 convention);
+`source_arm_resource_id` → `source_resource_id` (**fourth** azurerm-v4 deprecation of this
+class); F1 requires `always_on = false` + `use_32_bit_worker = true` or apply fails.
+
 ### 2026-08-16: R6 — full teardown is Owner-run and local, not a workflow
 
 **Context:** Found by `code-reviewer` at the infra Phase 2 gate, and *reproduced* rather than
