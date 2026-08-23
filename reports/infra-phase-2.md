@@ -1,7 +1,7 @@
 # infra Phase 2 — Core Resource Modules
 
-**Date:** 2026-08-16 · **Branch:** `dev/infra-phase-2-core-modules` · **PR:** pending
-**Status:** done-pending-review — awaiting owner sign-off
+**Date:** 2026-08-23 · **Branch:** `dev/infra-phase-2-core-modules` · **PR:** [#2](https://github.com/Keshav0375/Sentinel-infra/pull/2) (merged `90bf6f6`)
+**Status:** ✅ verified — owner ran the checklist and signed off 2026-08-23
 
 ---
 

@@ -13,7 +13,7 @@
 > **Status:** ⬜ not-started · 🔵 in-progress · ⛔ blocked · 🟡 done-pending-review · ✅ verified
 > **Legend:** 🔒 = phase locked until the previous phase gate is signed off.
 
-**Overall:** 3 / 58 tasks verified · 1 / 16 phases merged.
+**Overall:** 6 / 58 tasks verified · 2 / 16 phases merged.
 > **rev-5 (2026-07-12):** tasks added/modified for the security + ground-truth overhaul —
 > Entra-only Postgres, Key Vault rotation, backend Entra app + AKS workload identity,
 > `ci_destroy_infra`, 30 scenario branches (replaces demo PRs), inbound Entra bearer auth.
@@ -31,14 +31,14 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 | 1.2 | Remote state bootstrap (script + doc) | [task-2](tasks/infra/phase-1-foundations/task-2-remote-state-bootstrap.md) | ✅ |
 | 1.3 | OIDC federation (bootstrap + TF federated creds) | [task-3](tasks/infra/phase-1-foundations/task-3-oidc-federation.md) | ✅ |
 
-### Phase 2 — Core Resource Modules  ·  branch `dev/infra-phase-2-core-modules`  ·  Gate: ⬜
+### Phase 2 — Core Resource Modules  ·  branch `dev/infra-phase-2-core-modules`  ·  Gate: ✅ 2026-08-23
 | # | Task | File | Status |
 |---|------|------|--------|
-| 2.1 | ACR module | [task-1](tasks/infra/phase-2-core-modules/task-1-acr-module.md) | 🟡 |
-| 2.2 | PostgreSQL module (+ pgvector, **Entra-only auth** + direct admins, firewall) | [task-2](tasks/infra/phase-2-core-modules/task-2-postgresql-module.md) | 🟡 |
-| 2.3 | Key Vault module (+ RBAC roles, secrets — **no db-password/api-token**) | [task-3](tasks/infra/phase-2-core-modules/task-3-keyvault-module.md) | 🟡 |
+| 2.1 | ACR module | [task-1](tasks/infra/phase-2-core-modules/task-1-acr-module.md) | ✅ |
+| 2.2 | PostgreSQL module (+ pgvector, **Entra-only auth** + direct admins, firewall) | [task-2](tasks/infra/phase-2-core-modules/task-2-postgresql-module.md) | ✅ |
+| 2.3 | Key Vault module (+ RBAC roles, secrets — **no db-password/api-token**) | [task-3](tasks/infra/phase-2-core-modules/task-3-keyvault-module.md) | ✅ |
 
-### Phase 3 — Compute & Networking Modules  ·  branch `dev/infra-phase-3-compute-modules`  ·  Gate: 🔒
+### Phase 3 — Compute & Networking Modules  ·  branch `dev/infra-phase-3-compute-modules`  ·  Gate: ⬜
 | # | Task | File | Status |
 |---|------|------|--------|
 | 3.1 | AKS module (+ AcrPull, scale-to-zero, **workload identity: OIDC issuer + backend UAMI + federated cred**) | [task-1](tasks/infra/phase-3-compute-modules/task-1-aks-module.md) | ⬜ |
