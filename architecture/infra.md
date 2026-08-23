@@ -575,8 +575,22 @@ resource "azurerm_linux_function_app" "bridge" {
     "GITHUB_TOKEN"      = "@Microsoft.KeyVault(VaultName=sentinel-kv-0375;SecretName=github-pat)"
     "GITHUB_REPO"       = "Keshav0375/Sentinel"
     "GITHUB_EVENT_TYPE" = "incident-alert"
+
+    # Oryx remote build — the function code ships WITH the infrastructure
+    # (archive_file + zip_deploy_file): no CI workflow deploys function code,
+    # and Event Grid's endpoint validation needs the function to exist.
+    "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
+    "ENABLE_ORYX_BUILD"              = "true"
   }
+
+  zip_deploy_file = data.archive_file.bridge.output_path
 }
+
+# As BUILT (2026-08-23): the handler is stdlib `urllib` (not httpx — one fewer
+# package for Oryx, and the dependency surface stays at azure-functions), and
+# `client_payload` is a full passthrough of the Datadog event PLUS the stamped
+# `signal_type` and a `correlation_id` (uuid4). Unit tests:
+# modules/functions/tests/test_handlers.py (stdlib-only, mocked urlopen).
 ```
 
 **Bridge function source (Python):**
@@ -764,6 +778,13 @@ ephemeral keys).
 # rotation INFRASTRUCTURE below.
 
 # A second Function App (Consumption, always free) with a system-assigned MI.
+# As BUILT: app settings KEY_VAULT_URI / KEY_VAULT_NAME / TEAMS_WEBHOOK_URL
+# (a Key Vault reference — Officer includes read). ANTHROPIC_ADMIN_KEY is
+# deliberately ABSENT: no admin key exists among the nine secrets, so the
+# rotator's default is the manual Teams path; configuring it later enables
+# auto-mint with no code change. The KV system topic + SecretNearExpiry
+# subscription live in modules/keyvault (not here as this section's tree once
+# implied): their lifecycle is the VAULT's — destroy the vault, they die too.
 resource "azurerm_linux_function_app" "rotator" {
   name                = "sentinel-rotator-0375"
   location            = var.location
@@ -1605,6 +1626,7 @@ az keyvault purge --name sentinel-kv-0375 --location canadacentral
 
 # 3. Delete the resource groups Terraform does not own (C1).
 az group delete --name sentinel-rg        --yes --no-wait
+az group delete --name sentinel-func-rg   --yes --no-wait
 az group delete --name sentinel-state-rg  --yes --no-wait
 
 # 4. Verify nothing is stranded before re-bootstrapping.
@@ -1686,6 +1708,7 @@ Azure Storage provides native state locking via blob leases. No DynamoDB needed.
 | `PG_ADMIN_OBJECT_ID` | Object ID of the PostgreSQL Entra admin **principal** (§3.2) | Manual (`az ad signed-in-user show --query id`) |
 | `PG_ADMIN_PRINCIPAL_NAME` | That principal's UPN, e.g. `you@uwindsor.ca` | Manual |
 | `AZURE_IDENTITY_TENANT_ID` | The personal **identity** tenant (R4) — `eae0d3c6-af22-4b70-ad3b-12d625a06139`. Consumed by the aliased `azuread` provider from task 3.5 on | Manual |
+| `AZURE_IDENTITY_CLIENT_ID` | `sentinel-tf-identity`'s clientId — `8f7ff635-799b-4bdd-b1fa-2ff9bbe75560`. CI passes it as `-var identity_client_id` together with `-var identity_use_oidc=true`; locally both stay at defaults and the guest CLI login is used | Manual |
 | `KV_ADMIN_OBJECT_ID` | Object ID of the human who seeds Key Vault secrets (§10 step 7). **Required, no default** — deliberately NOT `data.azurerm_client_config.current.object_id`, which resolves to the CI identity when CI applies and would destroy the human's Officer rights | Manual |
 
 **GitHub *secrets* (`secrets.` — genuine credentials):**
@@ -1734,6 +1757,9 @@ the Postgres Entra admin is now a principal set directly (§3.2).
    Terraform bug. Registration is idempotent and takes a minute or two.
    ```bash
    az group create --name sentinel-rg --location canadacentral
+   # Y1 (Consumption) and F1 (Dedicated) Linux plans cannot share a resource
+   # group — the Functions webspace gets its own (2026-08-23):
+   az group create --name sentinel-func-rg --location canadacentral
 
    for ns in Microsoft.Compute Microsoft.ContainerService Microsoft.ContainerRegistry \
              Microsoft.DBforPostgreSQL Microsoft.KeyVault Microsoft.EventGrid \
