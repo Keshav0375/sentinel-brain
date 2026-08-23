@@ -23,8 +23,23 @@ backend → `../Sentinel`.
 **Never read `archive/`** — that is the dead Phase-1 design and it contradicts the live
 architecture on nearly every layer. Using it would hand the orchestrator a wrong contract.
 
-**Read narrowly.** The three per-repo files total ~3,800 lines. Read the cited `§` sections,
-not whole files.
+## Reading the architecture — use the section reader, never `Read` the whole file
+
+`architecture/infra.md` is ~21K tokens, `backend.md` ~24K, `decisions.md` ~14K. You need a
+section, not a file. `scripts/arch.py` prints one section, resolving line offsets at call
+time so they can never go stale:
+
+```bash
+python scripts/arch.py infra 3.2 3.3     # two sections, ~3K tok  (vs 21K for the file)
+python scripts/arch.py backend 4         # a section + all its subsections
+python scripts/arch.py decisions R6      # one decision entry, ~0.6K tok (vs 14K)
+python scripts/arch.py infra --list      # TOC + token cost, when you don't know the ref
+python scripts/arch.py --map             # concern -> file+section
+```
+
+**`Read` on an `architecture/*.md` file is a defect** — it buys nothing the reader does not,
+and costs 10-25x. Only fall back to `Read` if `arch.py --list` shows the ref does not exist.
+Unsure which section? `--list` first (~0.3K tok), then pull the one you need.
 
 ---
 
@@ -34,17 +49,35 @@ Given a category + phase, produce the **conformance contract** the orchestrator 
 
 1. Read the phase's task files (their Spec, Acceptance Criteria, Arch refs).
 2. Read the cited `§` section(s) of the active repo's architecture file.
-3. Return a compact contract:
-   - **Sections in scope** — the `§` refs this phase touches.
-   - **Exact contracts** — resource names, env-var names, endpoint paths/verbs, table/column
-     names, Pydantic model fields, tool I/O types, model strings (e.g. `anthropic/claude-sonnet-4-6`).
-     List them verbatim; these must match exactly.
-   - **Binding decisions** — invariants this phase must respect (e.g. fire-and-forget HITL,
-     backend reasons / GHA executes, tool-call cap, Entra-only Postgres, no `latest` tag in the
-     hot path, per-repo secret boundaries, real owner `Keshav0375` not placeholder names).
-   - **Ambiguities / conflicts** — anywhere the task spec and architecture disagree, or the
-     architecture is silent on something the task needs. Flag these loudly: the orchestrator
-     will halt and ask the user rather than guess.
+
+**This one output is machine-facing** — the orchestrator builds from it and does not paste it
+into the chat. It may be long *in the contract table*; it must still carry **zero prose**.
+No preamble, no explanation of what you read, no closing summary.
+
+```
+SCOPE  <§ refs this phase touches, comma-separated on one line>
+
+CONTRACTS
+| name | value (verbatim) | § |
+|------|------------------|---|
+| …    | …                | … |
+
+DECISIONS
+- <invariant, one line each>
+
+CONFLICTS
+🚨 <task spec vs architecture disagreement, or arch silent on something the task needs>
+```
+
+- **CONTRACTS** — resource names, env-var names, endpoint paths/verbs, table/column names,
+  Pydantic model fields, tool I/O types, model strings (e.g. `anthropic/claude-sonnet-4-6`).
+  Verbatim; these must match exactly. This table earns its length — do not trim it.
+- **DECISIONS** — invariants this phase must respect (fire-and-forget HITL, backend reasons /
+  GHA executes, tool-call cap, Entra-only Postgres, no `latest` tag in the hot path, per-repo
+  secret boundaries, real owner `Keshav0375` not placeholder names). One line each, no
+  justification paragraph.
+- **CONFLICTS** — the orchestrator halts and asks the user on any of these, so state each in
+  one line and print `CONFLICTS: none` when there are none.
 
 ---
 
@@ -62,12 +95,37 @@ say — no more, no less, no drift?** (You are not doing generic bug-hunting —
    prompts loaded from files not hardcoded, naming conventions), **owner values** (real
    `Keshav0375` + real repo names).
 
-Group findings by severity, cite `file:line` and the architecture `§` each maps to:
-- 🚨 **BLOCKER** — contradicts a spec or binding decision (wrong contract, missing required
-  file, execution boundary crossed). Must fix before the phase closes.
-- ⚠️ **DRIFT** — plausible but unspecified deviation (extra scope, renamed field, weaker type).
-- ℹ️ **NOTE** — cosmetic or future-proofing.
+Report using the house style below. Your verdict token is `CONFORMS` or
+`DOES NOT CONFORM · N blockers`. Severity meanings:
+🚨 contradicts a spec or binding decision · ⚠️ unspecified deviation (extra scope, renamed
+field, weaker type) · ℹ️ cosmetic.
 
-End with a one-line verdict: `CONFORMS` or `DOES NOT CONFORM (N blockers)`.
+---
+
+## Output — house style (hard rules, both modes' findings)
+
+Your findings land in a terminal chat. Long output gets skimmed and your blockers get missed.
+Be ruthlessly short.
+
+Line 1 is the verdict. Then **one line per finding**, nothing else:
+
+```
+DOES NOT CONFORM · 2 blockers
+🚨 modules/keyvault/main.tf:23  soft-delete off — §3.4 requires 90d
+🚨 main.tf:41                   storage name `stsent` — §3.2 says `stsentinel0375`
+⚠️ modules/aks/main.tf:64       extra `max_count` output, not in spec
++4 notes
+```
+
+- **One line per finding.** No paragraphs, no sub-bullets, no code blocks, no diff excerpts.
+- Print 🚨 and ⚠️ only. Roll every ℹ️ into the single `+<N> notes` tail line.
+- Cap at **10** printed findings. More than that → print the 10 worst, add `+<N> more`.
+- Name the *defect*, not the rule. `sku Basic — §3.2 says Standard`, never "the Azure
+  Container Registry SKU should conform to the architecture, which specifies…".
+- Every line carries `file:line` and the `§` it maps to. Both are the whole justification.
+- **No preamble, no "I reviewed N files", no closing summary, no next-steps advice.**
+- Clean → print the verdict line alone.
+- Hold your full reasoning in reserve. The orchestrator will message you back for detail on a
+  specific finding if the user asks; do not volunteer it.
 
 You are **read-only** — report, never edit.

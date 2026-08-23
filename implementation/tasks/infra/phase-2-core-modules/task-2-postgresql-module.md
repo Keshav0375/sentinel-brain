@@ -51,16 +51,19 @@ Flexible Server B1MS + `sentinel` DB + pgvector + **Entra-only auth** + dev allo
 > `var.backend_uami_principal_id` has **no source until phase 3 task 3.1**, which creates the
 > backend UAMI in the AKS module. Handle it with a nullable variable and a count guard:
 > ```hcl
+> variable "enable_backend_admin"      { type = bool,   default = false }
 > variable "backend_uami_principal_id" { type = string, default = null }
 > resource "..._active_directory_administrator" "backend_uami" {
->   count = var.backend_uami_principal_id == null ? 0 : 1
+>   count = var.enable_backend_admin ? 1 : 0
 >   ...
 > }
 > ```
-> Phase 3.1 then supplies the real value and the admin appears — a one-line diff. This is the
-> **same pattern task 2.3 already prescribes** for its backend-UAMI and rotator role
-> assignments, so both tasks defer identically rather than inventing two styles for one
-> problem.
+> ⚠ **Corrected 2026-08-16 — the original prescription here was
+> `count = var.backend_uami_principal_id == null ? 0 : 1`, and it is a defect.** That form
+> works only while the value is a literal `null`; phase 3 passes
+> `module.aks.<uami>.principal_id`, unknown at plan time on the apply that creates it, and
+> `count` on an unknown errors. The bool the caller sets is always statically known. Task
+> 2.3 guards the same way — one deferral style across the phase.
 
 ## Prerequisites
 - [x] terraform CLI (1.15.8).
@@ -93,8 +96,22 @@ Flexible Server B1MS + `sentinel` DB + pgvector + **Entra-only auth** + dev allo
    (`az account get-access-token --resource https://ossrdbms-aad.database.windows.net`) and
    connect with `psql`; `SELECT * FROM pg_available_extensions WHERE name='vector';` returns a row.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report   ·   _2026-08-16_
+
+`modules/postgresql/{main,variables,outputs}.tf`. Applied live: `sentinel-pg-0375` · PG 16 ·
+B1MS · 32 GB · zone 1 · **AAD auth Enabled / password auth Disabled** · pgvector allow-listed
+· allow-all dev firewall. **Entra-only auth proven, not inferred**: connected as
+`arri@uwindsor.ca` with an access token as the password — PostgreSQL 16.14, `vector` 0.8.2
+available, database `sentinel`.
+
+Consuming `postgres_entra_admin_*` cleared the phase-1 tflint warnings by **use**, not
+suppression — tflint went CLEAN for the first time in the project. Declared
+`authentication.tenant_id` (now a pinned root var) to kill a perpetual diff Azure creates by
+populating it server-side. The second Entra admin defers to 3.1 behind `enable_backend_admin`.
+
+**Availability caveat annotated in-module:** the firewall argument covers who can *log in*,
+not who can keep the server *up* — `max_connections=50` on B1ms and slots are consumed
+pre-auth. Accepted for a demo stack.
 
 ## BLOCKED   ·   _only if halted_
 _none — B1 and B10 both closed 2026-08-15. The `backend_uami` admin is deferred by design to

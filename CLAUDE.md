@@ -68,9 +68,20 @@ Full pivot table: `archive/mvp-phase-1/README.md`.
 | Coding standards for backend code | `../Sentinel/CONVENTIONS.md` |
 | Finished phase summaries (short, for the user) | `reports/` |
 
-**Token discipline:** the three architecture files total ~3,800 lines. Do **not** read one
-end-to-end. Start at `architecture/README.md` §4 (concern → file + §), follow the one `§` your
-task cites, and let `architecture-warden` (distill mode) extract the contract for a whole phase.
+**Token discipline — use `scripts/arch.py`, do not `Read` an architecture file.**
+`infra.md` is ~21K tokens, `backend.md` ~24K, `decisions.md` ~14K; you almost always need one
+section of one file. The reader prints just that section and computes line offsets at call
+time, so it never goes stale:
+
+```bash
+python scripts/arch.py --map             # concern -> file + §   (start here if unsure)
+python scripts/arch.py infra --list      # TOC + token cost per §
+python scripts/arch.py infra 3.2 3.3     # the sections themselves  (~3K tok, not 21K)
+python scripts/arch.py decisions R6      # one decision entry       (~0.6K tok, not 14K)
+```
+
+`Read` on `architecture/*.md` is a defect — 10-25x the cost for the same content. For a whole
+phase, let `architecture-warden` (distill mode) extract the contract once and build from that.
 
 ---
 

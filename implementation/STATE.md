@@ -13,7 +13,7 @@
 | **Active phase** | 2 — Core Resource Modules |
 | **Active branch** | `dev/infra-phase-2-core-modules` |
 | **Active PR** | _none_ |
-| **Current task** | 2.3 — Key Vault module (2.1 and 2.2 `done-pending-review`) |
+| **Current task** | _phase 2 code-complete, both reviews addressed_ — PR + gate next |
 | **Tasks verified** | 3 / 58 |
 | **Phases merged** | 1 / 16 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |

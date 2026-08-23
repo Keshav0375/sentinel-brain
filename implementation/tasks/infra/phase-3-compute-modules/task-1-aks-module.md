@@ -19,7 +19,7 @@ Terraform must NOT fight `node_count`.
 - `lifecycle { ignore_changes = [default_node_pool[0].node_count] }` — the scale-to-zero rule.
 - `azurerm_role_assignment "aks_acr_pull"` — `AcrPull` to `kubelet_identity[0].object_id` scoped to the ACR id (input).
 - `azurerm_role_assignment "gha_aks_user"` — `Azure Kubernetes Service Cluster User Role` to the GHA SP object id.
-- `variables.tf` — `resource_group_name`, `location`, `acr_id`, `gha_sp_object_id`.
+- `variables.tf` — `resource_group_name`, `location`, `acr_id`, `gha_principal_id`.
 - `outputs.tf` — `aks_cluster_name`, `aks_resource_group`.
 
 ## Prerequisites
@@ -44,3 +44,6 @@ _not yet implemented_
 
 ## BLOCKED
 _Apply/verify ⛔ B1. Code writable now._
+
+> ℹ **2026-08-16:** input renamed `gha_sp_object_id` → `gha_principal_id` to match the
+> keyvault module — post-rev-9 there is no SP; the value is the UAMI's `principalId`.

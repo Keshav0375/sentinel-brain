@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel-infra` |
 | **Phase branch** | `dev/infra-phase-2-core-modules` |
 | **Commit prefix** | `feat:` |
@@ -32,7 +32,7 @@ Central secret store, RBAC-authorized. Terraform writes, GHA SP + backend UAMI r
 - `azurerm_role_assignment "backend_kv_reader"` — `Key Vault Secrets User` to the backend UAMI (task 3.1).
 - `azurerm_role_assignment "rotator_kv_officer"` — `Key Vault Secrets Officer` to the rotator Function MI (task 3.6).
 - Secret placeholders loaded post-apply via `az keyvault secret set` (§10). LLM keys seeded with a ~90d expiry (rotation, task 3.6).
-- `variables.tf` — `resource_group_name`, `location`, `gha_sp_object_id`, `backend_uami_principal_id` (**no** `db_password`).
+- `variables.tf` — `resource_group_name`, `location`, `gha_principal_id`, `backend_uami_principal_id` (**no** `db_password`).
 - `outputs.tf` — `key_vault_id`, `key_vault_name`, `key_vault_uri`.
 
 **Secrets (§3.3, 7):** anthropic-api-key ↻, openai-api-key ↻, dd-api-key, dd-app-key,
@@ -63,8 +63,32 @@ teams-webhook-url, langfuse-secret-key, langfuse-public-key, acr-password, githu
 1. `terraform plan -target=module.keyvault` → vault + 4 role assignments, **no secret resources**.
 2. (post-apply) `az keyvault secret list --vault-name sentinel-kv-0375`; confirm GHA SP read-only via `az role assignment list`.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report   ·   _2026-08-16_
+
+`modules/keyvault/{main,variables,outputs}.tf` + root wiring. Applied live:
+`sentinel-kv-0375` · standard · **RBAC** (`rbac_authorization_enabled`, not the deprecated
+spelling) · 7-day soft delete · purge protection off. **Zero secret resources in state** —
+verified, not asserted. Live write→read→delete→**purge** test through the RBAC path passed;
+the purge is the same mechanism the teardown depends on.
+
+**Review changed this task materially:**
+- `terraform_kv_admin` → `kv_admin` bound to an explicit `kv_admin_object_id` instead of
+  `client_config.current.object_id`, which resolves to the **CI identity** when CI applies —
+  the first CI apply would have destroyed the human's Officer rights. Renamed via a `moved`
+  block so no window exists with no Officer on the vault.
+- The count-on-null deferral was replaced by **bool toggles** (`enable_backend_reader`,
+  `enable_rotator_officer`) — `count` on a value unknown at plan time errors, and phase 3
+  passes exactly such a value. Cross-variable validation fails with a message naming the
+  real cause if a toggle is set without its principal id.
+- `tenant_id` is a pinned root variable, not ambient `client_config` — an `az login` to the
+  identity tenant elsewhere would have repointed the vault's directory.
+- **R6:** CI cannot purge the soft-deleted vault (subscription-scope action; the CI identity
+  holds nothing there). Teardown is now an Owner-run local procedure; `ci_destroy_infra.yml`
+  is removed from the design.
+
+**Honest gaps:** `tfsec` absent and `tflint` has no azurerm plugin, so **zero Azure-specific
+static analysis ran** — the gate's PASS covered fmt/validate/naming only. First real exercise
+of R5's RBAC Administrator grant happens when CI applies (phase 4), not yet.
 
 ## BLOCKED
 _Apply ⛔ B1. Populating runtime secret values ⛔ B4–B9. Code writable now._

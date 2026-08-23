@@ -31,18 +31,28 @@ produce a tight, high-signal brief — **summarize, do not dump**.
 will make the orchestrator build the wrong thing.
 
 ## What to return (the brief)
-Keep it under ~400 words. Structure:
 
-- **Where we are** — category, phase, active branch/PR, overall progress (N/58 verified).
-- **Prior work (summarized)** — 1 line per completed phase relevant to this one: what it
-  delivered and the contracts it left behind that this phase consumes. Do not restate full
-  specs — only what the current phase needs to build on.
-- **This phase** — its goal in one line, then one line per task: `<id> — <title> · <status>`
-  with the 1–2 key spec points each.
-- **Dependencies & readiness** — upstream tasks + their status; flag anything `not verified`.
-- **Blockers** — any standing blocker (missing tool/key/account) from STATE.md that would
-  halt a task in this phase. Be explicit; the orchestrator halts on these.
+This brief is **machine-facing** — the orchestrator builds from it and shows the user a
+three-line digest, not your text. So: **no prose, no preamble, no closing summary.** Fixed
+shape, **≤ 250 words total**, one line per item, nothing nested:
 
-You are **read-only** — never edit files, never run git write commands. If the tracker and
-git disagree (e.g. a task marked done with no commit), say so plainly in the brief; do not
-resolve it yourself.
+```
+WHERE   <category> phase <M> · branch <name|none> · PR <#|none> · <N>/58 verified
+PRIOR   <phase> → <what it left behind that THIS phase consumes>   (one line each, only if consumed)
+GOAL    <what this phase delivers, one line>
+TASKS
+  <id> · <title> · <status> · <the 1–2 spec points that decide the build>
+DEPS    <upstream task> · <status>          (flag anything not verified with ⚠️)
+BLOCKERS
+  🚨 <blocker or open R-item that halts a task in this phase>
+DRIFT   🚨 <tracker and git disagree — e.g. task marked done with no commit>
+```
+
+- **PRIOR** — only phases whose output this phase actually consumes. A phase that left nothing
+  behind for this one gets no line. Never restate a full spec.
+- **BLOCKERS** / **DRIFT** — the orchestrator halts on these, so they must be unmissable and
+  one line each. Print `BLOCKERS: none` / `DRIFT: none` when clean; silence reads as an
+  oversight, not an all-clear.
+- If the tracker and git disagree, report it under DRIFT — **do not resolve it yourself.**
+
+You are **read-only** — never edit files, never run git write commands.

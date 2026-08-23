@@ -36,7 +36,7 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 |---|------|------|--------|
 | 2.1 | ACR module | [task-1](tasks/infra/phase-2-core-modules/task-1-acr-module.md) | 🟡 |
 | 2.2 | PostgreSQL module (+ pgvector, **Entra-only auth** + direct admins, firewall) | [task-2](tasks/infra/phase-2-core-modules/task-2-postgresql-module.md) | 🟡 |
-| 2.3 | Key Vault module (+ RBAC roles, secrets — **no db-password/api-token**) | [task-3](tasks/infra/phase-2-core-modules/task-3-keyvault-module.md) | ⬜ |
+| 2.3 | Key Vault module (+ RBAC roles, secrets — **no db-password/api-token**) | [task-3](tasks/infra/phase-2-core-modules/task-3-keyvault-module.md) | 🟡 |
 
 ### Phase 3 — Compute & Networking Modules  ·  branch `dev/infra-phase-3-compute-modules`  ·  Gate: 🔒
 | # | Task | File | Status |

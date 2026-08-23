@@ -14,6 +14,9 @@ You run from `sentinel-brain`. The code is in a sibling — `../Sentinel` (backe
 `../Sentinel-deployment`, `../Sentinel-infra`. Pick the repo from `$ARGUMENTS`, or default to
 whichever one `implementation/STATE.md` says is the active category.
 
+Need an architecture section? `python scripts/arch.py backend 3.3 4.6` — never `Read` an
+`architecture/*.md` file (21-24K tokens each; a section is ~1K).
+
 1. `git -C <repo> diff --name-only`. If nothing is uncommitted, use
    `git -C <repo> diff HEAD~1 --name-only`.
 
@@ -52,7 +55,22 @@ whichever one `implementation/STATE.md` says is the active category.
 
 5. **Imports** — no circular or wildcard imports; grouped stdlib → third-party → local.
 
-Summarize as:
-- ✅ What looks good
-- ⚠️ Suggestions
-- 🚨 Critical issues (safety-invariant violations first, with `file:line` and the concrete failure each enables)
+## Output — same house style as the review subagents
+
+Verdict on line 1, then **one line per finding**, safety violations first. Nothing else:
+
+```
+CHANGES REQUESTED · 2 blockers
+🚨 tools/rollback.py:34   calls the GitHub API to open the PR — HITL bypassed
+🚨 orchestrator.py:120    reflexion while-loop has no counter — uncapped
+⚠️ memory/episodic.py:56  write records no agent id — provenance lost
++3 notes
+```
+
+- **One line per finding.** No paragraphs, no code blocks, no diff excerpts. A 🚨 may add one
+  indented `↳` line for the failure it enables, only when the line above does not make it plain.
+- **No "what looks good" section.** Passing code needs no paragraph — that is what the verdict
+  line is for. Clean → print `LGTM` alone.
+- Print 🚨 and ⚠️ only; collapse ℹ️ into `+<N> notes`. Cap at 10 printed findings.
+- Every line carries `file:line`. Name the defect, not the rule.
+- No preamble, no "I reviewed N files", no closing summary, no next-steps advice.

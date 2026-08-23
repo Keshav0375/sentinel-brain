@@ -36,8 +36,19 @@ Standard-tier Container Registry that stores `sentinel-backend` + `ci-runner` im
 1. `terraform plan -target=module.acr` → creates 1 registry, no errors.
 2. (post-apply) `az acr show --name sentinelacr0375` returns the registry.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report   ·   _2026-08-16_
+
+`modules/acr/{main,variables,outputs}.tf`. Applied live: `sentinelacr0375.azurecr.io` ·
+**Standard** · admin enabled · canadacentral. Plan `No changes`.
+
+SKU went Basic→Standard mid-task: the Azure for Students grant covers "1 **Standard** tier
+registry" and Basic is a different, non-covered meter — the cheaper SKU was the expensive
+choice. Recorded in decisions.md with the original reasoning struck through.
+
+Added `acr_id` output beyond §3.1's list (task 3.1 needs it for the AcrPull scope).
+`registry_name` is a validated variable with root passthrough, so a name collision is a
+tfvars change. **Accepted risk annotated in-module:** `admin_enabled` puts the registry
+password in plaintext state; mitigation is `az acr credential renew`.
 
 ## BLOCKED
 _Apply/verify ⛔ B1. Code + validate writable now._

@@ -1,48 +1,18 @@
-# Sentinel Phase 2 — Planning State
+# Sentinel Phase 2 — Decision Log
 
-> Last updated: 2026-08-15 (rev-9 — identity plane on managed identities; C1–C9 resolved)
+> **Why a decision was made, and what superseded what.** Append-only; newest first.
+>
+> This file holds **decisions only**. Live execution state — current phase, blockers,
+> open reconciliations, the phase-gate ledger — lives in
+> [implementation/STATE.md](../implementation/STATE.md) and is authoritative there.
+> Do not mirror it here; two copies drift and the stale one gets believed.
 
-## Current Phase
+**Do not read this file whole — it is ~56 KB (~14K tokens) and you need one entry.**
 
-Architecture planning complete for all three repos (**rev 5 — 2026-07-12**: security
-+ ground-truth overhaul). Four cross-cutting changes landed: **(1)** `ci_destroy_infra`
-full-teardown workflow ("everything, always" — `terraform destroy` + `az group delete`,
-re-bootstrap on restart); **(2)** sentinel-deployment pivot — `ci_demo_prs.yml` removed,
-replaced by **30 real scenario branches (10 per case)**: clean pass / deploy-fail /
-runtime-error, with two Datadog signal types → two backend paths, and the branches
-become the eval dataset; **(3)** **Azure-native dynamic secrets** — PostgreSQL switched
-to **Entra-only auth** (no db-password; short-lived tokens), LLM keys on a **Key Vault
-rotation policy + rotator Function**, backend reads secrets via **AKS workload
-identity**; **(4)** **inbound Entra bearer auth** on the backend (`api://sentinel-backend`
-+ `Incident.Write`, validated vs JWKS) — deletes `sentinel-api-token`. Net: no stored
-Azure client secret, no DB password, no shared API token — only `GITHUB_PAT` + `ACR_*`
-remain as bootstrap secrets. Prior rev-4 model intact underneath (AKS scale-to-zero,
-dynamic per-run URL, fire-and-forget HITL, `deployments` table, composite actions). All
-four architecture docs synced; READMEs + trackers updated. Ready for implementation once
-Azure resources are bootstrapped.
-
-## Repo Status
-
-| Repo | Architecture | TODO | Testing | README | Status |
-|------|-------------|------|---------|--------|--------|
-| sentinel (= backend) | **final (rev 4)** | not-started | not-started | draft | AKS scale-to-zero; **inbound Entra bearer auth (§3.6)**; **workload identity** for KV + DB (no K8s Secret); **signal_type two-case handling**; eval = 30 branches; fire-and-forget HITL |
-| sentinel-deployment | **final (rev 4)** | not-started | not-started | draft | **30 scenario branches (3 cases)** replace ci_demo_prs; real ground truth; 2 Datadog signal types; Entra DB token for record-deployment |
-| sentinel-infra | **final (rev 4)** | not-started | not-started | draft | 8 concerns — Entra-only Postgres, KV rotation Function, backend Entra app reg, AKS workload identity, Event Grid two-signal, **ci_destroy_infra**; no db-password/sentinel-api-token |
-
-Note: There is no separate sentinel-backend repo. The sentinel repo IS the backend.
-
-## Open Decisions
-
-None. **R4 resolved 2026-08-15** — see the decision log entry below. Its remaining work is
-execution, tracked as blocker **B11** in `implementation/STATE.md`, not an open question.
-
-## Blockers
-
-- [ ] Datadog account setup — who: Keshav — impact: blocks sentinel-deployment pipeline testing, DD_SITE, API key
-- [ ] Azure resource group creation — who: Keshav — impact: blocks all infra provisioning and backend deployment
-- [ ] LangFuse account creation — who: Keshav — impact: blocks tracing integration (need public key + secret key)
-- [ ] Anthropic API key — who: Keshav — impact: blocks all LLM calls (default provider)
-- [ ] OpenAI API key — who: Keshav — impact: blocks fallback LLM calls
+```bash
+python scripts/arch.py decisions --list      # all entries, one line each
+python scripts/arch.py decisions R6          # just the entry(s) matching a keyword
+```
 
 ## Decision Log
 
