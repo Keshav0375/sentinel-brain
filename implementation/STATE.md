@@ -12,8 +12,8 @@
 | **Active category** | infra — **in progress** |
 | **Active phase** | 3 — Compute & Networking Modules |
 | **Active branch** | _none — phase 3 not started_ |
-| **Active PR** | _none_ |
-| **Current task** | _phase 3 code-complete_ — all 6 tasks `done-pending-review`; review team next |
+| **Active PR** | [Sentinel-infra#3](https://github.com/Keshav0375/Sentinel-infra/pull/3) → `main` — awaiting phase gate |
+| **Current task** | _phase 3 reviewed, both reviewers' findings fixed_ — [PR #3](https://github.com/Keshav0375/Sentinel-infra/pull/3) awaiting phase gate |
 | **Tasks verified** | 6 / 58 |
 | **Phases merged** | 2 / 16 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
