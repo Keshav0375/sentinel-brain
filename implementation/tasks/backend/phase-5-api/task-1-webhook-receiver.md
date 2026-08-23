@@ -15,6 +15,13 @@
 > `runtime_error`) which the orchestrator branches on — deploy_failure → rollback fast path,
 > runtime_error → full pipeline. See sentinel §3.1.
 
+> ⚠ **Payload contract (2026-08-23, from infra 3.3):** `client_payload` carries exactly
+> three top-level keys — `signal_type`, `correlation_id` (Event Grid event id, stable
+> across re-deliveries → dedupe on it), and **`event`** holding the full Datadog payload.
+> Read Datadog fields as `client_payload.event.*`, NOT flat: GitHub caps client_payload at
+> 10 top-level properties, so the flat passthrough the architecture once showed cannot
+> exist.
+
 ## Spec
 The webhook that triggers the pipeline. Accepts the GHA-enriched payload, launches an
 isolated asyncio task per incident, returns 202 immediately.

@@ -586,11 +586,16 @@ resource "azurerm_linux_function_app" "bridge" {
   zip_deploy_file = data.archive_file.bridge.output_path
 }
 
-# As BUILT (2026-08-23): the handler is stdlib `urllib` (not httpx — one fewer
-# package for Oryx, and the dependency surface stays at azure-functions), and
-# `client_payload` is a full passthrough of the Datadog event PLUS the stamped
-# `signal_type` and a `correlation_id` (uuid4). Unit tests:
-# modules/functions/tests/test_handlers.py (stdlib-only, mocked urlopen).
+# As BUILT (2026-08-23, revised same day after review): the handler is stdlib
+# `urllib`, and `client_payload` is exactly THREE top-level keys —
+#   { "signal_type", "correlation_id", "event": <the full Datadog payload> }
+# NOT a flat {**data} passthrough: GitHub hard-caps client_payload at 10
+# top-level properties (422 beyond), and a real Datadog event exceeds that.
+# correlation_id is the Event Grid event id — STABLE across re-deliveries, so
+# duplicate dispatches are dedupable downstream. Datadog's $TAGS renders as a
+# comma-joined STRING; the classifier normalizes string/list/null shapes.
+# Consumers (backend 5.1) read client_payload.event.*.
+# Unit tests: modules/functions/tests/test_handlers.py — 14, stdlib-only.
 ```
 
 **Bridge function source (Python):**
