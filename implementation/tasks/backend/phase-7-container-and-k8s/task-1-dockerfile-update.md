@@ -10,6 +10,11 @@
 | **Depends on** | Phase-5 app boots |
 | **Referenced by** | [[task-2-k8s-manifests]], [[task-2-ci-backend-deployment]] |
 
+> ⚠ **ARM64 (2026-08-23):** the AKS node is `Standard_B2pls_v2` — **arm64**. The image MUST
+> be built `linux/arm64` (`docker buildx build --platform linux/arm64`) or the pod dies in
+> CrashLoopBackOff with `exec format error`. Python base images and torch-cpu both publish
+> aarch64 wheels. The x86 grant SKU could not host an AKS system pool (SystemPoolSkuTooLow).
+
 ## Spec
 Update the image: copy `src/` + `alembic/` (no `data/`), install with torch-cpu index to
 keep the image small.

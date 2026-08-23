@@ -6,7 +6,7 @@
 > **Purpose:** The sentinel repo IS the backend — it contains the multi-agent incident
 > response pipeline (FastAPI + OpenAI Agents SDK), GHA orchestration workflows, and all
 > CI/CD pipelines. Runs as a **single-replica Deployment on AKS** (free control plane +
-> one B2ats_v2 node, free 12 months) — always-on, deployed by `ci_backend_deployment.yml`
+> one B2s node, stopped when idle) — deployed by `ci_backend_deployment.yml`
 > on every merge to main. PostgreSQL-backed memory, LLM routing via Anthropic/OpenAI,
 > and LangFuse tracing.
 
@@ -17,7 +17,7 @@
 ### 1.1 AKS-Hosted Backend — On-Demand, Single Replica (Scale-to-Zero)
 
 The backend runs as a **single-replica Kubernetes Deployment on AKS** (free control
-plane + one B2ats_v2 node). **The node pool idles at 0** — workflows scale it up
+plane + one B2pls_v2 ARM64 node). **The cluster idles STOPPED** (`az aks stop` — a system pool cannot scale below 1 node, found live 2026-08-23) — workflows start it
 before using the backend and back down after (§8.5), so node-hours are consumed only
 while Sentinel is actually working (~tens of hours/month instead of 730). It is
 deployed on every merge to main by `ci_backend_deployment.yml`:
@@ -60,7 +60,7 @@ image pull before the pipeline starts. For live demos, set the repo variable
                     │  build → push to ACR → deploy to AKS → validate → test
                     ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│             AKS — 1× B2ats_v2 node (free 12 months)               │
+│             AKS — 1× B2pls_v2 ARM64 node (aks stop/start)                 │
 │                                                                   │
 │  ┌─────────────────────────────────────────────────────────┐     │
 │  │  Deployment: sentinel-backend (replicas: 1)              │     │
@@ -95,7 +95,7 @@ image pull before the pipeline starts. For live demos, set the repo variable
 └──────────────────────────────────────────────────────────────────┘
 
 Always-on Azure resources (free tier):
-├── AKS control plane (always free) + 1× B2ats_v2 node (free 12 mo)
+├── AKS control plane (always free) + 1× B2pls_v2 ARM64 node (bills only while started)
 ├── Azure PostgreSQL B1MS (free 12 months) — persistent data
 ├── Azure Container Registry (free 12 months) — Docker images
 ├── Azure Key Vault (always free) — secrets
@@ -107,7 +107,7 @@ Always-on Azure resources (free tier):
 
 | Component | Always-on? | Why |
 |-----------|-----------|-----|
-| **sentinel-backend** | **No — on-demand (scale-to-zero)** | AKS node pool scaled 0↔1 by the workflows that need it (§8.5). Stable LB URL survives scale cycles. Preserves free B2ats_v2 hours for other projects. |
+| **sentinel-backend** | **No — on-demand (scale-to-zero)** | AKS cluster `az aks stop`/`start` by the workflows that need it (§8.5). URL re-resolved per run (the Service is recreated). B2pls_v2 (ARM64) bills only while started (~$1–3/mo). |
 | PostgreSQL | Yes | Data must persist between incidents. Free tier. |
 | ACR | Yes | Images must be pullable anytime. Free tier. |
 | Key Vault | Yes | Secrets synced to AKS at deploy time + read by workflows. Free tier. |
@@ -594,7 +594,7 @@ async def handle_incident(payload: IncidentPayload) -> None:
     await store_incident(result, short_term)
 ```
 
-No locking needed — incidents are independent. Each gets its own DB connection from the asyncpg pool (min=2, max=10). The single backend replica on the B2ats_v2 node (2 vCPU, 4 GB) handles 2-3 concurrent pipeline runs comfortably (each run uses ~500 MB peak during LLM calls) — concurrent incidents arrive as separate `ci_incident_response.yml` runs all POSTing to the same always-on backend.
+No locking needed — incidents are independent. Each gets its own DB connection from the asyncpg pool (min=2, max=10). The single backend replica on the B2pls_v2 node (ARM64, 2 vCPU, 4 GB) handles 2-3 concurrent pipeline runs comfortably (each run uses ~500 MB peak during LLM calls) — concurrent incidents arrive as separate `ci_incident_response.yml` runs all POSTing to the same always-on backend.
 
 ### 4.6 Tool-Call Budget
 
@@ -992,7 +992,7 @@ autoscaling, no ingress controller, no TLS termination (dev), no service mesh.
 
 ### 8.5 Scale-to-Zero Lifecycle (On-Demand Backend)
 
-The node pool idles at 0. Every workflow that needs the backend brings it up and
+The cluster idles stopped. Every workflow that needs the backend brings it up and
 tears it down via two composite actions shared across workflows:
 
 ```
@@ -1015,7 +1015,7 @@ tears it down via two composite actions shared across workflows:
   skipped entirely when vars.SENTINEL_KEEP_WARM == 'true'   # demo mode
   kubectl delete -f azure/k8s/service.yaml --ignore-not-found   # releases the public IP → $0 idle
   kubectl scale deployment/sentinel-backend --replicas=0
-  az aks nodepool scale ... --node-count 0
+  az aks stop --resource-group sentinel-rg --name sentinel-aks --no-wait
 ```
 
 **Dynamic URL — no `SENTINEL_BACKEND_URL` variable.** The only consumers of the
@@ -1564,7 +1564,7 @@ jobs:
 
 | Module | Resources Created | Why It Exists |
 |--------|------------------|---------------|
-| `aks/` | AKS cluster (free control plane) + 1× B2ats_v2 node pool + AcrPull role for kubelet | Hosts the sentinel-backend single-replica Deployment |
+| `aks/` | AKS cluster (free control plane) + 1× B2pls_v2 ARM64 node pool (stop/start) + AcrPull role for kubelet | Hosts the sentinel-backend single-replica Deployment |
 | `acr/` | Container Registry | Stores Docker images (pulled by AKS and CI) |
 | `postgresql/` | Flexible Server + DB + pgvector extension + firewall | All persistent data |
 | `keyvault/` | Key Vault + secrets + access policies | Centralized secret management |
@@ -1594,7 +1594,7 @@ One `terraform apply` creates the entire Sentinel infrastructure from zero. One 
 ## 12. Prerequisites & Setup Checklist
 
 ### Azure (provisioned by sentinel-infra)
-- [ ] AKS cluster (1× B2ats_v2 node) with AcrPull on ACR — `az aks get-credentials` works
+- [ ] AKS cluster (1× B2pls_v2 ARM64 node, stop/start) with AcrPull on ACR — `az aks get-credentials` works
 - [ ] AKS **workload identity** enabled (OIDC issuer) + backend UAMI + federated credential (§sentinel-infra §3.7); ServiceAccount `sentinel-backend` annotated with the UAMI client-id
 - [ ] ACR with admin access or service principal
 - [ ] PostgreSQL B1MS with pgvector — **Entra-only auth**; the GHA SP + backend UAMI mapped to DB roles (no `db-password`)

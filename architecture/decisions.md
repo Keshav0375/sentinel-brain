@@ -16,6 +16,24 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-08-23: AKS SKU — three attempts, landed on ARM (B2pls_v2)
+
+Live applies rejected, in order: **B2ats_v2** (the free-grant SKU) — `SystemPoolSkuTooLow`,
+system pools need ≥4 GB RAM and it has 1 GiB, so **the 750 h/mo grant is unusable for AKS,
+full stop**; **B2s** (owner's chosen fallback) — not in the subscription's allowed AKS list
+for canadacentral, where **every permitted small SKU is ARM64**. Landed on **`Standard_B2pls_v2`**
+(ARM64, 2 vCPU/4 GiB, Bpsv2 quota 2-of-10, ~$0.03/hr — cheaper than B2s) without re-asking:
+it preserves the essence of the owner's decision (small node + `az aks stop`/`start`), and the
+only alternatives were pricier ARM SKUs.
+
+Also established: a system pool cannot scale below 1 node, so the architecture's original
+`nodepool scale 0↔1` mechanism was impossible regardless of SKU — §8.5's composite actions now
+use `az aks stop`/`start`. Verified: `terraform plan` works against a **stopped** AKS cluster
+(unlike stopped Postgres, which 400s).
+
+**Downstream consequence, flagged in backend task 7.1:** the backend image must be built
+`linux/arm64` or the pod fails with `exec format error`.
+
 ### 2026-08-23: phase-3 pre-build decisions — identity-tenant auth, expiry, and four arch defects
 
 **1. Local access to the identity tenant = B2B guest invite.** The school account

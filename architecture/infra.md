@@ -8,7 +8,7 @@
 > images in ACR and cross-repo secret distribution.
 >
 > **Note:** Includes AKS — the sentinel backend runs as a single-replica Deployment
-> on a 1-node AKS cluster (free control plane + 1× B2ats_v2 node, free 12 months).
+> on a 1-node AKS cluster (free control plane + 1× B2pls_v2 ARM64 node, stopped when idle).
 > Terraform provisions the cluster; the sentinel repo's `ci_backend_deployment.yml`
 > deploys the app onto it.
 
@@ -70,7 +70,7 @@ sentinel-infra repo
 │  ┌─────────────────────────┐                                      │
 │  │  AKS (sentinel-aks)     │                                      │
 │  │  control plane: free    │    ← sentinel-backend runs here      │
-│  │  1× B2ats_v2 node       │      (single replica, public LB IP,  │
+│  │  1× B2pls_v2 node (stop/start)│      (single replica, public LB IP,  │
 │  │  (free 12 months)       │       deployed by sentinel repo CI)  │
 │  └─────────────────────────┘                                      │
 └──────────────────────────────────────────────────────────────────┘
@@ -670,7 +670,15 @@ resource "azurerm_kubernetes_cluster" "sentinel" {
   default_node_pool {
     name       = "default"
     node_count = 1
-    vm_size    = "Standard_B2ats_v2"    # free 750 hrs/mo for 12 months
+    # B2pls_v2 (ARM64, 2 vCPU / 4 GiB) — third SKU, each prior rejected live
+    # (2026-08-23): B2ats_v2 fails SystemPoolSkuTooLow (system pools need >=4 GB;
+    # it has 1 GiB — the free grant is unusable for AKS), and B2s is not in this
+    # subscription's allowed AKS list for canadacentral, where every permitted
+    # small SKU is ARM. A system pool also cannot scale below 1 node, so
+    # scale-to-zero is `az aks stop`/`start` on the whole cluster. ~$0.03/hr,
+    # bills only while started. CONSEQUENCE: the backend image must be built
+    # linux/arm64 (backend §13 / task 7.1, docker buildx).
+    vm_size    = "Standard_B2pls_v2"
   }
 
   identity {
@@ -1815,7 +1823,7 @@ the Postgres Entra admin is now a principal set directly (§3.2).
 | Resource | Monthly Cost | Covered By |
 |----------|-------------|------------|
 | AKS control plane | Free | Always free (Free tier) |
-| AKS node (1× B2ats_v2) | Free | Scale-to-zero — ~20-80 hrs/mo consumed of the free 750 (12-month, expires 05/2027) |
+| AKS node (1× B2pls_v2, ARM64) | ~$1–3/mo | `az aks stop`/`start` — bills only while started, ~20–80 h/mo. The free B2ats_v2 grant is unusable for AKS (SystemPoolSkuTooLow, 2026-08-23) |
 | LoadBalancer public IP | ~$0 | Released at teardown (Service deleted per run, URL resolved fresh by backend-up); bills only while scaled up |
 | PostgreSQL B1MS | Free | 12-month free |
 | ACR Standard | Free | 12-month free (100 GB) |
