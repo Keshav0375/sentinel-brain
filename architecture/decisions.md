@@ -16,6 +16,35 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-08-23: phase-3 build — four more constraints Azure taught us live
+
+**1. Y1 and F1 Linux plans cannot share a resource group.** The F1 plan claimed
+`sentinel-rg`'s Linux webspace; the Consumption plan was then rejected ("Dynamic SKU, Linux
+Worker not available in resource group"). → **`sentinel-func-rg`**, same bootstrap-created
+pattern as `sentinel-state-rg`, CI granted Contributor, added idempotently to
+`bootstrap-oidc.sh`.
+
+**2. AKS SKU took three attempts** (separate entry above): grant SKU fails the system-pool
+RAM floor; B2s not in the allowed list; landed on ARM64 `B2pls_v2` → backend images must be
+`linux/arm64`.
+
+**3. New Entra tenants reject bare `api://name` identifier URIs**
+(`InvalidUniqueTenantIdentifierAsPerAppPolicy`). The audience is now
+**`api://<identity-tenant-id>/sentinel-backend`** — absorbed downstream because the audience
+was already parameterized as `SENTINEL_API_AUDIENCE` (task 4.1) rather than hardcoded.
+Backend 5.6 validates whatever that variable carries.
+
+**4. Guest invitation ≠ guest access.** The B2B guest object existed in the portal, but CLI
+token requests failed `AADSTS50020` until the invitation was **redeemed** by one interactive
+`az login --tenant` as the invited account. An earlier scripted "token minted" check was a
+false positive and is corrected here: the azuread provider's real request is the only proof.
+
+Also: Event Grid batch defaults (`max_events_per_batch`, `preferred_batch_size_in_kilobytes`)
+are server-populated — declare them or live with a perpetual diff (same class as Postgres
+`authentication.tenant_id`). And the §3.7 `resource_group_name` deprecation fixed in phase 1
+was accidentally reintroduced in the AKS module by copying the pre-fix snippet — caught by
+the plan warning, removed; plans now run with **zero warnings**.
+
 ### 2026-08-23: AKS SKU — three attempts, landed on ARM (B2pls_v2)
 
 Live applies rejected, in order: **B2ats_v2** (the free-grant SKU) — `SystemPoolSkuTooLow`,

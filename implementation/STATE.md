@@ -13,7 +13,7 @@
 | **Active phase** | 3 — Compute & Networking Modules |
 | **Active branch** | _none — phase 3 not started_ |
 | **Active PR** | _none_ |
-| **Current task** | 3.6 KV rotation → 3.5 identity plane (3.1–3.4 `done-pending-review`; guest invite ✅ verified) |
+| **Current task** | _phase 3 code-complete_ — all 6 tasks `done-pending-review`; review team next |
 | **Tasks verified** | 6 / 58 |
 | **Phases merged** | 2 / 16 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |

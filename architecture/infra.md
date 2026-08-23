@@ -1120,7 +1120,12 @@ provider "azuread" {
 resource "azuread_application" "sentinel_backend" {
   provider        = azuread.identity
   display_name    = "sentinel-backend-api"
-  identifier_uris = ["api://sentinel-backend"]
+  # Tenant-qualified (live policy, 2026-08-23): new Entra tenants reject bare
+  # api://name URIs — InvalidUniqueTenantIdentifierAsPerAppPolicy requires a
+  # verified domain, the tenant id, or the app id in every identifier URI.
+  # Downstream absorbs this by design: the audience travels as the
+  # SENTINEL_API_AUDIENCE variable (task 4.1), never as a literal.
+  identifier_uris = ["api://${var.identity_tenant_id}/sentinel-backend"]
 
   app_role {
     allowed_member_types = ["Application"]
@@ -1213,7 +1218,7 @@ single reusable token.
 |--------------------|-------------------------|--------------|
 | Azure control plane (terraform, `az keyvault`, `az aks`) | `https://management.azure.com` | `azure/login` default |
 | Terraform state blob | `https://storage.azure.com` | backend `use_azuread_auth` (§8.1) |
-| Sentinel backend API | `api://sentinel-backend` | **Different tenant, different identity** — a second `azure/login` as `sentinel-gha-client` against the identity tenant (§4.4), then `az account get-access-token --resource api://sentinel-backend` |
+| Sentinel backend API | `api://<identity-tenant-id>/sentinel-backend` | **Different tenant, different identity** — a second `azure/login` as `sentinel-gha-client` against the identity tenant (§4.4), then `az account get-access-token --resource "api://<identity-tenant-id>/sentinel-backend"` |
 | PostgreSQL | `https://ossrdbms-aad.database.windows.net` | `az account get-access-token --resource <that>` |
 
 The backend pod does the same via **workload identity** (§3.7): one UAMI, two

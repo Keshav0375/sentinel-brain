@@ -45,8 +45,8 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 | 3.2 | Event Grid module (+ **two-signal routing**) | [task-2](tasks/infra/phase-3-compute-modules/task-2-event-grid-module.md) | 🟡 |
 | 3.3 | Azure Function bridge module (+ Python source, **stamps `signal_type`**) | [task-3](tasks/infra/phase-3-compute-modules/task-3-functions-bridge-module.md) | 🟡 |
 | 3.4 | App Service module (F1 target) | [task-4](tasks/infra/phase-3-compute-modules/task-4-app-service-module.md) | 🟡 |
-| 3.5 | **Identity plane** — backend Entra app in the IDENTITY tenant (`api://sentinel-backend` + `Incident.Write`) + `sentinel-gha-client` | [task-5](tasks/infra/phase-3-compute-modules/task-5-backend-entra-app.md) | ⬜ |
-| 3.6 | **Key Vault rotation** — rotation policy + rotator Function (`SecretNearExpiry` → new version) | [task-6](tasks/infra/phase-3-compute-modules/task-6-keyvault-rotation.md) | ⬜ |
+| 3.5 | **Identity plane** — backend Entra app in the IDENTITY tenant (`api://sentinel-backend` + `Incident.Write`) + `sentinel-gha-client` | [task-5](tasks/infra/phase-3-compute-modules/task-5-backend-entra-app.md) | 🟡 |
+| 3.6 | **Key Vault rotation** — rotation policy + rotator Function (`SecretNearExpiry` → new version) | [task-6](tasks/infra/phase-3-compute-modules/task-6-keyvault-rotation.md) | 🟡 |
 
 ### Phase 4 — Cross-Repo Wiring & CI  ·  branch `dev/infra-phase-4-wiring-and-ci`  ·  Gate: 🔒
 | # | Task | File | Status |
