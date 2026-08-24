@@ -10,12 +10,12 @@
 | Field | Value |
 |-------|-------|
 | **Active category** | infra — **in progress** |
-| **Active phase** | 3 — Compute & Networking Modules |
+| **Active phase** | 4 — Cross-Repo Wiring & CI |
 | **Active branch** | _none — phase 3 not started_ |
-| **Active PR** | [Sentinel-infra#3](https://github.com/Keshav0375/Sentinel-infra/pull/3) → `main` — awaiting phase gate |
-| **Current task** | _phase 3 reviewed, both reviewers' findings fixed_ — [PR #3](https://github.com/Keshav0375/Sentinel-infra/pull/3) awaiting phase gate |
-| **Tasks verified** | 6 / 58 |
-| **Phases merged** | 2 / 16 |
+| **Active PR** | _none_ |
+| **Current task** | 4.1 — cross-repo secret/variable distribution (⚠ **B9 GitHub PAT** gates it) |
+| **Tasks verified** | 12 / 58 |
+| **Phases merged** | 3 / 16 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
@@ -40,6 +40,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-08-24 | infra | 3 — Compute & Networking | `dev/infra-phase-3-compute-modules` | [#3](https://github.com/Keshav0375/Sentinel-infra/pull/3) | Keshav | Owner ran the checklist: plan **No changes** (0 warnings), 14/14 handler tests, gate PASS (8 ran — now incl. py-unittest + ruff), AKS Stopped, bridge function registered, rotation subscription Succeeded. Both reviewers' blockers fixed on-branch (Datadog tags shape, client_payload 10-prop cap, zip redeploy, KV-literal guard, func-rg grant). Closed B12. |
 | 2026-08-23 | infra | 2 — Core Resource Modules | `dev/infra-phase-2-core-modules` | [#2](https://github.com/Keshav0375/Sentinel-infra/pull/2) | Keshav | Owner ran the checklist personally: ACR Standard, Postgres AAD-only, KV RBAC + Officer/User split, empty vault by design, gate PASS (6 ran). Live tests: Entra-token psql login; KV write→read→purge. Resolved R6; both reviewers' blockers fixed on-branch. |
 | 2026-08-15 | infra | 1 — Foundations & Bootstrap | `dev/infra-phase-1-foundations` | [#1](https://github.com/Keshav0375/Sentinel-infra/pull/1) | Keshav | `terraform plan` → **No changes**; both bootstrap scripts idempotent; gate PASS (5 ran); 5 federated credentials verified in Azure. Resolved R3, R4, R5, C1–C9, C12, C13. Closed B1, B2, B3, B10, B15. |
 

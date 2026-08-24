@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-23 · **Branch:** `dev/infra-phase-3-compute-modules` ·
 **PR:** [Sentinel-infra#3](https://github.com/Keshav0375/Sentinel-infra/pull/3)
-**Status:** done-pending-review — awaiting owner sign-off
+**Status:** ✅ verified — owner ran the checklist and signed off 2026-08-24; PR #3 merged (`09b2510`)
 
 ---
 
@@ -85,7 +85,12 @@ python ..\Sentinel\scripts\quality_gate.py --repo infra --path .   # PASS (8 ran
 az aks show -n sentinel-aks -g sentinel-rg --query powerState.code -o tsv       # Stopped
 az functionapp function list -n sentinel-bridge-0375 -g sentinel-func-rg -o table
 az eventgrid system-topic event-subscription list --system-topic-name sentinel-kv-0375-events -g sentinel-rg -o table
-az ad app list --query "[].displayName" -o tsv   # after: az login --tenant eae0d3c6-... (identity tenant)
+# The 6 identity-tenant objects — read from state, touching NO directory.
+# (An earlier version of this line used `az ad app list`, which without an
+# explicit --tenant queries the SCHOOL tenant and dumps ~100 unrelated
+# University of Windsor app registrations. Read-only and harmless, but useless
+# as verification and alarming to read.)
+terraform state list | Select-String azuread
 
 # then stop it again — it bills grant hours while Ready
 az postgres flexible-server stop -n sentinel-pg-0375 -g sentinel-rg
