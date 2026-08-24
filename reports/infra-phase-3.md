@@ -69,7 +69,15 @@ unit tests for the two handlers, now executed by the gate (`Sentinel` PR #18).
 
 ## See it working
 
+> **Start the database first.** `terraform plan` does not merely skip a stopped Postgres —
+> it **errors** with `400 ServerStoppedError` on four resources, because the provider must
+> refresh the administrators, database and configuration. A stopped **AKS** cluster is fine;
+> only Postgres blocks the plan. (This step was missing from the first version of this
+> checklist and cost a failed verification run.)
+
 ```powershell
+az postgres flexible-server start -n sentinel-pg-0375 -g sentinel-rg   # if stopped
+
 cd ..\Sentinel-infra; git checkout dev/infra-phase-3-compute-modules; git pull
 terraform plan                                            # No changes, 0 warnings
 python -m unittest discover modules/functions/tests -v    # 14 OK
@@ -78,4 +86,7 @@ az aks show -n sentinel-aks -g sentinel-rg --query powerState.code -o tsv       
 az functionapp function list -n sentinel-bridge-0375 -g sentinel-func-rg -o table
 az eventgrid system-topic event-subscription list --system-topic-name sentinel-kv-0375-events -g sentinel-rg -o table
 az ad app list --query "[].displayName" -o tsv   # after: az login --tenant eae0d3c6-... (identity tenant)
+
+# then stop it again — it bills grant hours while Ready
+az postgres flexible-server stop -n sentinel-pg-0375 -g sentinel-rg
 ```
