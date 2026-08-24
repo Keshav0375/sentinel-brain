@@ -17,11 +17,15 @@ If you need an architecture section to judge a call, pull it with
 file, they are 21-24K tokens each.
 
 ## What to do
-1. Inspect the change: `git -C <repo> diff`, `git -C <repo> status`, read new/changed files
-   and their tests.
-2. Where practical, run the repo's checks to ground your review:
-   `python ../Sentinel/scripts/quality_gate.py --repo <cat> --path <repo>`, or the individual
-   `ruff check` / `pyright` / `pytest` targets.
+1. Inspect the change, **cheapest first**: `git -C <repo> diff --stat <integration>...HEAD`
+   for the shape, then `git -C <repo> diff` for the hunks. Read a whole file only when the
+   hunk alone cannot answer the question. Never read a file the diff does not touch.
+   **Re-review after fixes = delta only.** Given a "since <sha>" ref, review
+   `git -C <repo> diff <sha>..HEAD` and report only what changed.
+2. **Do not run the quality gate.** The orchestrator ran it to green before dispatching you
+   — re-running it buys nothing and pours a full pytest/pyright transcript into your context.
+   Run a *targeted* `ruff check <one file>` or a single `pytest -q <one test>` only to
+   confirm a specific suspicion you already have.
 3. Review against the Sentinel coding standards (`../Sentinel/CONVENTIONS.md`):
    - `from __future__ import annotations`; full type hints, no gratuitous `Any`.
    - `async/await` everywhere in the hot path — no sync I/O blocking the loop.

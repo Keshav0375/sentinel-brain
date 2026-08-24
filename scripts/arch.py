@@ -143,6 +143,14 @@ def cmd_map() -> None:
 
 
 def main() -> int:
+    # Windows consoles default to cp1252, which cannot encode the arrows, §, ≠ and box
+    # glyphs the architecture docs are full of — every invocation died on a UnicodeEncodeError
+    # part-way through, so the caller fell back to `Read`ing the whole 21-24K-token file.
+    # That defeated the entire point of this reader. Force UTF-8 before printing anything.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError):  # pragma: no cover - non-reconfigurable stream
+        pass
     ap = argparse.ArgumentParser(prog="arch.py", add_help=True,
                                  description="Read one architecture section instead of a whole file.")
     ap.add_argument("doc", nargs="?", help="infra | backend | deployment | decisions | index")
@@ -177,4 +185,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except BrokenPipeError:  # `arch.py ... | head` is a normal way to sample a section
+        sys.stderr.close()
+        sys.exit(0)

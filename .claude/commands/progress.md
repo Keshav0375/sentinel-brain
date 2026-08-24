@@ -7,8 +7,12 @@ model: haiku
 Report where the Phase 2 build stands. Read, in order:
 
 1. `implementation/STATE.md` — current category/phase/branch/PR, the
-   Phase Gate Ledger, Blockers, and Open Reconciliations.
+   Phase Gate Ledger, Blockers, and Open Reconciliations. It is live-state only.
 2. `implementation/TODO.md` — the 58-task master checklist.
+
+**Never read `implementation/history.md`** (closed blockers, resolved R-items, change log)
+or `archive/**`. Closed items are not progress. For the active phase alone,
+`python scripts/where.py` answers in ~175 tokens.
 
 Status markers in TODO.md are **emoji cells in markdown tables**, not `[x]` checkboxes:
 `⬜ not-started` · `🔵 in-progress` · `⛔ blocked` · `🟡 done-pending-review` · `✅ verified`.

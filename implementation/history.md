@@ -1,0 +1,139 @@
+# Sentinel Phase 2 — Implementation History
+
+> Audit record split out of [STATE.md](STATE.md) on 2026-08-24. **The build loop never
+> reads this file** — `/implement-phase`, `scripts/where.py` and `phase-context-builder`
+> all read only the live sections of STATE.md. Closed blockers, resolved reconciliations
+> and the change log land here so STATE.md stays a ~1.5K-token file instead of a 5.5K one.
+
+## Closed Blockers
+
+| # | Blocker | Blocks | Owner | Status |
+|---|---------|--------|-------|--------|
+| B1 | ~~Azure subscription + `sentinel-rg` resource group~~ | — | Keshav | ✅ **CLOSED 2026-08-15.** Subscription `174e25ca-…` (Owner, Active); `sentinel-rg` created in `canadacentral`; 10 resource providers registered. |
+| B2 | ~~Terraform state storage bootstrapped (state-rg + storage + container)~~ | — | Keshav | ✅ **CLOSED 2026-08-15.** `sentinel-state-rg` + `sentineltfstate0375` + `tfstate` container + operator blob RBAC, all created by `scripts/bootstrap-state.sh` and verified by a real `terraform init` reporting "Successfully configured the backend". **C12 materialized** — `sentineltfstate` was taken by another tenant; renamed across 7 files. |
+| B3 | ~~`sentinel-gha` UAMI + 2 role assignments + first 2 federated credentials, then the 7-object import~~ | — | Keshav | ✅ **CLOSED 2026-08-15.** UAMI `sentinel-gha` (`clientId c9ed809b-eca3-4ecc-8678-5dbfb91be5ae`), Contributor on `sentinel-rg`, Storage Blob Data Contributor on `sentineltfstate0375`, **all 5 federated credentials** live, plus RBAC Administrator + state-RG Contributor (R5). Seven objects imported, three credentials created by apply, `terraform plan` → **"No changes"**. rev-9 proven end to end: a managed identity does substitute for an app registration. |
+| B10 | ~~Entra `sentinel-db-admins` security group~~ → record your own Entra user object ID + UPN (`az ad signed-in-user show`); DB roles still created via `pgaadauth_create_principal` | infra Postgres (Entra-only auth), all DB access | Keshav | ✅ **CLOSED 2026-08-15 — superseded by rev-9.** No group is created; Postgres Entra admins are attached directly (human + backend UAMI). Needs no directory write. |
+| B11 | ~~Personal Entra tenant + `sentinel-tf-identity`~~ | — | Keshav | ✅ **CLOSED 2026-08-23.** Identity tenant `eae0d3c6-af22-4b70-ad3b-12d625a06139`: app `sentinel-tf-identity` (clientId `8f7ff635-799b-4bdd-b1fa-2ff9bbe75560`, app objectId `378ccade-dd35-4f92-a71f-4a781fe5ace3`, SP objectId `a999bb84-7f5f-40ec-84ed-817337c9c1ba`), federated credential `sentinel-tf-main` (`repo:Keshav0375/Sentinel-infra:ref:refs/heads/main`), **Application Administrator** granted to the SP. Task 3.5's Terraform can now manage the identity tenant from CI. ⚠ Local applies of 3.5 need an `az login` with the personal account — the school account has no rights there. |
+| B15 | ~~`quality_gate.py` runs `actionlint` as a **required** check with no argv path, so it never gets pruned and hard-FAILs on a repo with no `.github/workflows/`~~ | — | Claude | ✅ **CLOSED 2026-08-15 — conflict C13 fixed.** `IMPLICIT_PATHS` extends the gate's existing "no such path yet" skip semantics to tools that discover their own inputs. Verified both ways: SKIPPED against workflow-less `Sentinel-infra`, still runs and reports findings where workflows exist. On `fix/quality-gate-implicit-paths`; **PR still to be opened — `gh` not authenticated.** |
+| B12 | ~~AKS OIDC issuer + workload identity; backend UAMI + federated credential~~ | — | Keshav | ✅ **CLOSED 2026-08-23 by task 3.1.** `sentinel-aks` live (Free tier, OIDC + workload identity enabled, 1× `B2pls_v2` ARM64, **stopped when idle**); `sentinel-backend-wi` UAMI federated to the cluster issuer, subject `system:serviceaccount:sentinel:sentinel-backend`; UAMI is 2nd Postgres Entra admin + KV Secrets User. Remaining consumer half (SA annotation) is backend task 7.2. |
+| B13 | ~~`release-phase-2` created in `Sentinel-infra` + `Sentinel-deployment`~~ | — | Keshav | ✅ **CLOSED 2026-07-26 — obsolete.** Branch model changed: those two repos have no release train, `dev/*` PRs into their own `main`. Nothing to create. |
+| B14 | ~~Updated `guard-main-source.yml` + `ci.yml` merged into `release-phase-2` **and** `main` of `Sentinel`~~ | — | Keshav | ✅ **CLOSED 2026-07-26.** `planning/phase-2-e2e` merged to `main` (PR #14, `5b97232`); `release-phase-2` fast-forwarded to match. Both protected branches now carry the rewritten guard, `ci.yml` and `scripts/quality_gate.py`. |
+
+## Resolved Reconciliations
+
+| # | Item | Affects | Status / resolution |
+|---|------|---------|---------------------|
+| R1 | GitHub owner `keshxvDev` in arch docs vs real `Keshav0375`; repo casing | infra 1.3, 4.1, 3.3 | ✅ **RESOLVED 2026-07-11** — all arch docs updated to `Keshav0375` + real repo casing via `/sentinel-planner`; OIDC subjects noted case-sensitive. |
+| R2 | Backend repo GitHub name = `Sentinel` (capital S) | infra 4.1, Function bridge dispatch target | ✅ **RESOLVED 2026-07-11** — all three remotes confirmed `Keshav0375/Sentinel-infra`, `.../Sentinel-deployment`, `.../Sentinel`. |
+| R3 | Azure region for all resources (arch examples use `eastus`) | all infra modules | ✅ **RESOLVED 2026-08-15 → `canadacentral`.** Chosen for proximity, Canadian residency, and lower burstable-SKU contention than `eastus`. `var.location` still has **no default** — supplied via the `AZURE_LOCATION` GitHub variable (C5). ✅ **Quota confirmed 2026-08-15:** `Standard Basv2 Family vCPUs` limit **10** (AKS `B2ats_v2` needs 2) and `Total Regional vCPUs` limit **6** — the real cap, and enough for the single-node scale-to-zero design. No quota-increase request needed. |
+| R4 | Inbound Entra bearer auth (`api://sentinel-backend` + `Incident.Write`) needs an app registration — a directory write the uwindsor.ca tenant denies | infra 3.5, backend 5.6, B11 | ✅ **RESOLVED 2026-08-15 → two-tenant identity split.** UWindsor IT is **not an option** (owner decision: no institutional involvement). The two app registrations — and only those two — move to a **personally-owned Entra tenant**; every Azure resource and all three UAMIs stay in the school tenant, because they hold RBAC on school resources and would break if relocated. **No stored secret:** the caller is a `sentinel-gha-client` app registration carrying a GitHub-OIDC federated credential — the same trust source as the UAMI — and `azure/login@v2` supports `allow-no-subscriptions`, so the identity tenant needs no subscription and costs $0. Note the `sentinel-gha` UAMI **cannot** hold the app role: app-role assignment is a within-tenant directory operation with no cross-tenant form. Accepted costs: two tenants to reason about, an aliased `azuread` provider, a second bootstrap seam. Design in `infra.md` §4.4; execution tracked as **B11**. |
+| R5 | `sentinel-gha` holds only Contributor, which **cannot create role assignments** (`notActions` include `Microsoft.Authorization/*/Write`). Phases 2-3 declare six Terraform-managed assignments | infra 2.3, 3.1, 3.6, `ci_destroy_infra` | ✅ **RESOLVED 2026-08-15 → RBAC Administrator on `sentinel-rg` + Contributor on `sentinel-state-rg`.** Found by `code-reviewer` at the phase-1 gate; the architecture had the same gap, so this was a missing decision rather than a code defect. Phase 1 passed only because every apply ran locally as subscription **Owner** — CI had never exercised the identity. Chose **Role Based Access Control Administrator** over Owner/User Access Administrator because its built-in ABAC condition forbids assigning Owner, UAA or itself, so CI cannot escalate — which matters for `pull_request`-triggered workflows. Both assignments are live and imported. |
+| R6 | CI cannot purge a soft-deleted Key Vault — deleted vaults live at **subscription scope** and `sentinel-gha` holds nothing there, so `ci_destroy_infra`'s purge 403s silently and the next apply fails on the reserved name | infra 4.3, teardown | ✅ **RESOLVED 2026-08-16 → teardown is Owner-run and local; `ci_destroy_infra.yml` removed.** Found and *reproduced* by `code-reviewer` at the phase-2 gate; it falsified the justification for the 2026-08-15 soft-delete decision. Rejected a subscription-scope Key Vault Contributor grant (would let CI manage any vault in the subscription) and a custom purge-only role (extra bootstrap + role to maintain). Net effect: the CI identity ends up with **less** standing privilege, and infra ships 3 workflows instead of 4. |
+
+## Change Log
+
+- **2026-08-15** — **rev-9: identity plane rebuilt on managed identities; R3 closed;
+  C1–C9 resolved.** Triggered by discovering the subscription is **Azure for Students inside
+  the uwindsor.ca tenant** — Owner on the subscription, **no directory rights**. Every rev-5
+  identity construct was a directory object, so B3/B10/B11 were unbuildable as designed.
+  **(a)** CI identity → `azurerm_user_assigned_identity.sentinel_gha` + 5
+  `azurerm_federated_identity_credential` children (was `azuread_application` + SP + 5 app
+  federated creds). Closes B3's design gap.
+  **(b)** `sentinel-db-admins` group deleted → two direct Postgres Entra admins (human as
+  `User`, backend UAMI as `ServicePrincipal`). **Closes B10.** Cost: admin changes are now a
+  Terraform apply, not an Entra membership edit.
+  **(c)** **B11 cannot be rescued** — only an app registration can define an API audience +
+  app role. New **R4**; `infra.md` §4.4 carries a ⛔ banner; halts infra 3.5 + backend 5.6.
+  **(d)** **R3 → `canadacentral`.** `var.location` keeps no default; CI supplies it via the
+  new `AZURE_LOCATION` GitHub variable.
+  **(e)** **C1–C9 resolved** before a line of code (see decisions.md): RG is a **data source**
+  (C1); state account gets **Storage Blob Data Contributor** + backend `use_azuread_auth`/
+  `use_oidc` — without which *every* CI `terraform init` fails (C2); **all five** bootstrap
+  objects imported, not one (C3); `subscription_id` wired into the provider (C4); `location`
+  passed as `-var` (C5); **`GITHUB_PAT` → `GH_PAT`**, the old name being illegal under
+  GitHub's reserved prefix (C6); `AZURE_*` are `vars.` not `secrets.` (C7); `github_owner`
+  stays a variable (C8); versions pinned — `terraform >= 1.9`, `azurerm ~> 4.0`,
+  `integrations/github ~> 6.0`, **`azuread` dropped entirely** (C9).
+  **(f)** New **B15/C13** — `quality_gate.py` fails `actionlint` on any repo without
+  `.github/workflows/`, contradicting its own docstring and making infra phases 1–3 and
+  deployment phase 1 unable to report green. Fix pending go-ahead.
+  **(g)** Local toolchain installed: terraform, az, tflint, gitleaks, actionlint.
+  Unchanged: 58 tasks, 16 phases, branch model, HITL, the human phase gate.
+
+- **2026-07-26** — **rev-8: per-repo branch model + agents on Opus.** The single "all repos use
+  `release-phase-2`" rule is replaced by a per-repo integration branch:
+  **(a) `Sentinel-infra` and `Sentinel-deployment` use `main` directly** — `main` →
+  `dev/<cat>-phase-<M>-<slug>` → PR → `main`, one PR per phase, no release train. Those repos
+  have no branch protection, no external consumers and one author, so a release train was
+  ceremony with no reviewer on the other end. This closes **B13** as obsolete.
+  **(b) `Sentinel` keeps the release train** — `release-phase-2` → `dev/backend-phase-<M>-<slug>`
+  → PR → `release-phase-2`, and `main` accepts exactly one merge (`release-phase-2`) at the end
+  of Phase 2. Its `main` is the protected showcase branch, which is what justifies the extra step.
+  **(c) `planning/phase-2-e2e` retired** — merged to `Sentinel` `main` as PR #14 (`5b97232`);
+  `release-phase-2` fast-forwarded `cac026e..5b97232` to match, so both protected branches now
+  carry the rewritten `guard-main-source.yml`, the `dev`-aware `ci.yml`, and
+  `scripts/quality_gate.py`. This closes **B14**. Planning now lives only in `sentinel-brain`.
+  **(d)** All four subagents moved `model: sonnet` → **`model: opus`**.
+  **(e)** Docs updated to match: [CLAUDE.md](../CLAUDE.md), [README.md](../README.md),
+  [README §6](README.md#6-git-model--one-branch--one-pr-per-phase), [TODO.md](TODO.md), the
+  phase-report template, infra task 1.1, and `/implement-phase` (Branch model, Step 3, Step 6).
+  Unchanged: 58 tasks, 16 phases, the `dev/` prefix, one-phase-one-PR, the human phase gate,
+  and tracker commits going straight to brain `main`.
+
+- **2026-07-26** — **rev-7: control plane split out into `sentinel-brain`.** Architecture, this
+  tracker, all Claude agents/skills/commands and phase reports moved out of the `Sentinel` code
+  repo into this repo. The three code repos now carry **code + CI only** — no `Planning/`, no
+  `.claude/`. New layout: `architecture/` (index + `backend.md` / `deployment.md` / `infra.md` +
+  `decisions.md`), `implementation/` (TODO, STATE, `tasks/<category>/phase-*/`), `reports/`,
+  `reference/`, `archive/mvp-phase-1/`. Consequences:
+  **(a)** every task's **Arch refs** now reads `architecture/<repo>.md §X` (was
+  `Planning/Phase-2/sentinel/ARCHITECTURE.md §X`), and task folders are
+  `tasks/{infra,deployment,backend}/` (was `category-N-*`).
+  **(b)** Agent repo paths are now siblings — backend is `../Sentinel`, not `.`.
+  **(c)** **Tracker commits go straight to brain `main`**, superseding rev-6's two-branch /
+  two-PR tracker model: the tracker no longer lives in a protected repo, so that ceremony is
+  gone. One phase = one code PR + tracker commits here.
+  **(d)** Phase-1/MVP docs are quarantined in `archive/` behind stale banners, a permission deny
+  rule, and explicit "never read this" instructions in `CLAUDE.md` and all four agents — Phase 2
+  replaced that design wholesale, so loading it causes wrong builds.
+  **(e)** Deployment phase 3 renamed `phase-3-demo-scenarios` → `phase-3-scenario-branches`, task
+  `task-1-demo-prs-workflow` → `task-1-scenario-branches`, matching the rev-5 pivot.
+  **(f)** Added `reports/` + a phase-report template for short user-facing phase summaries.
+  Unchanged: 58 tasks, 16 phases, the `dev/*` → `release-phase-2` branch model in code repos,
+  and every blocker below.
+
+- **2026-07-26** — **rev-6 build-loop repair.** Audit of architecture ↔ implementation ↔ tasks ↔
+  human gate found three defects that would have broken or falsified the first phase. Fixed:
+  **(1) Branch model** — phases now branch from `release-phase-2` with a **`dev/`** prefix (was
+  `impl/` off `main`) and PR back into `release-phase-2`; `release-phase-2` → `main` is a single
+  final merge. `ci.yml` branch-convention accepts `dev`; `guard-main-source.yml` allows
+  `release-phase-2 <- dev/* | planning/phase-2-e2e`. Previously **every** phase PR failed two
+  required checks by construction. **(2) Quality gate** — `terraform validate` now runs after
+  `terraform init -backend=false` (bare `validate` always failed → infra could never go green);
+  backend pytest globs extended to `test_memory/`, `test_infra/`, `test_providers/`, `test_eval/`,
+  `test_config.py` (backend phases 1, 2 and 6 previously reported green with **zero** of their own
+  tests executed); non-existent path args are pruned so the gate is safe mid-build.
+  **(3) Tracker commits** — defined: they ride the phase's `dev/` branch in `Sentinel`, so an
+  infra/deployment phase is 2 branches + 2 PRs closed at one gate. **(4) Stale rev-5 sweep** —
+  infra 1.1/2.2/2.3/4.3 and backend 5.1 bodies reconciled with their own rev-5 callouts; both
+  `env-examples/` de-staled (`db_password`, `SENTINEL_API_TOKEN`). **(5) Open R-items** are now a
+  halting prerequisite in `/implement-phase` Step 4.1 — R3 (region) can no longer be silently
+  defaulted to `eastus`. **(6)** Legacy `/implement` + `/fire` retired, `/review` rewritten for
+  Phase-2 invariants. New blockers **B13** (create `release-phase-2` in the two sibling repos) and
+  **B14** (guard workflow must reach `release-phase-2` + `main` before it takes effect).
+- **2026-07-12** — **rev-5 security + ground-truth overhaul** applied across all architecture
+  docs (via `/sentinel-planner`; logged in [architecture/decisions.md](../architecture/decisions.md) decision
+  log). Four approved changes: (1) `ci_destroy_infra` full-teardown workflow; (2) sentinel-
+  deployment pivot to 30 scenario branches (3 cases) — `ci_demo_prs.yml` removed, branches
+  become the eval dataset; (3) Azure-native dynamic secrets — Entra-only PostgreSQL, Key Vault
+  rotation Function, AKS workload identity; (4) inbound Entra bearer auth on the backend
+  (deletes `sentinel-api-token`). New bootstrap blockers **B10–B12** added (Entra DB admin
+  group, backend app registration, AKS workload identity). TODO tracker updated with new/
+  modified tasks (see TODO.md); task total re-baselined.
+- **2026-07-11** — R1 + R2 resolved: architecture docs reconciled from placeholder
+  `keshxvDev`/lowercase repos to real `Keshav0375` + `Sentinel-infra`/`Sentinel-deployment`/
+  `Sentinel` casing (via `/sentinel-planner`, logged in Phase-2 STATE decision log). All three
+  git remotes confirmed. R3 (region) still open.
+- **2026-07-11** — Implementation tracker created. Full decomposition: 3 categories, 16
+  phases, 55 tasks. Git model set: one branch + one PR per phase, merged after human
+  phase-gate; no Claude attribution on commits/PRs.

@@ -12,7 +12,7 @@ You run from the `sentinel-brain` repo. Architecture lives in `architecture/`:
 
 | File | Role |
 |------|------|
-| `architecture/README.md` | The **index** — diagrams + a §4 map of concern → authoritative file+§. Start here. |
+| `python scripts/arch.py --map` | The **index** — concern → authoritative file+§. Start here (~300 tok). Do **not** `Read` `architecture/README.md` for this; it is 4.2K tokens of diagrams for the same map. |
 | `architecture/backend.md` · `deployment.md` · `infra.md` | **Authoritative for detail.** A task's Arch refs name these directly (e.g. `architecture/infra.md §3.2`). |
 | `architecture/decisions.md` | Why a decision was made, and what superseded what. |
 
@@ -48,7 +48,9 @@ Unsure which section? `--list` first (~0.3K tok), then pull the one you need.
 Given a category + phase, produce the **conformance contract** the orchestrator must build to.
 
 1. Read the phase's task files (their Spec, Acceptance Criteria, Arch refs).
-2. Read the cited `§` section(s) of the active repo's architecture file.
+2. Pull **only the `§` the tasks actually cite**, in one `arch.py` call:
+   `python scripts/arch.py <doc> 3.2 3.4 …`. Do not pull a parent section to "get context"
+   for a cited subsection — `3` costs 7.7K tokens where `3.2` costs 1.6K.
 
 **This one output is machine-facing** — the orchestrator builds from it and does not paste it
 into the chat. It may be long *in the contract table*; it must still carry **zero prose**.
@@ -88,7 +90,13 @@ say — no more, no less, no drift?** (You are not doing generic bug-hunting —
 `code-reviewer`; nor safety — that's `safety-reviewer`.)
 
 1. Read the phase's task specs + cited architecture sections.
-2. Inspect the change: `git -C <repo> diff`, `git -C <repo> status`, read new/changed files.
+2. Inspect the change, **cheapest first**: `git -C <repo> diff --stat <integration>...HEAD`
+   to see the shape, then `git -C <repo> diff` scoped to the files that matter. Read a full
+   file only when the diff hunk alone cannot answer the conformance question — the diff
+   usually can. Never read a file the diff does not touch.
+   **Re-review after fixes = delta only.** When the orchestrator gives you a "since <sha>"
+   ref, review `git -C <repo> diff <sha>..HEAD` and report only what changed. Re-reading the
+   whole phase diff a second time is the single most expensive mistake in this loop.
 3. Compare on: **files** (everything specified exists; nothing extra snuck in), **contracts**
    (names/types/paths match architecture exactly), **decisions honored**, **standards**
    (`from __future__ import annotations`, full type hints, async I/O, Pydantic v2 at boundaries,

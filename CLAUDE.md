@@ -62,26 +62,37 @@ Full pivot table: `archive/mvp-phase-1/README.md`.
 | **Binding** detail for a repo (never deviate without asking) | `architecture/{backend,deployment,infra}.md` |
 | Why a decision was made / what superseded what | `architecture/decisions.md` |
 | Build order, 58 tasks, status | `implementation/TODO.md` |
-| Where we are right now — branch, blockers, gate ledger | `implementation/STATE.md` |
+| Where we are right now — branch, blockers, gate ledger | `python scripts/where.py`, then `implementation/STATE.md` |
+| Closed blockers, resolved R-items, change log (**never read during a build**) | `implementation/history.md` |
 | How the build loop works, git model, quality gate | `implementation/README.md` |
 | One task's spec + report | `implementation/tasks/{infra,deployment,backend}/phase-*/task-*.md` |
 | Coding standards for backend code | `../Sentinel/CONVENTIONS.md` |
 | Finished phase summaries (short, for the user) | `reports/` |
 
-**Token discipline — use `scripts/arch.py`, do not `Read` an architecture file.**
-`infra.md` is ~21K tokens, `backend.md` ~24K, `decisions.md` ~14K; you almost always need one
-section of one file. The reader prints just that section and computes line offsets at call
-time, so it never goes stale:
+**Token discipline — two readers replace the four files you would otherwise open.**
+A session dies from re-reading big files for small facts. Every token you read stays in
+context and is re-sent on every later turn, so a 9K-token read early in a phase is paid
+dozens of times over. Both readers compute offsets at call time, so neither goes stale.
 
 ```bash
+python scripts/where.py                  # where are we? phase, repo, branch, gate,
+                                         #   tasks, gating blockers   (~175 tok)
+python scripts/where.py infra-4          #   ... for a named phase; exit 1 = do not enter
+
 python scripts/arch.py --map             # concern -> file + §   (start here if unsure)
 python scripts/arch.py infra --list      # TOC + token cost per §
 python scripts/arch.py infra 3.2 3.3     # the sections themselves  (~3K tok, not 21K)
 python scripts/arch.py decisions R6      # one decision entry       (~0.6K tok, not 14K)
 ```
 
-`Read` on `architecture/*.md` is a defect — 10-25x the cost for the same content. For a whole
-phase, let `architecture-warden` (distill mode) extract the contract once and build from that.
+**Do not `Read`:** `architecture/*.md` (21-24K each — `arch.py` is 10-25x cheaper for the
+same content), `implementation/TODO.md` (3.3K — `where.py` gives you the six lines you
+wanted), or `implementation/history.md` (closed blockers + change log; audit record the
+build never needs). `implementation/STATE.md` is live-state only and cheap to read whole.
+
+Pull the **subsection**, not the parent: `arch.py infra 3.2` is 1.6K where `arch.py infra 3`
+is 7.7K. For a whole phase, let `architecture-warden` (distill mode) extract the contract
+once and build from that — a subagent's context is paid once and discarded; yours is not.
 
 ---
 

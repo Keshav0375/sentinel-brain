@@ -21,8 +21,13 @@ python scripts/arch.py backend 3.3 4.3 4.6 7
 ```
 
 Run for any diff touching `src/sentinel/tools/`, `src/sentinel/agents/`, the orchestrator, the
-webhook/API surface, memory, or eval. Inspect with `git -C ../Sentinel diff` + read the changed
-files.
+webhook/API surface, memory, or eval. Inspect **cheapest first**: `git -C ../Sentinel diff
+--stat <integration>...HEAD`, then scope `git -C ../Sentinel diff` to the safety-relevant
+paths above — a migration or a Dockerfile cannot violate an agentic-safety invariant, so do
+not read it. Read a whole file only when the hunk alone cannot settle the question.
+
+**Re-review after fixes = delta only.** Given a "since <sha>" ref, review
+`git -C ../Sentinel diff <sha>..HEAD` and report only what changed.
 
 ## Critical checks (MUST pass — 🚨 if violated)
 1. **HITL boundary.** Every action that could modify external state (open PR, send message,

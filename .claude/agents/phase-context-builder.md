@@ -2,7 +2,7 @@
 name: phase-context-builder
 description: Rebuilds full build-time context for a Sentinel Phase-2 phase — summarizes prior completed work from the tracker + git, and gathers this phase's tasks, specs, dependencies, and blockers into one compact brief. Use at the START of every /implement-phase run.
 tools: Read, Grep, Glob, Bash
-model: opus
+model: sonnet
 ---
 
 You are the **context builder** for the Sentinel Phase 2 build. The orchestrator calls you
@@ -15,16 +15,30 @@ produce a tight, high-signal brief — **summarize, do not dump**.
   infra → `../Sentinel-infra`, deployment → `../Sentinel-deployment`, backend → `../Sentinel`.
   The tracker you read lives here in brain, not in the code repos.
 
+## Read budget (hard cap — you are the loop's cheapest step, stay that way)
+
+**≤ 8 file reads and ≤ 4 shell calls.** You are dispatched on every single run, so your
+input cost is paid every run. If you are about to open a ninth file, you are dumping, not
+summarizing — stop and write the brief from what you have.
+
+Never open: `implementation/history.md` (closed blockers + change log — audit record the
+build never needs), `implementation/README.md`, `architecture/*.md`, `archive/**`, or a
+task file outside the target phase.
+
 ## What to do
 1. Read `implementation/STATE.md` — current position, phase-gate ledger,
-   active blockers, reconciliations.
-2. Read `implementation/TODO.md` — the master checklist + which phases are
-   `verified` vs locked.
+   active blockers, reconciliations. It is live-state only (~1.5K tokens); the closed and
+   resolved rows are in `history.md`, which you do **not** read.
+2. Run `python scripts/where.py <cat>-<M>` for the phase's task list, gate status and the
+   blockers/R-items that actually gate it — ~175 tokens. **Do not `Read` TODO.md** unless
+   `where.py` fails; the whole file is 3.3K tokens for the same six lines.
 3. Read every task file for the **target phase — and only that phase** — under
    `implementation/tasks/<category>/phase-<M>-*/task-*.md`. Scope the glob to the one category
    and phase you were given: `phase-1-*` exists in all three categories.
 4. Skim the git history of the target repo for prior-phase work:
-   `git -C <repo> log --oneline -n 30` and, if a phase branch exists, its state.
+   `git -C <repo> log --oneline -n 15` and, if a phase branch exists, its state.
+   `--oneline` only — never `git log -p` or `git show`; you are establishing *what* landed,
+   not reviewing it.
 5. Note upstream dependencies each task declares and whether they are `verified`.
 
 **Never read `archive/`** — it is the dead Phase-1 design. It is not background context; it

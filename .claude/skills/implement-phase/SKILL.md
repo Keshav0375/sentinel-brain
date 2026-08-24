@@ -26,18 +26,40 @@ each do one thing well and hand their result back to you.
   its tasks are green.
 - **Handoffs, not heroics.** Delegate context, architecture distillation, and review to the
   specialist subagents (below). You integrate their outputs; you don't re-do their jobs.
-- **Read sections, not files.** `python scripts/arch.py <doc> <§...>` prints one architecture
-  section (~1-3K tokens); `Read` on `architecture/*.md` costs 21-24K for the same content and
-  is a defect. `arch.py <doc> --list` when you don't know the ref, `arch.py --map` for
-  concern → file+§. **Never re-read what a subagent already handed you** — the context brief
-  carries the task specs and the distilled contract carries the architecture. Re-reading the
-  source is the single most common way this loop wastes a phase's budget.
+- **Your context is the expensive one.** Every token you read stays in your context and is
+  re-sent on every turn for the rest of the phase — a 9K-token file read at task 1 is paid
+  again at task 4's fifth gate re-run. A subagent's context is paid once and discarded. So
+  **when a read is big and its conclusion is small, delegate it.** The four subagents are a
+  token strategy, not just a division of labour. See the Token budget below.
 - **Ask when unsure. Halt when blocked.** Ambiguity in a task or architecture → stop and ask.
   Missing prerequisite (tool, key, upstream task not verified) → write the blocker down, stop,
   do not partially build.
 - **No Claude attribution — ever.** No `Co-Authored-By: Claude`, no "Generated with Claude
   Code" in any commit or PR, in any of the three repos. The user is sole author. (See
   CLAUDE.md Git Rule.)
+
+## Token budget (binding — this loop runs against a limited session)
+
+Five rules. They are the difference between a phase costing 200K tokens and 700K.
+
+1. **Never `Read` these**, in your context or a subagent's:
+   `architecture/*.md` (21-24K each → use `arch.py <doc> <§>`), `implementation/TODO.md`
+   (3.3K → `where.py`), `implementation/history.md` (audit record, never needed by a build),
+   `implementation/README.md`, `archive/**` (banned outright — wrong design).
+2. **Pull the subsection, not the parent.** `arch.py infra 3.2` is 1.6K tokens;
+   `arch.py infra 3` is 7.7K for the same answer. `arch.py <doc> --list` (~0.3K) when you
+   do not know the ref.
+3. **Never re-read what a subagent handed you.** The context brief carries the task specs;
+   the distilled contract carries the architecture. Re-reading the source behind a brief you
+   already hold is the most common way this loop burns a session.
+4. **Re-review is a delta review.** After fixing a reviewer's blockers, dispatch the
+   re-review as *"since `<sha>`"*. A second full-diff pass across three Opus reviewers can
+   cost as much as the whole build did.
+5. **Read the diff, not the tree.** `git diff --stat` first, then the hunks. Open a whole
+   file only when the hunk cannot answer the question.
+
+About to open a big file to extract one fact? Stop — reach for `where.py`, `arch.py`, or a
+subagent instead.
 
 ## Reporting to the chat (binding — this is what the user actually sees)
 
@@ -96,18 +118,13 @@ backend (Sentinel)   release-phase-2 ──┬──►  dev/backend-phase-<M>-<
                                               (ONE final merge, end of Phase 2)
 ```
 
-- **Every phase branches fresh from its repo's integration branch**, pulled up to date first.
-- Branch prefix is **`dev/`** — `ci.yml`'s branch-convention check accepts only
+- Branch fresh from the integration branch (pulled), prefix **`dev/`**, PR back into that
+  same branch. `ci.yml` accepts only
   `dev|feat|fix|refactor|ci|docs|test|chore|planning|ai|hotfix`.
-- The phase PR targets that **same** integration branch.
-- **In `Sentinel` only**, `guard-main-source.yml` enforces `release-phase-2 <- dev/*` and
-  `main <- release-phase-2`. **A PR from `dev/*` straight to `Sentinel` `main` will be
-  rejected** — never open one. `release-phase-2` → `main` happens once, at the end of Phase 2,
-  and the user drives it. `Sentinel` `main` accepts nothing else.
-- `Sentinel-infra` and `Sentinel-deployment` have **no release branch and no guard** — their
-  `dev/*` PRs merge straight into their own `main`. Do not create a `release-phase-2` there.
-- `planning/phase-2-e2e` is **retired** (merged to `Sentinel` `main` 2026-07-26). Never branch
-  from it or PR to it.
+- **In `Sentinel` only**, `guard-main-source.yml` rejects a `dev/*` → `main` PR. Never open
+  one. `release-phase-2` → `main` happens once, at the end of Phase 2, and the user drives it.
+- The two sibling repos have no release branch — do not create one. `planning/phase-2-e2e`
+  is retired; never branch from it. (Full rationale: CLAUDE.md § Branch model.)
 
 **In `sentinel-brain` (the tracker):** commit straight to `main`. Brain has no CI, no branch
 protection, and no release train — its history *is* the build log. One phase therefore produces
@@ -127,19 +144,27 @@ protection, and no release train — its history *is* the build log. One phase t
 
 ---
 
-## Step 0 — Locate ourselves
+## Step 0 — Locate ourselves (ONE command)
 
-Read, in order:
-1. `implementation/STATE.md` — current category/phase/branch/PR, blockers, ledger.
-2. `implementation/TODO.md` — the 58-task master checklist + phase-gate locks.
-3. The active category's `README.md` under `implementation/tasks/{infra,deployment,backend}/`.
+```bash
+python scripts/where.py            # active phase
+python scripts/where.py infra-4    # a named phase
+```
 
-Resolve the target phase:
-- No arg → the first phase (category order infra → deployment → backend; then phase order)
-  that has any `not-started`/`in-progress` task **and** whose predecessor phase is signed off.
-- **Never enter a phase whose predecessor gate is unsigned.** If the previous phase is only
-  `done-pending-review`, stop and tell the user to complete Step 6 sign-off on it first.
-- Explicit `<cat-phase>` → that phase, but refuse (and explain) if it would skip a locked phase.
+That is the whole of Step 0. It prints the phase, repo, branch, integration target, task
+list, predecessor gate, and the blockers/R-items that gate *this* phase — ~175 tokens, and
+it exits **1** when you must not enter.
+
+**Do not `Read` STATE.md, TODO.md, or a category README here.** Those three are ~9.6K tokens
+that would then sit in your context and be re-sent every turn for the rest of the phase, to
+tell you what one command already said. `phase-context-builder` (Step 1) reads them properly,
+in its own context, and hands you back the digest.
+
+Honour the exit code:
+- `PREV ... !! UNSIGNED` → the predecessor gate is not signed off. Stop; tell the user to
+  complete Step 6 sign-off on it first. Never enter the phase.
+- `REFUSE  would skip unfinished phase(s): ...` → say which, and do not proceed.
+- `HALT` → report the reason verbatim and stop.
 
 ## Steps 1 + 2 — Context and architecture (dispatch BOTH in one message)
 
@@ -254,10 +279,14 @@ Clean phase → two lines, nothing more:
   arch ✓ CONFORMS · code ✓ LGTM · safety ✓ SAFE
 ```
 
+Before dispatching, record the sha — `git -C <repo> rev-parse HEAD`. You need it to re-review.
+
 Then fix: every 🚨 BLOCKER is resolved before proceeding (loop back into Step 4 for fixes on
-the same branch); ⚠️ findings get fixed or consciously noted. When you re-run the reviewers
-after fixes, print **only the delta** — what cleared and what is still open — not the whole
-block again. If the user asks about a finding, `SendMessage` the reviewer that raised it;
+the same branch); ⚠️ findings get fixed or consciously noted. **Re-dispatch as a delta
+review** — hand each reviewer *"re-review since `<sha>`; report only what changed"*, so it
+diffs `<sha>..HEAD` instead of re-reading the whole phase. Re-dispatch **only the reviewers
+that raised a blocker** — one that came back clean has nothing to re-check. Print **only the
+delta** — what cleared and what is still open — not the whole block again. If the user asks about a finding, `SendMessage` the reviewer that raised it;
 do not re-derive it. If a reviewer surfaces a real gap the spec missed, raise it with the
 user in one line rather than silently expanding scope.
 
