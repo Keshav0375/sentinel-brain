@@ -11,7 +11,7 @@
 |-------|-------|
 | **Active category** | infra — **in progress** |
 | **Active phase** | 4 — Cross-Repo Wiring & CI |
-| **Active branch** | _none — phase 3 not started_ |
+| **Active branch** | _none — phase 4 not started_ |
 | **Active PR** | _none_ |
 | **Current task** | 4.1 — cross-repo secret/variable distribution (⚠ **B9 GitHub PAT** gates it) |
 | **Tasks verified** | 12 / 58 |
@@ -22,16 +22,28 @@
 
 ## Next Action
 
-**Build infra Phase 3 — Compute & Networking** (3.1 AKS → 3.4 App Service → 3.3 Functions →
-3.2 Event Grid → 3.6 rotation → 3.5 identity plane; 3.3 before 3.2 because the Event Grid
-subscription needs the function app id). Branch `dev/infra-phase-3-compute-modules` is cut.
+**Build infra Phase 4 — Cross-Repo Wiring & CI** — the last infra phase. 4.2 runner image →
+4.3 workflows → 4.4 root wiring; **4.1 is gated on B9** and can be done last.
 
-- Phases 1–2 **verified and merged**. DB is Ready. B11 **closed** — `sentinel-tf-identity`
-  live in the identity tenant (clientId `8f7ff635-799b-4bdd-b1fa-2ff9bbe75560`).
-- **Task 3.1 also closes B12** (AKS OIDC issuer + backend UAMI + fed cred) and flips the
-  phase-2 toggles `enable_backend_admin` / `enable_backend_reader`.
-- Secrets B4–B9 still open: integration proofs for 3.2/3.3/3.6 need seeded values or
-  hand-crafted events; code + apply do not.
+Phase 4 is different in kind from 1–3: those built resources with a locally-run,
+subscription-Owner apply. Phase 4 hands the keys to CI, so it is the **first phase that
+exercises the identity plane for real** — three things have never once executed:
+
+1. the GitHub→Azure **OIDC round trip** (5 federated credentials, all created, none used);
+2. **R5's RBAC Administrator** grant — every role assignment so far was created by Owner;
+3. the **identity-tenant** azuread provider authenticating as `sentinel-tf-identity`.
+
+Expect the first CI run to fail on one of these. That is the phase working as intended,
+not a regression.
+
+- **B9 (GitHub PAT, `repo` scope) blocks 4.1** — the github provider cannot push a secret
+  without it. Sequence 4.2/4.3/4.4 first; 4.1 last, once B9 lands.
+- B4–B8 stay open and do **not** block Phase 4. The vault is empty by design; 4.1 pushes
+  *references and variables*, not the secret values.
+- Reminder: AKS is **ARM64** (`B2pls_v2`), so 4.2's runner image and every later backend
+  image must build `linux/arm64`.
+- Both `Sentinel` gate PRs (#17 shellcheck, #18 Python checks) are **still unmerged** —
+  merge them before Phase 4 or CI runs an older gate than your local one.
 
 ## Phase Gate Ledger
 
