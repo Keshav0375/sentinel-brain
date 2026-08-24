@@ -12,56 +12,29 @@
 | Field | Value |
 |-------|-------|
 | **Active category** | infra — **in progress** |
-| **Active phase** | 4 — Cross-Repo Wiring & CI |
+| **Active phase** | 5 — Dynamic Foundations (**specs written, not started**) |
 | **Active branch** | `dev/infra-phase-4-wiring-and-ci` |
 | **Active PR** | [Sentinel-infra#4](https://github.com/Keshav0375/Sentinel-infra/pull/4) → `main` — awaiting phase gate |
 | **Current task** | _phase 4 code-complete; both reviews addressed_ — PR #4 awaiting gate |
-| **Tasks verified** | 12 / 58 |
-| **Phases merged** | 3 / 16 |
+| **Tasks verified** | 16 / 72 |
+| **Phases merged** | 4 / 18 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
 
-**Build infra Phase 4 — Cross-Repo Wiring & CI** — the last infra phase. 4.2 runner image →
-4.3 workflows → 4.4 root wiring; **4.1 is gated on B9** and can be done last.
+**Phase 5 — Dynamic Foundations. Specs written 2026-08-24; build NOT started (owner: "files only for now").**
 
-Phase 4 is different in kind from 1–3: those built resources with a locally-run,
-subscription-Owner apply. Phase 4 hands the keys to CI, so it is the **first phase that
-exercises the identity plane for real** — three things have never once executed:
+Phases 5-6 replace the static single-estate model with a dynamic multi-deployment platform.
+Design settled and recorded in [decisions.md](../architecture/decisions.md) 2026-08-24; it
+supersedes **R5**, **R6**, **C1** and the one-cluster-per-estate assumption.
 
-1. the GitHub→Azure **OIDC round trip** (5 federated credentials, all created, none used);
-2. **R5's RBAC Administrator** grant — every role assignment so far was created by Owner;
-3. the **identity-tenant** azuread provider authenticating as `sentinel-tf-identity`.
-
-Expect the first CI run to fail on one of these. That is the phase working as intended,
-not a regression.
-
-- **B9 (GitHub PAT, `repo` scope) blocks 4.1** — the github provider cannot push a secret
-  without it. Sequence 4.2/4.3/4.4 first; 4.1 last, once B9 lands.
-- B4–B8 stay open and do **not** block Phase 4. The vault is empty by design; 4.1 pushes
-  *references and variables*, not the secret values.
-- Reminder: AKS is **ARM64** (`B2pls_v2`), so 4.2's runner image and every later backend
-  image must build `linux/arm64`.
-- Both `Sentinel` gate PRs (#17 shellcheck, #18 Python checks) are **still unmerged** —
-  merge them before Phase 4 or CI runs an older gate than your local one.
-
-## Next Action
-
-**Close the infra phase-4 gate.** All four tasks are `done-pending-review`, gate PASS (9 ran),
-PR #4 open. Two follow-ups are owner actions, not build work:
-
-- ⛔ **Identity-tenant federated credentials** (BOOTSTRAP step 4b) — `sentinel-tf-identity`
-  has only `ref:refs/heads/main`. A PR plan completes the whole azurerm refresh and then dies
-  at `AADSTS700213` on the azuread client. 2 `az` commands; needs an identity-tenant login.
-- ✅ **Runner image built and pushed by CI** — `ci_runners.yml` succeeded on the merge to main; `sentinel-acr0375/ci-runner:latest` is live. Task 4.2 verified end to end.
-- ⚠️ **PR [#5](https://github.com/Keshav0375/Sentinel-infra/pull/5)** open — ten review fixes that never reached disk, plus the environment-credential bootstrap and a database start-guard for CI.
-
-**Proven live 2026-08-24:** the GitHub→Azure OIDC round trip, R5's RBAC Administrator grant
-and the remote state blob all work under the CI identity, on their first-ever execution.
-
-After the gate, infra is complete → **deployment phase 1**.
+- ⚠️ **Task 5.0 destroys the phase-1-to-4 estate.** Owner-approved, no migration. Nothing is
+  deployed into it, so this is the cheapest a rename will ever be. Survives: `sentinel-tf-identity`
+  and its 3 federated credentials.
+- Start order: 5.0 → 5.1 naming → 5.2 identities → 5.3 platform → 5.4 workspaces → 5.5 docs.
+- **B9 is no longer on the critical path** — the cross-repo push moves behind the new model.
 
 ## Phase Gate Ledger
 

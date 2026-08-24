@@ -16,6 +16,105 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-08-24: Phases 5-6 — from one static estate to a dynamic multi-deployment platform
+
+Owner request: deploy and destroy complete, isolated deployments from workflow inputs alone.
+That is not an extension of phases 1-4 — it reverses four of their load-bearing decisions. Each
+is superseded below with its original reasoning preserved, because the reasoning was correct for
+the model it was written against.
+
+**The constraint that shaped everything: `workflow_dispatch` accepts at most 10 inputs.**
+The stack needs ~40 knobs. A 40-field form is also unreviewable and leaves no record of what was
+typed. So the design splits: **the form carries shape and intent** (which deployment, which
+components, apply or destroy), **`azure/config/deployment-config.yaml` carries size and detail**
+(SKUs, counts, retention), reviewed in git. A deployment absent from the file uses `defaults:`
+entirely — so `deployment: demo1` + `apply` is a complete instruction with no file edit. The
+file is for exceptions, not enrolment.
+
+**One cluster, a namespace per deployment.** The subscription's regional quota is **6 vCPU** and
+an AKS node is 2 — a cluster per deployment stops at three, with no headroom. A namespace per
+deployment scales to whatever the cluster's RAM holds. The isolation is not weaker for being
+logical: workload identity federates on `system:serviceaccount:<namespace>:<sa>`, Entra matches
+that subject as an exact string with no wildcard form, so a pod in one namespace cannot mint a
+token for another's Key Vault. Cryptographic separation, not a naming convention. A
+`ResourceQuota` per namespace is mandatory rather than optional — it is what makes a shared
+cluster acceptable rather than merely cheap.
+
+**Two Terraform states, and this is a safety property not a preference.** The platform (ACR,
+AKS, shared Postgres) and each deployment live in separate workspaces. In one state,
+`terraform destroy` of a deployment would take the cluster with it. Separate states make that
+structurally impossible. Deployments read the platform through a read-only
+`terraform_remote_state` data source: they *need* the OIDC issuer and ACR login server, and must
+be unable to change either.
+
+---
+
+**Superseded: R5 (2026-08-15) — CI rights scoped to `sentinel-rg`.**
+You cannot create a resource group with rights scoped to a resource group, so dynamic
+deployments force subscription scope. R5's *intent* survives; the mechanism changes. R5 chose
+RBAC Administrator over Owner specifically because the credential is reachable from
+`pull_request` workflows on a public repo — so the narrowness moves from **scope** to
+**reachability**, via three identities:
+
+| Identity | Rights | Subjects | PR-reachable |
+|---|---|---|---|
+| `gha-plan` | Reader + state blob | `:pull_request`, `:environment:plan` | yes — changes nothing |
+| `gha-deploy` | Contributor + RBAC Admin + KV purge + AKS RBAC Cluster Admin | `:environment:production`, `:environment:destroy` | **no** |
+| `gha-ops` | custom role: read + `*/start/action` + `*/stop/action` | `:environment:ops` | **no** |
+
+A job declaring `environment: X` receives the subject `repo:<owner>/<repo>:environment:X`
+instead of the branch form, and GitHub will not mint that for a `pull_request` event. So
+`gha-deploy` is unreachable from a PR **by construction** — there is no rule to misconfigure.
+This is exactly the behaviour that failed phase 4's first apply, now used deliberately.
+
+`gha-ops` exists because pause/resume is the most frequently run operation and should not
+require the identity that can delete the subscription. Contributor can delete; a start/stop role
+cannot.
+
+**Superseded: R6 (2026-08-16) — no CI destroy.**
+R6 refused CI teardown because purging a soft-deleted Key Vault is a subscription-scope action.
+That reasoning holds, but the conclusion inverts once destroy is a product feature: **purge is
+required for destroy→recreate to work at all.** Without it, destroying `demo1` reserves its
+vault name for 7 days and the next create fails on a vault nobody can see — which is precisely
+the acceptance test this phase exists to pass. Destroy is therefore in CI, behind
+`environment: destroy` (a distinct subject, so a required reviewer attaches to destruction
+alone), `workflow_dispatch` only, and a typed confirmation matching the deployment name.
+
+**Superseded: C1 — resource groups bootstrap-created and read-only.**
+Read-only RGs meant every new deployment needed a manual bootstrap step, defeating the request.
+RGs become managed resources; `destroy` deleting them is now the desired behaviour rather than
+the hazard C1 guarded against. The **state** resource group stays out-of-band forever — state
+cannot delete itself.
+
+**Superseded: one cluster per estate (§3.7)** — see the 6-vCPU argument above.
+
+**Naming replaced.** The `0375` suffix was collision-avoidance bolted on ad hoc and is not
+derivable. Replaced by Azure CAF prefixes plus
+`uid = substr(sha1("<subscription>-<deployment>-<env>"), 0, 4)` — deterministic, stable across
+applies, never typed. `deployment` is capped at **8 characters**, and that cap is derived rather
+than arbitrary: Key Vault allows 24, minus `kv-` minus `-<env>` minus `-<uid>` leaves 11, and 8
+keeps headroom.
+
+---
+
+**The old estate is destroyed, not migrated (task 5.0).** Nothing is deployed into it — the
+vault is empty by design, AKS runs no workloads, Postgres has no schema — so this is the
+cheapest a rename will ever be, and running two naming schemes side by side would mean
+maintaining both forever. `sentinel-tf-identity` and its federated credentials survive: they are
+repo-scoped, not deployment-scoped.
+
+**A plan cannot prove an apply will succeed**, so phase 6 adds a **preflight** job for the
+things a plan structurally cannot see: both tenants minting tokens, global name availability,
+soft-deleted vaults holding a name, AKS SKU availability *and* permission, regional vCPU quota,
+provider registration, and Postgres being awake. Every one of those is a failure this project
+has already hit.
+
+**Pause is not zero cost, and the workflow says so.** `az aks stop` and
+`az postgres flexible-server stop` end the compute charge, which dominates; OS disks, storage,
+the AKS load balancer and the ACR daily charge continue. Two limits get stated in the summary
+rather than discovered: **Postgres auto-restarts after 7 days** (Azure forces it — a pause is a
+7-day lease), and AKS stop/start takes 5-10 minutes each way.
+
 ### 2026-08-24: Phase 4 — four pre-build decisions (infra CI)
 
 Both reviewers halted phase 4 before a line was written: the specs and `infra.md` contradicted
