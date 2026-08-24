@@ -55,7 +55,8 @@ PR #4 open. Two follow-ups are owner actions, not build work:
 - ⛔ **Identity-tenant federated credentials** (BOOTSTRAP step 4b) — `sentinel-tf-identity`
   has only `ref:refs/heads/main`. A PR plan completes the whole azurerm refresh and then dies
   at `AADSTS700213` on the azuread client. 2 `az` commands; needs an identity-tenant login.
-- ⚠️ **Runner image never built** — Docker Desktop was not running. `build-push.sh` unexecuted.
+- ✅ **Runner image built and pushed by CI** — `ci_runners.yml` succeeded on the merge to main; `sentinel-acr0375/ci-runner:latest` is live. Task 4.2 verified end to end.
+- ⚠️ **PR [#5](https://github.com/Keshav0375/Sentinel-infra/pull/5)** open — ten review fixes that never reached disk, plus the environment-credential bootstrap and a database start-guard for CI.
 
 **Proven live 2026-08-24:** the GitHub→Azure OIDC round trip, R5's RBAC Administrator grant
 and the remote state blob all work under the CI identity, on their first-ever execution.
@@ -80,7 +81,7 @@ External dependencies that halt verification. Mirror any task-level BLOCKED here
 
 | # | Blocker | Blocks | Owner | Status |
 |---|---------|--------|-------|--------|
-| B16 | Identity-tenant federated credentials for `pull_request` + `environment:production` on `sentinel-tf-identity` | infra CI plan/apply on PRs and applies | Keshav | open — found live 2026-08-24 by the first CI run; BOOTSTRAP step 4b. B11 created only `ref:refs/heads/main`. The two-tenant split (R4) doubles the federated-credential surface: every workflow context needs a credential in **both** tenants. |
+| B16 | `sentinel-tf-identity` cannot serve infra CI — **two faults** | every infra CI plan and apply | Keshav | open — found live 2026-08-24 by the first CI runs. **(a) Missing federated credentials.** B11 created only `ref:refs/heads/main`; `pull_request` and `environment:production` are absent, so a PR plan completes the entire azurerm refresh and then dies `AADSTS700213`. R4's two-tenant split doubles the credential surface — every workflow context needs one in **both** tenants. BOOTSTRAP step 4b. **(b) The SP is authenticated but not authorized.** On `main`, where its credential *does* match, it gets **403 Forbidden** reading `azuread_application.sentinel_backend`. Its Application Administrator grant has never been exercised — the same shape as R5, which phase 1 missed for the same reason: everything ran locally as Owner. Verify the role is on the **service principal**, not the app or the user. |
 | B4 | Anthropic API key | backend LLM calls; Key Vault seed | Keshav | open |
 | B5 | OpenAI API key | backend fallback; Key Vault seed | Keshav | open |
 | B6 | Datadog account + API key + app key + site | deployment pipeline + monitors; backend fetch_logs | Keshav | open |

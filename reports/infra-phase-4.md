@@ -144,3 +144,40 @@ az aks stop -g sentinel-rg -n sentinel-aks
 
 **Gate:** `terraform plan` matching step 2, the gate PASS, and `run-validate` green on the
 branch. Steps 5–6 can follow the merge if you would rather not switch tenants now.
+
+---
+
+## Addendum — what merging actually exercised (2026-08-24)
+
+Merging PR #4 fired all three workflows for the first time. That is the only reason the
+following are known.
+
+| Workflow | Result | |
+|---|---|---|
+| `ci_runners.yml` | ✅ **success** | `ci-runner:latest` built and pushed by CI. Task 4.2 is verified end to end after all — the local Docker daemon was never needed. |
+| `ci_infra.yml` (apply) | ❌ | `AADSTS700213` for `…:environment:production` at `azure/login`. **A bootstrap circularity:** the credential that lets apply authenticate is created *by* apply. Same shape as the state storage; resolved the same way — created out of band with `az`, then imported. |
+| `ci_infra_dry.yml` (main) | ❌ | `run-plan` should not have run on `main` at all — see below. It then found fault (b) of B16. |
+
+### A process failure worth recording
+
+**Three of the five review blockers I reported as fixed were never written to disk.** The fix
+script aborted partway through — a `terraform fmt` reflow made one replacement miss its anchor
+— and I re-applied only the block it died on, then committed a message describing all five.
+`e0e3710` is therefore wrong about its own contents.
+
+CI caught it within minutes of the merge, which is the argument for this phase existing. The
+lesson is narrower than "be careful": **a multi-edit script must assert every replacement and
+fail loudly, and the commit message must be written from what is verifiably on disk, not from
+what the script was asked to do.** PR #5 applies all ten, each assertion-checked.
+
+### Two more things only a live run could find
+
+- **CI never started the database.** A stopped flexible-server errors terraform with
+  `400 ServerStoppedError`, and stopped is its *normal* idle state — so every scheduled apply
+  would have failed. Both jobs now check and start it. This had already broken a run three
+  times manually before it was fixed in the one place that removes it permanently.
+- **B16 fault (b):** on `main`, where `sentinel-tf-identity`'s credential *does* match, it
+  authenticates and then gets **403 Forbidden** reading `azuread_application.sentinel_backend`.
+  Its Application Administrator grant has never been exercised. This is R5 again, in the other
+  tenant, for exactly the same reason: phases 1–3 ran locally as Owner, so no permission the
+  CI identity holds was ever tested.
