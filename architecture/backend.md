@@ -1074,7 +1074,6 @@ All workflow files use the `ci_` prefix for consistency. Naming pattern: `ci_<de
 | `ci_app_deployment.yml` | sentinel-deployment | Build → Deploy → Verify → Record deploy in PostgreSQL → Report to Datadog. Deploys one of the 30 scenario branches (§sentinel-deployment §4) |
 | `ci_infra_dry.yml` | sentinel-infra | Terraform validate + plan (dry run, never applies) |
 | `ci_infra.yml` | sentinel-infra | Terraform apply (merge to main only) |
-| `ci_destroy_infra.yml` | sentinel-infra | Manual full teardown — `terraform destroy` + `az group delete` (§sentinel-infra §7.3) |
 | `ci_runners.yml` | sentinel-infra | Build + push CI runner images to ACR |
 
 **Workflow `name:` field:** `[repo] scope — description`
@@ -1315,9 +1314,9 @@ jobs:
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: Backend up (node pool 0→1, replicas 0→1, wait /ready, resolve URL)
         id: up
         uses: ./.github/actions/backend-up     # ~3-7 min cold, no-op if warm
@@ -1339,9 +1338,9 @@ jobs:
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: Query service metadata from PostgreSQL
         id: fetch
         run: |
@@ -1371,9 +1370,9 @@ jobs:
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: Fetch recent error logs from Datadog
         id: fetch
         run: |
@@ -1399,9 +1398,9 @@ jobs:
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: POST enriched payload to backend and poll for result
         id: run
         run: |
@@ -1499,9 +1498,9 @@ jobs:
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: Backend down (replicas → 0, node pool → 0)
         if: vars.SENTINEL_KEEP_WARM != 'true'
         uses: ./.github/actions/backend-down

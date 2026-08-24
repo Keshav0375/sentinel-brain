@@ -23,7 +23,8 @@ destroy` tears it down. Post-apply: §10 steps 6 (populate KV runtime secrets), 
 ci-runner), 10 (`alembic upgrade head` — backend task 1.3).
 
 ## Prerequisites
-- [ ] All module tasks `done-pending-review`. [ ] task 1.2 state, task 1.3 OIDC. [ ] ⛔ B1–B9 for a real end-to-end apply.
+- [x] All 7 module tasks **verified** (phases 2-3). [x] task 1.2 state, task 1.3 OIDC. [x] B1-B3 closed.
+- Note: B4-B8 (secret VALUES) do **not** gate this task — the vault is empty by design and Terraform never seeds it. B9 gates 4.1 only.
 
 ## Acceptance Criteria
 - [ ] `terraform validate` + `plan` for the whole stack is clean and ordered (no cycle).
@@ -33,7 +34,7 @@ ci-runner), 10 (`alembic upgrade head` — backend task 1.3).
 
 ## Tests
 - **Validate:** full `terraform validate`, tflint, tfsec, gitleaks on the whole repo.
-- **Integration (⛔ B1–B9):** clean apply; smoke each resource (`az acr show`, `psql`, `kubectl get nodes`, app URL, `az keyvault secret list`, fire Event Grid → dispatch).
+- **Integration:** clean apply; smoke each resource (`az acr show`, `psql`, `kubectl get nodes`, app URL, `az keyvault secret list`, fire Event Grid → dispatch).
 - **Quality gate:** `--repo infra`.
 
 ## How to Verify (phase gate — this is the big one for Category 1)
@@ -45,4 +46,4 @@ ci-runner), 10 (`alembic upgrade head` — backend task 1.3).
 _not yet implemented_
 
 ## BLOCKED
-_Full apply ⛔ B1–B9. Wiring + validate/plan writable now (offline validate)._
+_None. B4-B8 are secret values the vault does not need; B9 gates 4.1 only._

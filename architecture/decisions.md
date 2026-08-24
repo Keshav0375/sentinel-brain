@@ -16,6 +16,70 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-08-24: Phase 4 — four pre-build decisions (infra CI)
+
+Both reviewers halted phase 4 before a line was written: the specs and `infra.md` contradicted
+each other, and each other's corrections, in ten places. Six were stale text with one correct
+answer. These four were real, and the owner decided them.
+
+**1. `quality_gate.py` does NOT run in infra CI. → Terraform-only workflows.**
+The gate lives in `Sentinel/scripts/`; the workflows run in `Sentinel-infra`. The architecture
+never said how it crosses. Three options were live: check out `Sentinel` as a second repo (all
+three repos are **public**, so the default `GITHUB_TOKEN` suffices — no PAT, no B9), vendor a
+copy, or drop it. **Chosen: drop it.** Infra CI runs `fmt -check` / `init` / `validate` /
+`plan` / `apply` and nothing else.
+
+⚠️ **Accepted cost, stated plainly: `tflint`, `shellcheck` and `gitleaks` never run on an infra
+PR.** The gate becomes a pre-commit discipline enforced by the human, not by CI. A commit that
+leaks a credential or ships a broken shell script *can* merge if the local run is skipped. This
+is the one place in Sentinel where "green" is not machine-verified. Mitigating facts: infra has
+no application code, the tflint findings so far have been dead-code hygiene rather than
+correctness, and `terraform validate` + `plan` — the checks that actually catch a broken infra
+change — do run. The owner chose the lower coupling over the coverage; recorded so the
+trade-off stays visible rather than being discovered later as an oversight.
+
+**2. Identity pointers are GitHub *variables*, not secrets.**
+`§5.2/§5.3` pushed `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID` as secrets;
+`§5.4` and `§4.4` called them variables; `backend.md §9` read `${{ secrets.AZURE_* }}`. Under
+OIDC **there is no secret** — a client id is a public identifier and the entire trust decision
+is the federated-credential subject. Masking them costs real debuggability: a failed
+`azure/login` prints `AADSTS700213 … subject ***` instead of the string that mismatched, which
+is the only useful part of the message. **Chosen: variables.** `backend.md §9` is amended to
+`vars.AZURE_*` — free now, since no backend workflow exists yet; it would not have been later.
+`ACR_USERNAME` / `ACR_PASSWORD` stay **secrets** — those are real credentials.
+
+**3. `ci_infra_dry.yml` splits by whether a job needs Azure.**
+`§7.1` triggered on `push: ['**']`, but `§4.2` declares federated subjects only for
+`ref:refs/heads/main` and `pull_request`. Every push to a `dev/*` branch would have died at
+`azure/login` — including every branch of this build. Azure subjects are exact strings with no
+wildcard, so covering `dev/*` would mean one credential per branch (limit 20) or preview
+flexible FICs, *and* would hand Azure access to every dev branch. **Chosen: split the existing
+`run-validate` / `run-plan` jobs by credential need.** `run-validate` (`fmt`,
+`init -backend=false`, `validate`) touches no Azure and runs on every push; `run-plan`
+authenticates and is gated to `pull_request` + `push main`, exactly the subjects that exist.
+The job split `§7.1` already described now has a reason to exist.
+
+**4. Task 4.1 also pushes the identity-tenant pointers.**
+`§4.5` requires the backend repo to perform a *second* `azure/login` as `sentinel-gha-client`
+(identity tenant, `allow-no-subscriptions`) to mint the backend-API token — but `§5` pushed
+that identity nowhere, so it was unreachable from `Sentinel`. Distribution of cross-repo config
+is precisely what 4.1 exists for; deferring it to backend 5.6 would mean a value hand-set in
+the GitHub UI, untracked, which is the exact failure mode this task prevents. **Chosen: add
+`AZURE_IDENTITY_TENANT_ID`, `AZURE_GHA_CLIENT_ID` and `SENTINEL_API_AUDIENCE` to the `Sentinel`
+push.**
+
+**`SENTINEL_API_AUDIENCE` value settled:** `api://<identity-tenant-id>/sentinel-backend`. The
+bare `api://sentinel-backend` in `§5.4`/`§4.4` prose is unbuildable — new Entra tenants reject
+it with `InvalidUniqueTenantIdentifierAsPerAppPolicy` (found live 2026-08-23). The live
+`identity.tf` form is authoritative; the prose is corrected.
+
+**Also corrected as stale, no decision needed:** task 4.1's `azuread_application.sentinel_gha`
+(deleted by rev-9 — the CI identity is `azurerm_user_assigned_identity.sentinel_gha`); task
+4.3's four-workflow body and `backend.md §9`'s workflow table (R6 removed `ci_destroy_infra`);
+`§7.1`/`§7.2` missing the `identity_client_id` / `identity_use_oidc` vars `§9` makes mandatory;
+`§8.1`'s claim that `ARM_*` "arrive from the workflow" when no workflow set them; task 4.4's
+"wire every module" (all seven were wired in phases 2–3); `build-runners.yml` → `ci_runners.yml`.
+
 ### 2026-08-23: phase-3 build — four more constraints Azure taught us live
 
 **1. Y1 and F1 Linux plans cannot share a resource group.** The F1 plan claimed

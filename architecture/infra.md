@@ -219,7 +219,7 @@ resource "azurerm_container_registry" "sentinel" {
 |-------|---------|----------|
 | `sentinel-backend:sha-X` | Backend API container (deployed to AKS — immutable tag pinned by the Deployment) | ci_backend_deployment.yml (sentinel repo) |
 | `sentinel-backend:stable` | Bookmark tag for the last fully validated image (humans/debugging only — nothing pulls it at runtime) | ci_backend_deployment.yml |
-| `ci-runner:latest` | CI runner with Python 3.12 + dev tools | build-runners.yml (this repo) |
+| `ci-runner:latest` | CI runner with Python 3.12 + dev tools | ci_runners.yml (this repo) |
 
 ### 3.2 PostgreSQL Module
 
@@ -1267,65 +1267,111 @@ provider "github" {
 }
 ```
 
-### 5.2 Secrets pushed to sentinel repo
+### 5.2 What the infra apply pushes to the sentinel repo
+
+> ⚠ **Corrected 2026-08-24 (decisions.md, phase-4 decision 2).** This section used to push all
+> six values as `github_actions_secret`, contradicting §5.4, §7 and §9, which all treat the
+> identity pointers as repo **variables**. Under OIDC there is no secret to protect — a client
+> id is a public identifier and the trust decision is entirely the federated-credential
+> subject. Masking them costs real debuggability: a failed `azure/login` prints
+> `AADSTS700213 ... subject ***` instead of the string that actually mismatched.
+>
+> Two further corrections: the ACR values come from **`module.acr`**, not a root-level
+> `azurerm_container_registry` (phase 2 made ACR a module); and the identity-tenant caller that
+> §4.5 requires was pushed nowhere at all, so the backend repo could not reach it.
+
+**Secrets — real credentials only:**
 
 ```hcl
 resource "github_actions_secret" "sentinel_acr_login_server" {
   repository      = "Sentinel"
   secret_name     = "ACR_LOGIN_SERVER"
-  plaintext_value = azurerm_container_registry.sentinel.login_server
+  plaintext_value = module.acr.acr_login_server
 }
 
 resource "github_actions_secret" "sentinel_acr_username" {
   repository      = "Sentinel"
   secret_name     = "ACR_USERNAME"
-  plaintext_value = azurerm_container_registry.sentinel.admin_username
+  plaintext_value = module.acr.acr_admin_username
 }
 
 resource "github_actions_secret" "sentinel_acr_password" {
   repository      = "Sentinel"
   secret_name     = "ACR_PASSWORD"
-  plaintext_value = azurerm_container_registry.sentinel.admin_password
-}
-
-resource "github_actions_secret" "sentinel_azure_client_id" {
-  repository      = "Sentinel"
-  secret_name     = "AZURE_CLIENT_ID"
-  plaintext_value = azurerm_user_assigned_identity.sentinel_gha.client_id
-}
-
-resource "github_actions_secret" "sentinel_azure_tenant_id" {
-  repository      = "Sentinel"
-  secret_name     = "AZURE_TENANT_ID"
-  plaintext_value = data.azurerm_client_config.current.tenant_id
-}
-
-resource "github_actions_secret" "sentinel_azure_subscription_id" {
-  repository      = "Sentinel"
-  secret_name     = "AZURE_SUBSCRIPTION_ID"
-  plaintext_value = data.azurerm_client_config.current.subscription_id
+  plaintext_value = module.acr.acr_admin_password
 }
 ```
 
-### 5.3 Secrets pushed to sentinel-deployment repo
+**Variables — public identifiers:**
 
 ```hcl
-resource "github_actions_secret" "deployment_azure_client_id" {
-  repository      = "Sentinel-deployment"
-  secret_name     = "AZURE_CLIENT_ID"
-  plaintext_value = azurerm_user_assigned_identity.sentinel_gha.client_id
+resource "github_actions_variable" "sentinel_azure_client_id" {
+  repository    = "Sentinel"
+  variable_name = "AZURE_CLIENT_ID"
+  value         = azurerm_user_assigned_identity.sentinel_gha.client_id
 }
 
-resource "github_actions_secret" "deployment_azure_tenant_id" {
-  repository      = "Sentinel-deployment"
-  secret_name     = "AZURE_TENANT_ID"
-  plaintext_value = data.azurerm_client_config.current.tenant_id
+resource "github_actions_variable" "sentinel_azure_tenant_id" {
+  repository    = "Sentinel"
+  variable_name = "AZURE_TENANT_ID"
+  value         = data.azurerm_client_config.current.tenant_id
 }
 
-resource "github_actions_secret" "deployment_azure_subscription_id" {
-  repository      = "Sentinel-deployment"
-  secret_name     = "AZURE_SUBSCRIPTION_ID"
-  plaintext_value = data.azurerm_client_config.current.subscription_id
+resource "github_actions_variable" "sentinel_azure_subscription_id" {
+  repository    = "Sentinel"
+  variable_name = "AZURE_SUBSCRIPTION_ID"
+  value         = data.azurerm_client_config.current.subscription_id
+}
+
+# --- the identity tenant (R4) -------------------------------------------------
+# The backend workflows perform a SECOND azure/login as sentinel-gha-client, in
+# the identity tenant with allow-no-subscriptions, to mint the backend-API token
+# (SS4.5). Without these three the caller identity is unreachable from the
+# Sentinel repo and that login cannot be written at all.
+
+resource "github_actions_variable" "sentinel_identity_tenant_id" {
+  repository    = "Sentinel"
+  variable_name = "AZURE_IDENTITY_TENANT_ID"
+  value         = var.identity_tenant_id
+}
+
+resource "github_actions_variable" "sentinel_gha_client_id" {
+  repository    = "Sentinel"
+  variable_name = "AZURE_GHA_CLIENT_ID"
+  value         = azuread_application.sentinel_gha_client.client_id
+}
+
+# api://<identity-tenant-id>/sentinel-backend -- NOT the bare api://sentinel-backend
+# that SS5.4 prose used to state. New Entra tenants reject the bare form with
+# InvalidUniqueTenantIdentifierAsPerAppPolicy (found live 2026-08-23).
+resource "github_actions_variable" "sentinel_api_audience" {
+  repository    = "Sentinel"
+  variable_name = "SENTINEL_API_AUDIENCE"
+  value         = tolist(azuread_application.sentinel_backend.identifier_uris)[0]
+}
+```
+
+### 5.3 What the infra apply pushes to the sentinel-deployment repo
+
+Identity pointers only — the deployment repo builds no image and needs no ACR credential.
+
+```hcl
+resource "github_actions_variable" "deployment_azure_client_id" {
+  repository    = "Sentinel-deployment"
+  variable_name = "AZURE_CLIENT_ID"
+  value         = azurerm_user_assigned_identity.sentinel_gha.client_id
+}
+
+resource "github_actions_variable" "deployment_azure_tenant_id" {
+  repository    = "Sentinel-deployment"
+  variable_name = "AZURE_TENANT_ID"
+  value         = data.azurerm_client_config.current.tenant_id
+}
+
+resource "github_actions_variable" "deployment_azure_subscription_id" {
+  repository    = "Sentinel-deployment"
+  variable_name = "AZURE_SUBSCRIPTION_ID"
+  value         = data.azurerm_client_config.current.subscription_id
 }
 ```
 
@@ -1391,7 +1437,7 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
 ### 6.2 Bootstrap: first build is manual
 
-The `build-runners.yml` workflow needs ACR credentials — but those come from
+The `ci_runners.yml` workflow needs ACR credentials — but those come from
 Terraform, which needs ACR to exist first. Sequence:
 
 1. `terraform apply` creates ACR
@@ -1401,7 +1447,7 @@ Terraform, which needs ACR to exist first. Sequence:
    docker build -f ci-images/ci-runner.Dockerfile -t sentinelacr0375.azurecr.io/ci-runner:latest .
    docker push sentinelacr0375.azurecr.io/ci-runner:latest
    ```
-3. After that, `build-runners.yml` handles all subsequent updates automatically
+3. After that, `ci_runners.yml` handles all subsequent updates automatically
 
 ### 6.3 `ci_runners.yml` — Build runner images on change
 
@@ -1848,7 +1894,7 @@ the Postgres Entra admin is now a principal set directly (§3.2).
 ### After bootstrap — ongoing
 
 - Push to main on sentinel-infra → `ci_infra.yml` runs `terraform apply`
-- Change `ci-images/` → `build-runners.yml` rebuilds runner image
+- Change `ci-images/` → `ci_runners.yml` rebuilds runner image
 - Terraform auto-distributes secrets to sentinel + sentinel-deployment repos
 - Runtime secrets updated via `az keyvault secret set` (no Terraform needed)
 
