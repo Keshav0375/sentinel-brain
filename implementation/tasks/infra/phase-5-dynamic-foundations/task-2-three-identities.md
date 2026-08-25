@@ -9,6 +9,66 @@
 | **Arch refs** | infra.md §4 (rewritten), decisions.md 2026-08-24 (supersedes R5, R6) |
 | **Depends on** | [[task-0-destroy-old-estate]] |
 
+## ⚠ RESOLVED 2026-08-25 — pre-build audit
+
+Six gaps, all mechanism rather than intent. Binding answers:
+
+**1. State access.** `gha-plan` **and** `gha-deploy` both need `Storage Blob Data Contributor` on
+the state account. The spec gave it only to `gha-plan`, which would 403 every `terraform init`
+under `gha-deploy` — the exact control-plane-vs-data-plane trap `oidc.tf` already documents.
+`gha-ops` needs **none**: pause/resume is pure `az` and never touches Terraform state.
+
+**2. AKS access is the CONTROL-plane role.** "AKS RBAC Cluster Admin" is a *data*-plane role and
+is inert unless the cluster enables Entra-integrated Kubernetes RBAC, which §3.7's cluster does
+not. Use **`Azure Kubernetes Service Cluster Admin Role`**, which returns the admin kubeconfig
+via `az aks get-credentials --admin` and works against local accounts. Noted as future
+hardening: enabling AAD-integrated RBAC would remove the static admin kubeconfig entirely.
+
+**3. `gha-ops` custom role — explicit actions, not wildcards.** `*/start/action` grants start on
+every provider in the subscription, which is not least privilege:
+
+```
+Microsoft.Resources/subscriptions/resourceGroups/read
+Microsoft.ContainerService/managedClusters/read
+Microsoft.ContainerService/managedClusters/start/action
+Microsoft.ContainerService/managedClusters/stop/action
+Microsoft.DBforPostgreSQL/flexibleServers/read
+Microsoft.DBforPostgreSQL/flexibleServers/start/action
+Microsoft.DBforPostgreSQL/flexibleServers/stop/action
+Microsoft.Web/sites/read
+Microsoft.Web/sites/start/action
+Microsoft.Web/sites/stop/action
+```
+
+Name `Sentinel Ops Start Stop`; `assignableScopes` = the subscription. **`NotActions` empty and
+no `*` anywhere** — that is the property the acceptance test checks.
+
+**4. Key Vault purge is already in subscription Contributor.** `Microsoft.KeyVault/locations/deletedVaults/purge/action`
+is not in Contributor's `NotActions`, so the separate grant the spec listed is redundant — drop
+it. (`Key Vault Contributor` *does* NotAction it, which is where the confusion came from.)
+⚠️ This must be **proven, not assumed**: the acceptance test purges a real vault as `gha-deploy`.
+The whole destroy->recreate cycle depends on it.
+
+**5. Federated subjects — the set is now closed.**
+
+| Identity | Subjects |
+|---|---|
+| `gha-plan` | `repo:Keshav0375/Sentinel-infra:pull_request`, `:environment:plan` |
+| `gha-deploy` | `:environment:production`, `:environment:destroy` |
+| `gha-ops` | `:environment:ops` |
+
+**`ref:refs/heads/main` is deliberately absent, and that changes behaviour: `apply` becomes
+dispatch-only.** Push-to-main auto-apply cannot survive multi-deployment — it has no way to know
+*which* deployment to apply. Every apply is now an explicit button press.
+
+The old `Sentinel:*` and `Sentinel-deployment:*` subjects are **dropped**. Nothing uses them yet
+(neither category has started), and re-adding them later scoped to those repos' actual needs is
+better than carrying three unused credentials on a subscription-scoped identity.
+
+**6. Identity-tenant FICs.** `sentinel-tf-identity` needs `:environment:plan|production|destroy`
+— **not** `ops`, because pause/resume never runs Terraform and so never touches the `azuread`
+provider.
+
 ## Spec
 Dynamic deployments create their own resource groups, and destroy must purge Key Vaults. Neither
 is possible with rights scoped to one resource group, so the CI identity gains **subscription

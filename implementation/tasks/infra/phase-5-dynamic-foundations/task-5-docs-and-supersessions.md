@@ -9,6 +9,21 @@
 | **Arch refs** | infra.md §2-§10, decisions.md |
 | **Depends on** | [[task-4-workspaces-and-remote-state]] |
 
+## ⚠ RESOLVED 2026-08-25 — pre-build audit
+
+Two additions to the supersession list, both consequences the original entry did not price in:
+
+- **`apply` becomes dispatch-only.** Dropping `ref:refs/heads/main` from every identity means no
+  push can apply. This is a deliberate consequence of multi-deployment, not an oversight — a push
+  cannot know which deployment it means. Record it beside the R5/R6 supersessions.
+- **`github-repo-config.tf` is deleted in 5.0**, so §5 (cross-repo distribution) describes
+  nothing that exists until phase 6 rebuilds it per-deployment. Mark §5 superseded rather than
+  leaving it as a description of live code.
+
+Also record the **per-deployment API identity** decision (owner, 2026-08-25) in §4.4: one backend
+app registration and one GHA client per deployment, with tenant-qualified identifier URIs, so a
+token minted for one deployment fails audience validation at another's backend.
+
 ## Spec
 The architecture describes a single static estate. After phase 5 that is false in enough places
 that leaving it would make it actively misleading — the failure mode this project has already

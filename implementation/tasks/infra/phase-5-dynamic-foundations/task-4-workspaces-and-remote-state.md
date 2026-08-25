@@ -9,6 +9,36 @@
 | **Arch refs** | infra.md §8 (rewritten) |
 | **Depends on** | [[task-3-platform-layer]] |
 
+## ⚠ RESOLVED 2026-08-25 — pre-build audit
+
+**The remote-state config in this spec was wrong and would have read a blob that does not
+exist.** `key = "env:/platform/sentinel.tfstate"` is the **S3** backend's workspace layout. The
+azurerm backend appends instead: a workspace's blob is `<key>env:<workspace>`. Use the data
+source's own `workspace` argument and leave `key` bare:
+
+```hcl
+data "terraform_remote_state" "platform" {
+  backend   = "azurerm"
+  workspace = "platform"
+  config = {
+    resource_group_name  = "rg-sentinel-tfstate"
+    storage_account_name = var.state_storage_account
+    container_name       = "tfstate"
+    key                  = "sentinel.tfstate"
+    use_azuread_auth     = true
+    use_oidc             = true
+  }
+}
+```
+
+**This task also owns the `count` rewrite it creates.** Gating modules on `var.layer` makes every
+module a list, so every reference becomes `module.X[0].y` — in `main.tf`, in `outputs.tf`, and in
+any cross-module wiring. No other task owned that, and leaving it implicit is how a phase ends
+with a `terraform validate` failure nobody scoped.
+
+**State account:** `rg-sentinel-tfstate` / `stsentineltf<uid6>`, `uid6 = substr(sha1(subscription_id), 0, 6)`
+— fixed in task 5.0, repeated here because this file previously named it differently.
+
 ## Spec
 How the two layers find each other without sharing a state file.
 

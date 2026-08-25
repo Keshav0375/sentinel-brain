@@ -9,6 +9,45 @@
 | **Arch refs** | infra.md §2 (rewritten), decisions.md 2026-08-24 |
 | **Depends on** | [[task-0-destroy-old-estate]] |
 
+## ⚠ RESOLVED 2026-08-25 — pre-build audit
+
+**The Key Vault budget is `len(deployment) + len(environment) <= 15`, not `len(deployment) <= 8`
+alone.** `kv-`(3) + `-`(1) + `-`(1) + `uid`(4) = 9 fixed characters against a 24-char cap. A
+deployment of 8 holds only while the environment is <= 7. Implement the *sum* rule in
+`validation`; the 8-char cap is a consequence, not the rule.
+
+**Location needs an abbreviation map.** `rg-<d>-<env>-<loc>` uses `cc`, which implies a mapping
+that does not exist. Add one to the naming module, with a fallback that fails loudly rather than
+silently emitting a 13-character region name:
+
+```hcl
+locals {
+  loc_abbrev = { canadacentral = "cc", canadaeast = "ce", eastus = "eus", westus2 = "wus2" }
+  loc = lookup(local.loc_abbrev, var.location, null)   # null -> precondition failure
+}
+```
+
+**The platform layer is `deployment = "sentinel"`, `environment = "plat"`** (12 chars, inside the
+budget). `platform` as an environment is 16 with `sentinel` and breaks the rule the same module
+enforces.
+
+**Per-deployment API identity (owner decision, 2026-08-25).** Each deployment gets its own
+backend API app registration, so a token minted for one deployment is rejected by another's
+backend on audience mismatch — the API layer isolates the same way the namespaces do. Extend the
+naming table:
+
+| Resource | Pattern | Constraint |
+|---|---|---|
+| backend API app | `sentinel-backend-<d>-<env>` | display name, tenant-unique |
+| API identifier URI | `api://<identity-tenant-id>/sentinel-backend-<d>-<env>` | **must be tenant-qualified** — new tenants reject the bare form (`InvalidUniqueTenantIdentifierAsPerAppPolicy`) |
+| GHA client app | `sentinel-gha-client-<d>-<env>` | its federated subject must be per-deployment too, or A's client mints B's token |
+
+The apps themselves are built in phase 6; 5.1 only owns the names, because 5.2 writes federated
+credentials that must agree with them.
+
+**`aks_dns_prefix` was missing from the table** — `aks-<d>-<env>`, 1-54 chars, alnum + `-`,
+no `--`.
+
 ## Spec
 Two pieces of machinery every later task depends on.
 

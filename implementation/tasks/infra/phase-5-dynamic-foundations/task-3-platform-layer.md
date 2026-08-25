@@ -9,6 +9,21 @@
 | **Arch refs** | infra.md §3 (rewritten), decisions.md 2026-08-24 |
 | **Depends on** | [[task-1-config-and-naming]], [[task-2-three-identities]] |
 
+## ⚠ RESOLVED 2026-08-25 — pre-build audit
+
+**Platform names come from `modules/naming` like everything else** — the spec's illustrative
+names dropped the `uid` the naming table mandates. Binding: `deployment = "sentinel"`,
+`environment = "plat"` (12 chars, inside the Key Vault budget that `platform` at 16 would break).
+
+```
+rg-sentinel-plat-cc          acrsentinelplat<uid>
+aks-sentinel-plat            psql-sentinel-plat-<uid>
+```
+
+**The platform layer has no Key Vault and no storage account** — vaults and Functions storage are
+per-deployment. So the two tightest 24-char limits are inert here; the naming module still emits
+and validates them, which is what keeps the rule honest rather than conditional.
+
 ## Spec
 The resources every deployment shares, in their own resource group and their own Terraform
 workspace.
