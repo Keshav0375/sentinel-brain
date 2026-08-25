@@ -12,34 +12,42 @@
 | Field | Value |
 |-------|-------|
 | **Active category** | infra — **in progress** |
-| **Active phase** | 5 — Dynamic Foundations |
+| **Active phase** | 6 — Dynamic Deployments & Workflows |
 | **Active branch** | `dev/infra-phase-4-wiring-and-ci` |
-| **Active PR** | [Sentinel-infra#7](https://github.com/Keshav0375/Sentinel-infra/pull/7) → `main` — awaiting phase gate |
+| **Active PR** | _none_ |
 | **Current task** | _phase 4 code-complete; both reviews addressed_ — PR #4 awaiting gate |
-| **Tasks verified** | 16 / 72 |
-| **Phases merged** | 4 / 18 |
+| **Tasks verified** | 22 / 72 |
+| **Phases merged** | 5 / 18 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
 
-**Close the infra phase-5 gate**, then phase 6 (deployment layer + workflows).
+**Phase 6 — Dynamic Deployments & Workflows.** The deployment layer, namespaces, preflight, and
+the workflows that make create / destroy / pause one button press each.
 
-All six tasks `done-pending-review`. Platform applied and converged (`No changes`);
-the deployment/platform state isolation is proven, not asserted — a deployment
-workspace's `plan -destroy` returns "No changes. No objects need to be destroyed"
-while still reading the platform's outputs through `terraform_remote_state`.
+Phase 5 merged (`7849310`). The platform is live and idled. Both properties the phase existed to
+establish are proven rather than asserted: a deployment workspace's `plan -destroy` returns
+"No changes. No objects need to be destroyed" while still reading platform outputs through
+`terraform_remote_state`, and `gha-plan` holds `*/read` plus two blob reads with no write action
+anywhere in the subscription.
 
-**Two owner actions before phase 6 can go green:**
-- ⛔ **Merge [Sentinel#18](https://github.com/Keshav0375/Sentinel/pull/18).** Until then `main`'s
-  infra gate is 6 checks, not 11 — every "9 ran" reported during phase 5 came from that
-  unmerged branch sitting in the working tree.
-- ⛔ **Identity-tenant credentials** — `sentinel-tf-identity` needs
-  `environment:plan|production|destroy`. Interactive cross-tenant login; BOOTSTRAP step 4.
+**Owner actions still open:**
+- ⛔ **Merge [Sentinel#18](https://github.com/Keshav0375/Sentinel/pull/18).** `main`'s infra gate is
+  6 checks; with #18 it is 11. Every gate number reported during phase 5 came from that unmerged
+  branch being checked out locally.
+- ⚠️ **GitHub environments `destroy` and `ops` do not exist** — only `plan` and `production` do.
+  Phase 6's destroy and pause workflows need them, and a required reviewer belongs on `destroy`.
+- ✅ **Identity-tenant credentials are NOT needed yet** — phase 5 removed the `azuread` provider.
+  They return with the per-deployment app registrations in 6.1.
 
-⚠️ Infra CI workflows still describe the pre-phase-5 model and will fail until 6.6/6.7
-rewrite them. Expected, not a regression.
+**Known limitation carried into phase 6.** The PR plan runs `-refresh=false`, because `Reader`
+cannot call `listCredentials` / `listClusterUserCredential` — which the azurerm provider needs
+to refresh ACR and AKS, since `admin_password` and `kube_config` are resource attributes.
+Granting those two was rejected: both return **secrets** to the one identity a pull request can
+trigger. Consequence, stated rather than hidden: the PR plan does not show drift introduced
+through the portal. The apply, under `gha-deploy`, does.
 
 ## Phase Gate Ledger
 
@@ -48,6 +56,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-08-25 | infra | 5 — Dynamic Foundations | `dev/infra-phase-5-dynamic-foundations` | [#7](https://github.com/Keshav0375/Sentinel-infra/pull/7) | Keshav | Owner answered **Approve & merge**; merged `7849310`. Old estate destroyed (45 resources) and rebuilt as a two-layer platform. Proven live: a deployment workspace plans ZERO Azure resources and its `plan -destroy` reports nothing to destroy, while still reading platform outputs via `terraform_remote_state`; `gha-plan` holds `*/read` + 2 blob reads only. The merge was initially BLOCKED by the branch ruleset — the workflows still described the pre-phase-5 contract, fixed in-phase rather than deferred, which surfaced that Reader cannot refresh ACR/AKS. Superseded R5, R6, C1 and one-cluster-per-estate. |
 | 2026-08-24 | infra | 4 — Cross-Repo Wiring & CI | `dev/infra-phase-4-wiring-and-ci` | [#4](https://github.com/Keshav0375/Sentinel-infra/pull/4) | Keshav | Owner answered **Approve & merge** at the gate; PR #4 merged `09b2510`→`f2aa5da`. **The identity plane was proven live**: on its first-ever CI run Terraform refreshed the whole estate under the `sentinel-gha` UAMI, exercising the OIDC round trip, R5's RBAC grant and the state blob — none of which phases 1-3 had tested, since all three applied locally as Owner. `ci_runners` built and pushed the image; the first automated `apply` succeeded. Follow-ups landed as PR #5 (ten review fixes that never reached disk, the `environment:production` credential bootstrap, and a DB start-guard) and PR #6 (workflow renames, sha- image versioning, manual dispatch). Closed B16. **Ledger row written 2026-08-25** — the sign-off happened at merge time; recording it lagged. |
 | 2026-08-24 | infra | 3 — Compute & Networking | `dev/infra-phase-3-compute-modules` | [#3](https://github.com/Keshav0375/Sentinel-infra/pull/3) | Keshav | Owner ran the checklist: plan **No changes** (0 warnings), 14/14 handler tests, gate PASS (8 ran — now incl. py-unittest + ruff), AKS Stopped, bridge function registered, rotation subscription Succeeded. Both reviewers' blockers fixed on-branch (Datadog tags shape, client_payload 10-prop cap, zip redeploy, KV-literal guard, func-rg grant). Closed B12. |
 | 2026-08-23 | infra | 2 — Core Resource Modules | `dev/infra-phase-2-core-modules` | [#2](https://github.com/Keshav0375/Sentinel-infra/pull/2) | Keshav | Owner ran the checklist personally: ACR Standard, Postgres AAD-only, KV RBAC + Officer/User split, empty vault by design, gate PASS (6 ran). Live tests: Entra-token psql login; KV write→read→purge. Resolved R6; both reviewers' blockers fixed on-branch. |

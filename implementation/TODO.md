@@ -13,7 +13,7 @@
 > **Status:** ⬜ not-started · 🔵 in-progress · ⛔ blocked · 🟡 done-pending-review · ✅ verified
 > **Legend:** 🔒 = phase locked until the previous phase gate is signed off.
 
-**Overall:** 16 / 72 tasks verified · 4 / 18 phases merged.
+**Overall:** 22 / 72 tasks verified · 5 / 18 phases merged.
 > **Phases 5-6 added 2026-08-24** — the static single-estate model is replaced by a dynamic
 > multi-deployment platform: one shared cluster with a namespace per deployment, three CI
 > identities, and workflows that create, destroy and pause deployments from inputs alone.
@@ -59,17 +59,17 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 | 4.3 | Infra workflows (dry / apply / runners — **3, no destroy**: R6) | [task-3](tasks/infra/phase-4-wiring-and-ci/task-3-infra-workflows.md) | ✅ |
 | 4.4 | Root wiring + outputs + end-to-end apply | [task-4](tasks/infra/phase-4-wiring-and-ci/task-4-root-wiring-and-apply.md) | ✅ |
 
-### Phase 5 — Dynamic Foundations  ·  branch `dev/infra-phase-5-dynamic-foundations`  ·  Gate: ⬜  ·  **in progress**
+### Phase 5 — Dynamic Foundations  ·  branch `dev/infra-phase-5-dynamic-foundations`  ·  Gate: ✅ 2026-08-25
 | # | Task | File | Status |
 |---|------|------|--------|
-| 5.0 | **Destroy the old estate** — fresh start, no migration | [task-0](tasks/infra/phase-5-dynamic-foundations/task-0-destroy-old-estate.md) | 🟡 |
-| 5.1 | Deployment config YAML + `modules/naming` (CAF + uid) | [task-1](tasks/infra/phase-5-dynamic-foundations/task-1-config-and-naming.md) | 🟡 |
-| 5.2 | **Three identities** — `gha-plan` / `gha-deploy` / `gha-ops` + environments | [task-2](tasks/infra/phase-5-dynamic-foundations/task-2-three-identities.md) | 🟡 |
-| 5.3 | Platform layer — shared ACR, **one** AKS, shared Postgres | [task-3](tasks/infra/phase-5-dynamic-foundations/task-3-platform-layer.md) | 🟡 |
-| 5.4 | Workspaces + `terraform_remote_state` wiring | [task-4](tasks/infra/phase-5-dynamic-foundations/task-4-workspaces-and-remote-state.md) | 🟡 |
-| 5.5 | Rewrite `infra.md`; supersede R5, R6, C1 | [task-5](tasks/infra/phase-5-dynamic-foundations/task-5-docs-and-supersessions.md) | 🟡 |
+| 5.0 | **Destroy the old estate** — fresh start, no migration | [task-0](tasks/infra/phase-5-dynamic-foundations/task-0-destroy-old-estate.md) | ✅ |
+| 5.1 | Deployment config YAML + `modules/naming` (CAF + uid) | [task-1](tasks/infra/phase-5-dynamic-foundations/task-1-config-and-naming.md) | ✅ |
+| 5.2 | **Three identities** — `gha-plan` / `gha-deploy` / `gha-ops` + environments | [task-2](tasks/infra/phase-5-dynamic-foundations/task-2-three-identities.md) | ✅ |
+| 5.3 | Platform layer — shared ACR, **one** AKS, shared Postgres | [task-3](tasks/infra/phase-5-dynamic-foundations/task-3-platform-layer.md) | ✅ |
+| 5.4 | Workspaces + `terraform_remote_state` wiring | [task-4](tasks/infra/phase-5-dynamic-foundations/task-4-workspaces-and-remote-state.md) | ✅ |
+| 5.5 | Rewrite `infra.md`; supersede R5, R6, C1 | [task-5](tasks/infra/phase-5-dynamic-foundations/task-5-docs-and-supersessions.md) | ✅ |
 
-### Phase 6 — Dynamic Deployments & Workflows  ·  branch `dev/infra-phase-6-dynamic-deployments`  ·  Gate: 🔒
+### Phase 6 — Dynamic Deployments & Workflows  ·  branch `dev/infra-phase-6-dynamic-deployments`  ·  Gate: ⬜
 | # | Task | File | Status |
 |---|------|------|--------|
 | 6.1 | Per-deployment layer — RG, KV, Functions, App Service, Event Grid | [task-1](tasks/infra/phase-6-dynamic-deployments/task-1-deployment-layer.md) | ⬜ |

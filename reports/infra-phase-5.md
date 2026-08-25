@@ -1,7 +1,7 @@
 # infra phase 5 — Dynamic Foundations
 
 **Status:** ✅ verified — owner approved and merged 2026-08-25 (`7849310`)
-**Date:** 2026-08-25 · **Tasks:** 5.0–5.5 · **Gate:** ⬜ awaiting owner
+**Date:** 2026-08-25 · **Tasks:** 5.0–5.5 · **Gate:** ✅ signed off
 
 The static single-estate model is gone. What replaces it is a shared platform plus deployments
 that can be created and destroyed independently of it.
@@ -132,9 +132,11 @@ create/destroy/pause one button press each.
 | | | |
 |---|---|---|
 | ⛔ | **[Sentinel#18](https://github.com/Keshav0375/Sentinel/pull/18) must merge** | until it does, `main`'s gate is 6 checks, not 11 |
-| ⛔ | **Identity-tenant credentials** | `sentinel-tf-identity` needs `environment:plan\|production\|destroy`; interactive cross-tenant login, BOOTSTRAP step 4 |
+| ✅ | ~~Identity-tenant credentials~~ | **Not needed yet** — phase 5 removed the `azuread` provider. They return with the per-deployment app registrations in 6.1. |
 | ⚠️ | **`gha-plan` cannot-apply is proven by inspection** | a failing apply needs running *as* it — a phase-6 CI test. Inspection is reported as inspection. |
-| ⚠️ | **Infra CI workflows still describe the old model** | they will fail until phase 6 rewrites them |
+| ✅ | ~~Infra CI workflows describe the old model~~ | **Fixed in-phase.** The branch ruleset blocked the merge on a failing `Run Plan`, and a phase that cannot merge is not done. |
+| ⚠️ | **GitHub environments `destroy` and `ops` missing** | only `plan` and `production` exist; phase 6's destroy and pause workflows need them |
+| ⚠️ | **PR plan runs `-refresh=false`** | `Reader` cannot call `listCredentials` / `listClusterUserCredential`. Granting them was rejected — both return secrets to a PR-reachable identity. The PR plan will not show portal drift; the apply will. |
 | ⛔ | B4–B8 | secret values; the vault is a deployment-layer resource and does not exist yet |
 
 ---
@@ -142,7 +144,7 @@ create/destroy/pause one button press each.
 ## See it working
 
 ```powershell
-git checkout dev/infra-phase-5-dynamic-foundations
+git checkout main
 
 python ../Sentinel/scripts/quality_gate.py --repo infra --path .    # expect 11 ran
 
