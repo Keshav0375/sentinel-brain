@@ -14,7 +14,7 @@
 | **Active category** | infra — **in progress** |
 | **Active phase** | 6 — Dynamic Deployments & Workflows |
 | **Active branch** | `dev/infra-phase-4-wiring-and-ci` |
-| **Active PR** | _none_ |
+| **Active PR** | [Sentinel-infra#8](https://github.com/Keshav0375/Sentinel-infra/pull/8) → `main` — CI green, awaiting phase gate |
 | **Current task** | _phase 4 code-complete; both reviews addressed_ — PR #4 awaiting gate |
 | **Tasks verified** | 22 / 72 |
 | **Phases merged** | 5 / 18 |
@@ -24,30 +24,22 @@
 
 ## Next Action
 
-**Phase 6 — Dynamic Deployments & Workflows.** The deployment layer, namespaces, preflight, and
-the workflows that make create / destroy / pause one button press each.
+**Close the infra phase-6 gate.** All 8 tasks `done-pending-review`; CI green
+(Validate + Preflight + Plan, `No changes`, plan posted to the PR).
 
-Phase 5 merged (`7849310`). The platform is live and idled. Both properties the phase existed to
-establish are proven rather than asserted: a deployment workspace's `plan -destroy` returns
-"No changes. No objects need to be destroyed" while still reading platform outputs through
-`terraform_remote_state`, and `gha-plan` holds `*/read` plus two blob reads with no write action
-anywhere in the subscription.
+Acceptance test passed live: create → destroy → recreate `demo1`, with the vault purged and
+the platform untouched.
 
-**Owner actions still open:**
-- ⛔ **Merge [Sentinel#18](https://github.com/Keshav0375/Sentinel/pull/18).** `main`'s infra gate is
-  6 checks; with #18 it is 11. Every gate number reported during phase 5 came from that unmerged
-  branch being checked out locally.
-- ⚠️ **GitHub environments `destroy` and `ops` do not exist** — only `plan` and `production` do.
-  Phase 6's destroy and pause workflows need them, and a required reviewer belongs on `destroy`.
-- ✅ **Identity-tenant credentials are NOT needed yet** — phase 5 removed the `azuread` provider.
-  They return with the per-deployment app registrations in 6.1.
+**Owner actions:**
+- ⛔ **Merge [Sentinel#18](https://github.com/Keshav0375/Sentinel/pull/18)** — `main`'s gate is 6
+  checks; with #18 it is 11.
+- ⚠️ **Pause and Destroy cannot be tested until PR #8 merges.** A `workflow_dispatch` workflow
+  must exist on the DEFAULT branch before GitHub will dispatch it.
 
-**Known limitation carried into phase 6.** The PR plan runs `-refresh=false`, because `Reader`
-cannot call `listCredentials` / `listClusterUserCredential` — which the azurerm provider needs
-to refresh ACR and AKS, since `admin_password` and `kube_config` are resource attributes.
-Granting those two was rejected: both return **secrets** to the one identity a pull request can
-trigger. Consequence, stated rather than hidden: the PR plan does not show drift introduced
-through the portal. The apply, under `gha-deploy`, does.
+**Carried forward as known gaps:** `identity.tf` deleted (a declared provider is configured even
+with every resource at `count = 0`, so an unauthenticable `azuread` broke every plan);
+`gha-ops` cannot-delete proven by inspection only; namespaces never created, so the kubelogin
+path is unexercised.
 
 ## Phase Gate Ledger
 

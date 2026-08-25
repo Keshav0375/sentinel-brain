@@ -72,14 +72,14 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 ### Phase 6 — Dynamic Deployments & Workflows  ·  branch `dev/infra-phase-6-dynamic-deployments`  ·  Gate: ⬜
 | # | Task | File | Status |
 |---|------|------|--------|
-| 6.1 | Per-deployment layer — RG, KV, Functions, App Service, Event Grid | [task-1](tasks/infra/phase-6-dynamic-deployments/task-1-deployment-layer.md) | ⬜ |
-| 6.2 | **K8s namespace** + per-namespace workload identity | [task-2](tasks/infra/phase-6-dynamic-deployments/task-2-namespace-and-identity.md) | ⬜ |
-| 6.3 | Database `shared` \| `dedicated` | [task-3](tasks/infra/phase-6-dynamic-deployments/task-3-database-modes.md) | ⬜ |
-| 6.4 | Component toggles + dependency preconditions | [task-4](tasks/infra/phase-6-dynamic-deployments/task-4-toggles-and-preconditions.md) | ⬜ |
-| 6.5 | **Preflight** — quota, name availability, SKU, tenant tokens | [task-5](tasks/infra/phase-6-dynamic-deployments/task-5-preflight.md) | ⬜ |
-| 6.6 | Rebuild `Sentinel Infra — Validate & Plan` | [task-6](tasks/infra/phase-6-dynamic-deployments/task-6-validate-plan-workflow.md) | ⬜ |
-| 6.7 | Rebuild `Sentinel Infra — Deploy` (apply / **destroy**) | [task-7](tasks/infra/phase-6-dynamic-deployments/task-7-deploy-workflow.md) | ⬜ |
-| 6.8 | **New: `Sentinel — Pause / Resume`** | [task-8](tasks/infra/phase-6-dynamic-deployments/task-8-pause-resume-workflow.md) | ⬜ |
+| 6.1 | Per-deployment layer — RG, KV, Functions, App Service, Event Grid | [task-1](tasks/infra/phase-6-dynamic-deployments/task-1-deployment-layer.md) | 🟡 |
+| 6.2 | **K8s namespace** + per-namespace workload identity | [task-2](tasks/infra/phase-6-dynamic-deployments/task-2-namespace-and-identity.md) | 🟡 |
+| 6.3 | Database `shared` \| `dedicated` | [task-3](tasks/infra/phase-6-dynamic-deployments/task-3-database-modes.md) | 🟡 |
+| 6.4 | Component toggles + dependency preconditions | [task-4](tasks/infra/phase-6-dynamic-deployments/task-4-toggles-and-preconditions.md) | 🟡 |
+| 6.5 | **Preflight** — quota, name availability, SKU, tenant tokens | [task-5](tasks/infra/phase-6-dynamic-deployments/task-5-preflight.md) | 🟡 |
+| 6.6 | Rebuild `Sentinel Infra — Validate & Plan` | [task-6](tasks/infra/phase-6-dynamic-deployments/task-6-validate-plan-workflow.md) | 🟡 |
+| 6.7 | Rebuild `Sentinel Infra — Deploy` (apply / **destroy**) | [task-7](tasks/infra/phase-6-dynamic-deployments/task-7-deploy-workflow.md) | 🟡 |
+| 6.8 | **New: `Sentinel — Pause / Resume`** | [task-8](tasks/infra/phase-6-dynamic-deployments/task-8-pause-resume-workflow.md) | 🟡 |
 
 
 ---
