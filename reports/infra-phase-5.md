@@ -1,6 +1,6 @@
 # infra phase 5 — Dynamic Foundations
 
-**Status:** done-pending-review · PR [#7](https://github.com/Keshav0375/Sentinel-infra/pull/7) · branch `dev/infra-phase-5-dynamic-foundations`
+**Status:** ✅ verified — owner approved and merged 2026-08-25 (`7849310`)
 **Date:** 2026-08-25 · **Tasks:** 5.0–5.5 · **Gate:** ⬜ awaiting owner
 
 The static single-estate model is gone. What replaces it is a shared platform plus deployments
