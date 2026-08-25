@@ -9,6 +9,10 @@
 | **Arch refs** | infra.md §3 (rewritten) |
 | **Depends on** | [[task-4-workspaces-and-remote-state]] |
 
+
+> ⚠️ **Read [RESOLUTIONS.md](RESOLUTIONS.md) first.** These specs predate phase 5. Ten
+> conflicts were resolved before the build; that file overrides this one where they differ.
+
 ## Spec
 Everything a single deployment owns, in its own resource group and workspace.
 

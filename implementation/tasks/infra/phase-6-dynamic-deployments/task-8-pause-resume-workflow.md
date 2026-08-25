@@ -9,6 +9,10 @@
 | **Arch refs** | infra.md §7.4 (new) |
 | **Depends on** | [[task-2-three-identities]] |
 
+
+> ⚠️ **Read [RESOLUTIONS.md](RESOLUTIONS.md) first.** These specs predate phase 5. Ten
+> conflicts were resolved before the build; that file overrides this one where they differ.
+
 ## Spec
 New file `ci_pause.yml`. Stops everything that bills compute, without deleting anything.
 

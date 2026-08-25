@@ -9,6 +9,10 @@
 | **Arch refs** | infra.md §7.1 (rewritten) |
 | **Depends on** | [[task-5-preflight]] |
 
+
+> ⚠️ **Read [RESOLUTIONS.md](RESOLUTIONS.md) first.** These specs predate phase 5. Ten
+> conflicts were resolved before the build; that file overrides this one where they differ.
+
 ## Spec
 Rewrite `ci_infra_dry.yml`. `workflow_dispatch` caps at **10 inputs**, which is the constraint
 that shaped the whole config design: the form carries *shape and intent*, the YAML carries *size

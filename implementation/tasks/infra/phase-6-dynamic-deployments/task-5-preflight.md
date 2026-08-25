@@ -9,6 +9,10 @@
 | **Arch refs** | infra.md §7 (rewritten) |
 | **Depends on** | [[task-1-config-and-naming]] |
 
+
+> ⚠️ **Read [RESOLUTIONS.md](RESOLUTIONS.md) first.** These specs predate phase 5. Ten
+> conflicts were resolved before the build; that file overrides this one where they differ.
+
 ## Spec
 `terraform plan` proves auth works, state is readable, config is valid, and what would change.
 It **cannot** prove an apply will succeed. Every item below is a failure this project actually

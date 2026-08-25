@@ -9,6 +9,10 @@
 | **Arch refs** | infra.md §3.7, §4 (rewritten) |
 | **Depends on** | [[task-1-deployment-layer]] |
 
+
+> ⚠️ **Read [RESOLUTIONS.md](RESOLUTIONS.md) first.** These specs predate phase 5. Ten
+> conflicts were resolved before the build; that file overrides this one where they differ.
+
 ## Spec
 The deployment's slice of the shared cluster. Adds provider `hashicorp/kubernetes ~> 2.0`,
 authenticated from the AKS admin credential in the platform remote state.

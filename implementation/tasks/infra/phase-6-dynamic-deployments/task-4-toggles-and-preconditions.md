@@ -9,6 +9,10 @@
 | **Arch refs** | infra.md §2 (rewritten) |
 | **Depends on** | [[task-1-deployment-layer]] |
 
+
+> ⚠️ **Read [RESOLUTIONS.md](RESOLUTIONS.md) first.** These specs predate phase 5. Ten
+> conflicts were resolved before the build; that file overrides this one where they differ.
+
 ## Spec
 `components: [keyvault, database, functions, app_service, event_grid, namespace]` drives `count`
 on each module.

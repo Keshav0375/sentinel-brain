@@ -9,6 +9,10 @@
 | **Arch refs** | infra.md §7.2 (rewritten), decisions.md (supersedes R6) |
 | **Depends on** | [[task-6-validate-plan-workflow]] |
 
+
+> ⚠️ **Read [RESOLUTIONS.md](RESOLUTIONS.md) first.** These specs predate phase 5. Ten
+> conflicts were resolved before the build; that file overrides this one where they differ.
+
 ## Spec
 Rewrite `ci_infra.yml`. One workflow, both directions.
 
