@@ -12,9 +12,9 @@
 | Field | Value |
 |-------|-------|
 | **Active category** | infra — **in progress** |
-| **Active phase** | 5 — Dynamic Foundations (**specs written, not started**) |
+| **Active phase** | 5 — Dynamic Foundations |
 | **Active branch** | `dev/infra-phase-4-wiring-and-ci` |
-| **Active PR** | [Sentinel-infra#4](https://github.com/Keshav0375/Sentinel-infra/pull/4) → `main` — awaiting phase gate |
+| **Active PR** | [Sentinel-infra#7](https://github.com/Keshav0375/Sentinel-infra/pull/7) → `main` — awaiting phase gate |
 | **Current task** | _phase 4 code-complete; both reviews addressed_ — PR #4 awaiting gate |
 | **Tasks verified** | 16 / 72 |
 | **Phases merged** | 4 / 18 |
@@ -24,17 +24,22 @@
 
 ## Next Action
 
-**Phase 5 — Dynamic Foundations. Specs written 2026-08-24; build NOT started (owner: "files only for now").**
+**Close the infra phase-5 gate**, then phase 6 (deployment layer + workflows).
 
-Phases 5-6 replace the static single-estate model with a dynamic multi-deployment platform.
-Design settled and recorded in [decisions.md](../architecture/decisions.md) 2026-08-24; it
-supersedes **R5**, **R6**, **C1** and the one-cluster-per-estate assumption.
+All six tasks `done-pending-review`. Platform applied and converged (`No changes`);
+the deployment/platform state isolation is proven, not asserted — a deployment
+workspace's `plan -destroy` returns "No changes. No objects need to be destroyed"
+while still reading the platform's outputs through `terraform_remote_state`.
 
-- ⚠️ **Task 5.0 destroys the phase-1-to-4 estate.** Owner-approved, no migration. Nothing is
-  deployed into it, so this is the cheapest a rename will ever be. Survives: `sentinel-tf-identity`
-  and its 3 federated credentials.
-- Start order: 5.0 → 5.1 naming → 5.2 identities → 5.3 platform → 5.4 workspaces → 5.5 docs.
-- **B9 is no longer on the critical path** — the cross-repo push moves behind the new model.
+**Two owner actions before phase 6 can go green:**
+- ⛔ **Merge [Sentinel#18](https://github.com/Keshav0375/Sentinel/pull/18).** Until then `main`'s
+  infra gate is 6 checks, not 11 — every "9 ran" reported during phase 5 came from that
+  unmerged branch sitting in the working tree.
+- ⛔ **Identity-tenant credentials** — `sentinel-tf-identity` needs
+  `environment:plan|production|destroy`. Interactive cross-tenant login; BOOTSTRAP step 4.
+
+⚠️ Infra CI workflows still describe the pre-phase-5 model and will fail until 6.6/6.7
+rewrite them. Expected, not a regression.
 
 ## Phase Gate Ledger
 
