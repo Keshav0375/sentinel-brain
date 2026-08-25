@@ -1,5 +1,33 @@
 # sentinel-infra — Architecture Document
 
+> # ⚠️ Phase 5 replaced the model this document describes
+>
+> **Read [decisions.md](decisions.md) → "2026-08-24: Phases 5-6" before trusting any section
+> below.** Phase 5 (built 2026-08-25) replaced the single static estate with a two-layer dynamic
+> platform. Sections are marked individually, but the shape of the change is:
+>
+> | Was | Is |
+> |---|---|
+> | one estate, `sentinel-*-0375` names | **`modules/naming`** — CAF prefixes + a derived `uid`; deployment names cap at 8 chars |
+> | one `sentinel-gha` identity scoped to one RG | **three identities** — `gha-plan` / `gha-deploy` / `gha-ops`, subscription-scoped, separated by *reachability* not scope |
+> | resource groups bootstrap-created, read-only (C1) | **managed**, except `rg-sentinel-bootstrap` which holds what Terraform can never own |
+> | one cluster per estate (§3.7) | **one cluster, a namespace per deployment** — forced by a 6-vCPU regional quota |
+> | one state file | **workspaces** — `platform` plus one per deployment; a deployment's state contains no platform resource, so destroying it *cannot* touch the cluster |
+> | teardown is Owner-run and local (R6) | **CI destroys**, behind `environment: destroy` |
+> | ~20 root variables | **10**, plus `azure/config/deployment-config.yaml` — `workflow_dispatch` caps at 10 inputs |
+> | push to main applies | **apply is dispatch-only** — a push cannot know which deployment it means |
+>
+> **What still binds** — these are properties of Azure, not of the old model, and phase 5
+> carries every one of them forward: the ARM64 AKS SKU and why the alternatives fail (§3.7),
+> Entra-only Postgres with no password anywhere (§3.2), Key Vault RBAC mode and soft-delete
+> (§3.3), ACR **Standard** because the free grant covers Standard and Basic is a different
+> billable meter (§3.1), and the Y1/F1 Linux webspace conflict that forces a separate functions
+> resource group (§10).
+>
+> The operational runbook is **`Sentinel-infra/docs/BOOTSTRAP.md`**, rewritten for the new model
+> and the only teardown procedure that is current.
+
+
 > **↑ Deep dive of the [Architecture Index](README.md).** Start there for the whole
 > picture; this file is the authoritative detail for **infra + identity** concerns (index §4 map).
 
@@ -84,6 +112,8 @@ only — app manifests live in the sentinel repo (k8s/).
 ---
 
 ## 2. Terraform Module Structure
+
+> ⚠️ **Superseded (phase 5).** The root is now layer-split — `main.tf` (providers, config, naming), `platform.tf`, `deployment.tf`, `outputs.tf` — with `var.layer` gating modules by `count`. `oidc.tf` and `identity.tf` are gone; `modules/naming` is new. Two root directories were considered and rejected: two provider blocks and two lock files to keep in step, for one boolean's worth of separation.
 
 One module per Azure resource group concern. Flat structure — no nested modules.
 7 modules total. Beyond the modules, the root also declares the **identity plane**
@@ -846,6 +876,8 @@ redeploy.
 
 ## 4. Identity Plane — OIDC + Entra (Workload Identity Federation)
 
+> ⚠️ **Superseded (phase 5).** One identity became three. The dangerous rights are no longer made safe by *narrow scope* — they cannot be, once deployments create their own resource groups — but by being **unreachable**: `gha-deploy` federates only on `environment:*` subjects, and GitHub will not mint those for a `pull_request` event. §4.4's single backend app registration becomes one **per deployment**, so a token minted for one fails audience validation at another.
+
 All three repos authenticate to Azure via OIDC — no stored client secrets.
 GitHub proves identity via JWT, Azure trusts it via federated credentials.
 
@@ -1253,6 +1285,8 @@ audience-scoped tokens (Key Vault, PostgreSQL).
 ---
 
 ## 5. Cross-Repo Secret Distribution
+
+> ⚠️ **Superseded (phase 5).** `github-repo-config.tf` was deleted — its shape assumed one estate with hardcoded `repository = "Sentinel"` literals. Distribution returns per-deployment in phase 6. This also removed the last thing B9 was blocking.
 
 After `terraform apply`, the sentinel and sentinel-deployment repos need ACR
 credentials and other values as GitHub Actions secrets. Terraform pushes these
@@ -1695,6 +1729,8 @@ omission fails *later*, during the next apply, rather than immediately.
 
 ## 8. Terraform State
 
+> ⚠️ **Superseded (phase 5).** State lives in `rg-sentinel-bootstrap` / `stsentineltf<uid6>`, and workspaces separate the layers. Note the azurerm backend stores a workspace at `<key>env:<workspace>` — appending, not nesting. `env:/platform/...` is the **S3** backend's layout and reads a blob that does not exist.
+
 ### 8.1 Remote State (Azure Storage)
 
 ```hcl
@@ -1742,6 +1778,8 @@ Azure Storage provides native state locking via blob leases. No DynamoDB needed.
 
 ## 9. Required GitHub Variables & Secrets (sentinel-infra repo)
 
+> ⚠️ **Superseded (phase 5).** Most of these variables moved into `azure/config/deployment-config.yaml`. `AZURE_CLIENT_ID` became `AZURE_CLIENT_ID_PLAN` / `_DEPLOY` / `_OPS`.
+
 > **Read these as `${{ vars.X }}` or `${{ secrets.X }}` exactly as classified below.**
 > The split is real, not cosmetic: a value in the *variables* table is readable in logs
 > and forks by design. Every workflow in §7 must match this table — mixing them up is
@@ -1788,6 +1826,8 @@ the Postgres Entra admin is now a principal set directly (§3.2).
 ---
 
 ## 10. Prerequisites & Setup Checklist
+
+> ⚠️ **Superseded (phase 5).** The current runbook is `Sentinel-infra/docs/BOOTSTRAP.md`. Order is now: state → identities → GitHub config → identity-tenant credentials → platform → runner image → deployment → secrets.
 
 ### One-time Bootstrap (manual — run once, in order)
 
