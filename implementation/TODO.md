@@ -24,7 +24,7 @@
 
 ---
 
-## Category 1 — sentinel-infra  ·  `Keshav0375/Sentinel-infra`
+## Category 1 — sentinel-infra  ·  `Keshav0375/Sentinel-infra`  ·  ✅ **COMPLETE 2026-09-13**
 _Implement first — provisions the ground truth every other repo depends on._ · [Index](tasks/infra/README.md)
 
 ### Phase 1 — Foundations & Bootstrap  ·  branch `dev/infra-phase-1-foundations`  ·  Gate: ✅ 2026-08-15
@@ -69,17 +69,23 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 | 5.4 | Workspaces + `terraform_remote_state` wiring | [task-4](tasks/infra/phase-5-dynamic-foundations/task-4-workspaces-and-remote-state.md) | ✅ |
 | 5.5 | Rewrite `infra.md`; supersede R5, R6, C1 | [task-5](tasks/infra/phase-5-dynamic-foundations/task-5-docs-and-supersessions.md) | ✅ |
 
-### Phase 6 — Dynamic Deployments & Workflows  ·  branch `dev/infra-phase-6-dynamic-deployments`  ·  Gate: ⬜
+### Phase 6 — Dynamic Deployments & Workflows  ·  branch `dev/infra-phase-6-dynamic-deployments`  ·  Gate: ✅ 2026-09-13
 | # | Task | File | Status |
 |---|------|------|--------|
-| 6.1 | Per-deployment layer — RG, KV, Functions, App Service, Event Grid | [task-1](tasks/infra/phase-6-dynamic-deployments/task-1-deployment-layer.md) | 🟡 |
-| 6.2 | **K8s namespace** + per-namespace workload identity | [task-2](tasks/infra/phase-6-dynamic-deployments/task-2-namespace-and-identity.md) | 🟡 |
-| 6.3 | Database `shared` \| `dedicated` | [task-3](tasks/infra/phase-6-dynamic-deployments/task-3-database-modes.md) | 🟡 |
-| 6.4 | Component toggles + dependency preconditions | [task-4](tasks/infra/phase-6-dynamic-deployments/task-4-toggles-and-preconditions.md) | 🟡 |
-| 6.5 | **Preflight** — quota, name availability, SKU, tenant tokens | [task-5](tasks/infra/phase-6-dynamic-deployments/task-5-preflight.md) | 🟡 |
-| 6.6 | Rebuild `Sentinel Infra — Validate & Plan` | [task-6](tasks/infra/phase-6-dynamic-deployments/task-6-validate-plan-workflow.md) | 🟡 |
-| 6.7 | Rebuild `Sentinel Infra — Deploy` (apply / **destroy**) | [task-7](tasks/infra/phase-6-dynamic-deployments/task-7-deploy-workflow.md) | 🟡 |
-| 6.8 | **New: `Sentinel — Pause / Resume`** | [task-8](tasks/infra/phase-6-dynamic-deployments/task-8-pause-resume-workflow.md) | 🟡 |
+| 6.1 | Per-deployment layer — RG, KV, Functions, App Service, Event Grid | [task-1](tasks/infra/phase-6-dynamic-deployments/task-1-deployment-layer.md) | ✅ |
+| 6.2 | **K8s namespace** + per-namespace workload identity | [task-2](tasks/infra/phase-6-dynamic-deployments/task-2-namespace-and-identity.md) | ✅ |
+| 6.3 | Database `shared` \| `dedicated` | [task-3](tasks/infra/phase-6-dynamic-deployments/task-3-database-modes.md) | ✅ |
+| 6.4 | Component toggles + dependency preconditions | [task-4](tasks/infra/phase-6-dynamic-deployments/task-4-toggles-and-preconditions.md) | ✅ |
+| 6.5 | **Preflight** — quota, name availability, SKU, tenant tokens | [task-5](tasks/infra/phase-6-dynamic-deployments/task-5-preflight.md) | ✅ |
+| 6.6 | Rebuild `Sentinel Infra — Validate & Plan` | [task-6](tasks/infra/phase-6-dynamic-deployments/task-6-validate-plan-workflow.md) | ✅ |
+| 6.7 | Rebuild `Sentinel Infra — Deploy` (apply / **destroy**) | [task-7](tasks/infra/phase-6-dynamic-deployments/task-7-deploy-workflow.md) | ✅ |
+| 6.8 | **New: `Sentinel — Pause / Resume`** | [task-8](tasks/infra/phase-6-dynamic-deployments/task-8-pause-resume-workflow.md) | ⚠️ |
+
+> **6.8 is ⚠️ shipped-but-unexercised, not ✅.** `gh run list --workflow ci_pause.yml` returns
+> nothing — zero executions, ever. `gha-ops`, the `ops` environment and the ten-action custom
+> RBAC role have never authenticated once. The category gate was signed on 2026-09-13 with this
+> recorded rather than hidden. Proving it needs a live estate: apply platform → pause → resume →
+> destroy, ~50 min. Do it on the next occasion the platform is up.
 
 
 ---
@@ -87,7 +93,7 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 ## Category 2 — sentinel-deployment  ·  `Keshav0375/Sentinel-deployment`
 _Implement second — the target app + deploy pipeline that generates real Datadog signal._ · [Index](tasks/deployment/README.md)
 
-### Phase 1 — The App  ·  branch `dev/deploy-phase-1-app`  ·  Gate: 🔒
+### Phase 1 — The App  ·  branch `dev/deploy-phase-1-app`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 1.1 | FastAPI app (3 routes + startup log + config) | [task-1](tasks/deployment/phase-1-app/task-1-fastapi-app.md) | ⬜ |

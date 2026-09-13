@@ -59,7 +59,14 @@ def flatten(text: str) -> str:
 
 
 def _cells(line: str) -> list[str]:
-    return [c.strip() for c in line.strip().strip("|").split("|")]
+    # \\| is an ESCAPED pipe inside a cell, not a column break. Task 6.3's title
+    # is `Database `shared` \\| `dedicated``, and splitting on the raw character turned
+    # one row into two malformed ones -- the task rendered as a broken line and,
+    # worse, went uncounted, so the verified total read one short of the tracker
+    # for the whole of infra phase 6.
+    SENTINEL = "\u0001"
+    line = line.strip().strip("|").replace(r"\|", SENTINEL)
+    return [c.strip().replace(SENTINEL, "|") for c in line.split("|")]
 
 
 def parse_todo() -> list[dict]:
