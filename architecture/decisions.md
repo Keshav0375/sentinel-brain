@@ -16,6 +16,68 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-08-30: LLM auth — federate the pod, do not ship an API key (deferred to backend phase 7)
+
+**Decision: the backend pod authenticates to Anthropic and OpenAI by workload identity
+federation, not by a stored API key. Deferred — the consumer does not exist yet.**
+
+Both vendors support it, and this was checked against their docs rather than recalled:
+
+- **Anthropic** — Workload Identity Federation, GA. Register a federation issuer (`fdis_`),
+  a service account (`svac_`), and a federation rule (`fdrl_`); the workload posts its
+  IdP-signed JWT to `POST /v1/oauth/token` (RFC 7523 `jwt-bearer`) and gets a short-lived
+  `sk-ant-oat01-...`. Named providers include Kubernetes service accounts, Entra ID / AKS,
+  and GitHub Actions.
+- **OpenAI** — Workload Identity Federation, shipped 2026-05-26. Same shape over RFC 8693.
+  Azure, Kubernetes, and GitHub Actions among the supported issuers.
+
+**Why this fits without new plumbing.** The cluster already publishes an OIDC issuer and
+projects service-account tokens into pods — `oidc_issuer_enabled` and
+`workload_identity_enabled` (modules/aks/main.tf), the backend service account
+(namespace.tf), the federated credential (deployment.tf). The token file the SDK wants is the
+one already mounted. The subject is `system:serviceaccount:<namespace>:<sa>` — the same
+string Entra matches for Key Vault access, so LLM access and Azure access come to rest on one
+identity rather than two mechanisms.
+
+**The trap, and it is specific to this platform.** The AKS OIDC issuer URL is per-cluster:
+recreating the platform mints a new one. A hand-registered issuer therefore goes stale on
+every rebuild — precisely the destroy -> recreate loop the phase-5/6 work exists to make
+cheap. So **issuer and rule registration must run in the apply path via each vendor's admin
+API**, not as a console step someone repeats from memory. Anthropic documents managing
+issuers, service accounts, and rules as infrastructure-as-code for exactly this. GitHub
+Actions' issuer (`https://token.actions.githubusercontent.com`) is stable and needs
+registering once.
+
+**What it does not achieve, stated plainly.** This is not zero secrets. It trades *one
+long-lived runtime key per vendor, present in every pod* for *one admin key per vendor, used
+at apply time and absent from the runtime path*. The gain is real — runtime credentials
+become short-lived, per-workload attributable, and revocable at the issuer instead of by
+hunting every place a key was copied — but the phrase "no secrets" would be false.
+Federation is also only as strong as the IdP beneath it.
+
+**Consequence for the vault.** Key Vault carries **five** secrets, not seven: Datadog
+(api + app), Langfuse (public + secret), and the Teams webhook. Those vendors offer no
+federation, so they stay static and stay rotated. The two LLM entries drop out. What replaces
+them in the pod is five **non-secret identifiers** — `ANTHROPIC_FEDERATION_RULE_ID`,
+`ANTHROPIC_ORGANIZATION_ID`, `ANTHROPIC_SERVICE_ACCOUNT_ID`, `ANTHROPIC_WORKSPACE_ID`,
+`ANTHROPIC_IDENTITY_TOKEN_FILE` (and the OpenAI equivalents). Identifiers belong in Terraform
+outputs and pod env, never in a vault; putting an ID in a vault teaches the next reader that
+it is sensitive and that everything in the vault is equally sensitive.
+
+**Failure mode to test for, not to trust.** `ANTHROPIC_API_KEY` outranks federation in the
+SDK credential chain — a leftover key silently shadows WIF and the workload keeps working on
+the static key while appearing federated. The phase-7 acceptance check must assert the
+absence of the env var, not the success of a call. Same class of trap on the OpenAI side.
+
+**Why deferred rather than built now.** Infra phase 6 has no pod to federate from. Building
+the issuer-registration path against a consumer that does not exist would be guessing at its
+service account name, its namespace, and its SDK. Phase 6 ships the vault and the seed step
+as designed; the vault is designed so two entries can drop out without reshaping it.
+
+Superseded: nothing. Extends *2026-07-04: OIDC workload identity federation — no stored
+credentials*, which established the pattern for Azure and GitHub and left third-party APIs on
+static keys because federation was not offered at the time. It now is.
+
 ### 2026-08-24: Phases 5-6 — from one static estate to a dynamic multi-deployment platform
 
 Owner request: deploy and destroy complete, isolated deployments from workflow inputs alone.

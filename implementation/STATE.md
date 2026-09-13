@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-08-15
+> Last updated: 2026-09-13
 
 ## Current Position
 
@@ -13,33 +13,48 @@
 |-------|-------|
 | **Active category** | infra — **in progress** |
 | **Active phase** | 6 — Dynamic Deployments & Workflows |
-| **Active branch** | `dev/infra-phase-4-wiring-and-ci` |
-| **Active PR** | [Sentinel-infra#8](https://github.com/Keshav0375/Sentinel-infra/pull/8) → `main` — CI green, awaiting phase gate |
-| **Current task** | _phase 4 code-complete; both reviews addressed_ — PR #4 awaiting gate |
-| **Tasks verified** | 22 / 72 |
-| **Phases merged** | 5 / 18 |
+| **Active branch** | `fix/run-names-and-dispatch-edge-cases` (infra) |
+| **Active PR** | [Sentinel-infra#11](https://github.com/Keshav0375/Sentinel-infra/pull/11) → `main` — post-merge repairs, awaiting review |
+| **Current task** | _infra phase 6 is merged; three defects found by reading its run history are fixed in PR #11._ The phase-6 **gate row is still unwritten** — the code landed without a sign-off being recorded. |
+| **Tasks verified** | 22 / 72 — phase 6's 8 tasks are merged but not gate-signed |
+| **Phases merged** | 6 / 18 — infra 1-6 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
 
-**Close the infra phase-6 gate.** All 8 tasks `done-pending-review`; CI green
-(Validate + Preflight + Plan, `No changes`, plan posted to the PR).
+**Review and merge [Sentinel-infra#11](https://github.com/Keshav0375/Sentinel-infra/pull/11), then write the infra phase-6 gate row.**
 
-Acceptance test passed live: create → destroy → recreate `demo1`, with the vault purged and
-the platform untouched.
+Infra phase 6 merged as [#8](https://github.com/Keshav0375/Sentinel-infra/pull/8) on 2026-08-25
+(`56d2e82`), followed by two repairs found in use — [#9](https://github.com/Keshav0375/Sentinel-infra/pull/9)
+`d821b7f` (a destroy that reaches zero, an apply that seeds its own vault) and
+[#10](https://github.com/Keshav0375/Sentinel-infra/pull/10) `58261de` (`plan --scope all`
+before the platform exists). **No ledger row was ever written for the phase**, so the gate is
+open on a phase whose code is on `main`. Sign it or say what is missing.
 
-**Owner actions:**
-- ⛔ **Merge [Sentinel#18](https://github.com/Keshav0375/Sentinel/pull/18)** — `main`'s gate is 6
-  checks; with #18 it is 11.
-- ⚠️ **Pause and Destroy cannot be tested until PR #8 merges.** A `workflow_dispatch` workflow
-  must exist on the DEFAULT branch before GitHub will dispatch it.
+PR #11 fixes three defects found by reading the Deploy run history after the merge: identical
+run names on every dispatch, a `verify` job that false-alarmed on runs the guards had refused,
+and an App Service F1 quota that no preflight check could see.
 
-**Carried forward as known gaps:** `identity.tf` deleted (a declared provider is configured even
-with every resource at `count = 0`, so an unauthenticable `azuread` broke every plan);
-`gha-ops` cannot-delete proven by inspection only; namespaces never created, so the kubelogin
-path is unexercised.
+**Proven live since the last update:**
+- **Destroy works, twice.** 2026-09-12: `destroy · deployment` removed 22 resources, then
+  `destroy · platform` removed 11. The subscription now holds only `rg-sentinel-bootstrap` and
+  `NetworkWatcherRG` — the zero-cost floor, confirmed by `az group list`.
+- ✅ **[Sentinel#18](https://github.com/Keshav0375/Sentinel/pull/18) merged** 2026-08-26 —
+  `main`'s gate is 11 checks. This owner action is done.
+
+**Still open as known gaps:**
+- ⚠️ **Pause / Resume has never run.** `gh run list --workflow ci_pause.yml` returns nothing —
+  zero runs, ever. It is the only phase-6 deliverable with no execution behind it, and it needs
+  a live estate to act on.
+- ⚠️ `identity.tf` deleted — a declared provider is configured even with every resource at
+  `count = 0`, so an unauthenticable `azuread` broke every plan. Returns when
+  `sentinel-tf-identity` carries `environment:*` federated credentials.
+- ⚠️ `gha-ops` cannot-delete is proven by role inspection, not by a refused delete.
+- ⚠️ Namespaces have never been created, so the kubelogin path is unexercised.
+- ⚠️ The infra quality gate has never run `shellcheck`, `actionlint`, `tflint`, `tfsec`,
+  `yamllint` or `gitleaks` locally — none are on the author's PATH. CI runs Terraform only.
 
 ## Phase Gate Ledger
 
