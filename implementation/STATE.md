@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-09-13
+> Last updated: 2026-09-13 (post acceptance run)
 
 ## Current Position
 
@@ -13,10 +13,10 @@
 |-------|-------|
 | **Active category** | infra — **in progress** |
 | **Active phase** | 6 — Dynamic Deployments & Workflows |
-| **Active branch** | `fix/run-names-and-dispatch-edge-cases` (infra) |
-| **Active PR** | [Sentinel-infra#11](https://github.com/Keshav0375/Sentinel-infra/pull/11) → `main` — post-merge repairs, awaiting review |
-| **Current task** | _infra phase 6 is merged; three defects found by reading its run history are fixed in PR #11._ The phase-6 **gate row is still unwritten** — the code landed without a sign-off being recorded. |
-| **Tasks verified** | 22 / 72 — phase 6's 8 tasks are merged but not gate-signed |
+| **Active branch** | none — `Sentinel-infra` `main` is clean |
+| **Active PR** | none open |
+| **Current task** | _infra phase 6 acceptance run complete._ 7 of 8 tasks proven end-to-end against live Azure. **Task 6.8 (Pause / Resume) has never executed** — that is the only thing between here and the gate. |
+| **Tasks verified** | 29 / 72 — phase-6 tasks 6.1-6.7 proven live; 6.8 shipped but unexercised |
 | **Phases merged** | 6 / 18 — infra 1-6 |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
@@ -24,37 +24,54 @@
 
 ## Next Action
 
-**Review and merge [Sentinel-infra#11](https://github.com/Keshav0375/Sentinel-infra/pull/11), then write the infra phase-6 gate row.**
+**Run `Sentinel — Pause / Resume` once, then sign the infra phase-6 gate.**
 
-Infra phase 6 merged as [#8](https://github.com/Keshav0375/Sentinel-infra/pull/8) on 2026-08-25
-(`56d2e82`), followed by two repairs found in use — [#9](https://github.com/Keshav0375/Sentinel-infra/pull/9)
-`d821b7f` (a destroy that reaches zero, an apply that seeds its own vault) and
-[#10](https://github.com/Keshav0375/Sentinel-infra/pull/10) `58261de` (`plan --scope all`
-before the platform exists). **No ledger row was ever written for the phase**, so the gate is
-open on a phase whose code is on `main`. Sign it or say what is missing.
+`gh run list --workflow ci_pause.yml` returns nothing. Zero executions, ever. The `gha-ops`
+identity, the `ops` environment and the ten-action custom RBAC role have never authenticated
+once — and a role proven only by inspection is the thing most likely to be wrong. It needs a
+live estate, so proving it means: apply platform (~20 min) → pause → resume → destroy (~15 min).
 
-PR #11 fixes three defects found by reading the Deploy run history after the merge: identical
-run names on every dispatch, a `verify` job that false-alarmed on runs the guards had refused,
-and an App Service F1 quota that no preflight check could see.
+Everything else in phase 6 is proven live on 2026-09-13, from an empty subscription:
 
-**Proven live since the last update:**
-- **Destroy works, twice.** 2026-09-12: `destroy · deployment` removed 22 resources, then
-  `destroy · platform` removed 11. The subscription now holds only `rg-sentinel-bootstrap` and
-  `NetworkWatcherRG` — the zero-cost floor, confirmed by `az group list`.
-- ✅ **[Sentinel#18](https://github.com/Keshav0375/Sentinel/pull/18) merged** 2026-08-26 —
-  `main`'s gate is 11 checks. This owner action is done.
+| run | what it proved |
+|---|---|
+| [34778509991](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34778509991) | `apply · platform` — ACR + AKS + Postgres, 11 resources from zero |
+| [34779137478](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34779137478) | `apply · deployment` — 31 resources, **including `kubernetes_namespace sentinel-dev`, the quota, LimitRange, NetworkPolicy, ServiceAccount and the federated credential** |
+| [34779589393](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34779589393) | `destroy · deployment` — one tenant leaves, platform untouched |
+| [34782250925](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34782250925) | `destroy · all` — 7 destroyed, workspace deleted, verify 11/11 `ok` |
+
+**Gaps closed by that run:**
+- ✅ **Namespaces have been created.** The kubelogin + Entra-token path to the cluster is
+  exercised, not theoretical. This was carried forward since 2026-08-25.
+- ✅ Destroy reaches zero: the subscription holds only `rg-sentinel-bootstrap` and
+  `NetworkWatcherRG`.
+
+**Five defects found and fixed the same day**, each proven in production:
+
+| PR | defect |
+|---|---|
+| [#11](https://github.com/Keshav0375/Sentinel-infra/pull/11) | every dispatch rendered as the same run name; `verify` false-alarmed on refused runs; preflight could not see the App Service F1 quota; a PR plan tried to CREATE the workspace it planned in |
+| [#12](https://github.com/Keshav0375/Sentinel-infra/pull/12) | `apply --scope deployment` was unguarded against a missing platform (only `plan` was); verify double-reported on an already-failed action |
+| [#13](https://github.com/Keshav0375/Sentinel-infra/pull/13) | the missing-platform refusal arrived 2m30s in, after preflight's F1 probe had run |
+| [#14](https://github.com/Keshav0375/Sentinel-infra/pull/14) | **destroy deadlock** — the Entra admin was dropped concurrently with the database it owns, hit Postgres `2BP01`, and hung 30 min until the OIDC assertion expired, leaving Postgres billing |
 
 **Still open as known gaps:**
-- ⚠️ **Pause / Resume has never run.** `gh run list --workflow ci_pause.yml` returns nothing —
-  zero runs, ever. It is the only phase-6 deliverable with no execution behind it, and it needs
-  a live estate to act on.
-- ⚠️ `identity.tf` deleted — a declared provider is configured even with every resource at
-  `count = 0`, so an unauthenticable `azuread` broke every plan. Returns when
-  `sentinel-tf-identity` carries `environment:*` federated credentials.
+- ⚠️ **Pause / Resume has never run.** See above.
+- ⚠️ `identity.tf` deleted — returns when `sentinel-tf-identity` carries `environment:*`
+  federated credentials.
 - ⚠️ `gha-ops` cannot-delete is proven by role inspection, not by a refused delete.
-- ⚠️ Namespaces have never been created, so the kubelogin path is unexercised.
+- ⚠️ **Security: all four repos are PUBLIC.** Subscription id, tenant id and a real UPN are in
+  `docs/BOOTSTRAP.md` and in world-readable run logs. Not credentials, but a tenant id plus a
+  real UPN is the pair used to target password-spray and consent-phishing.
+- ⚠️ **Security: `gha-plan` carries an unused federated credential** on subject
+  `repo:Keshav0375/Sentinel-infra:pull_request`. Every job that authenticates as `gha-plan`
+  declares `environment: plan`, so that subject is never presented — but it is the only one a
+  fork PR could match, and `gha-plan` holds subscription-wide Reader **plus Blob Data Reader on
+  the Terraform state**, which contains the ACR admin password (`admin_enabled = true`).
+  Remove it: `az identity federated-credential delete --name plan-pull-request
+  --identity-name gha-plan --resource-group rg-sentinel-bootstrap --yes`
 - ⚠️ The infra quality gate has never run `shellcheck`, `actionlint`, `tflint`, `tfsec`,
-  `yamllint` or `gitleaks` locally — none are on the author's PATH. CI runs Terraform only.
+  `yamllint` or `gitleaks` — none on the author's PATH. CI runs Terraform only.
 
 ## Phase Gate Ledger
 
