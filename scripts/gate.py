@@ -35,9 +35,10 @@ before the task that adds them. n/a is named on the verdict line (`· n/a: …`,
 PARTIAL too) and explained on a NOTE line after the gate's report (which still lists it
 as skipped), but does not demote the verdict. A missing path that was ever tracked was
 LOST (deleted, renamed) — that check stays a skip and the verdict is PARTIAL. So does
-every other skip (tool not on PATH, …). The paths come from a second, `--json` run of
-the gate (only when some check reported a missing path) — never from the truncated
-human text; anything that cannot be resolved counts as a skip.
+every other skip (tool not on PATH, …). The missing paths are resolved statically —
+the gate module is loaded (no check runs) and its own IMPLICIT_PATHS + resolve_argv
+are applied to MATRIX[cat] — never parsed from the truncated human text, and only when
+the verdict is not already RED. Anything that cannot be resolved counts as a skip.
 
 With --fast, skips caused by --fast itself are expected and do not demote the verdict;
 the line then reads `GREEN (fast — not final)`. Only a full run can be final.
@@ -45,11 +46,12 @@ the line then reads `GREEN (fast — not final)`. Only a full run can be final.
 
 from __future__ import annotations
 
-import json
+import importlib.util
 import os
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -130,8 +132,8 @@ def main() -> int:
         sys.stderr.write(proc.stderr)
         if "--json" in passthrough:
             return proc.returncode
-        unbuilt = never_built(repo, [*cmd, "--json"], env) if NO_PATH in proc.stdout else set()
-        return verdict(proc.stdout, proc.returncode, "--fast" in passthrough, unbuilt)
+        return verdict(proc.stdout, proc.returncode, "--fast" in passthrough,
+                       lambda: never_built(src, cat, repo))
 
 
 def _ever_tracked(repo: Path, path: str) -> bool:
@@ -146,32 +148,45 @@ def _ever_tracked(repo: Path, path: str) -> bool:
     return proc.returncode != 0 or bool(proc.stdout.strip())
 
 
-def never_built(repo: Path, json_cmd: list[str], env: dict[str, str]) -> set[str]:
-    """Names of checks skipped for missing paths that the repo has never tracked.
+def never_built(src: Path, cat: str, repo: Path) -> set[str]:
+    """Names of checks whose missing paths were never tracked in `repo`.
 
-    Re-runs the gate with --json for the untruncated skip details. Anything that cannot
-    be parsed is left out, so it counts as a skip (PARTIAL) — never as n/a.
+    Loads the gate module (definitions only — no check runs) and applies its own path
+    logic (IMPLICIT_PATHS, resolve_argv) to MATRIX[cat], so the paths are exactly the
+    ones the gate found missing. Anything that cannot be resolved is left out, so it
+    counts as a skip (PARTIAL) — never as n/a.
     """
-    proc = subprocess.run(json_cmd, env=env, cwd=repo, capture_output=True, text=True,
-                          check=False)
+    name = "_sentinel_quality_gate"
     try:
-        results = json.loads(proc.stdout)["results"]
-    except (ValueError, KeyError, TypeError):
+        spec = importlib.util.spec_from_file_location(name, src)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod  # dataclasses resolve annotations through sys.modules
+        spec.loader.exec_module(mod)
+        implicit = getattr(mod, "IMPLICIT_PATHS", {})
+        unbuilt = set()
+        for check, argv, _required in mod.MATRIX[cat]:
+            if check in implicit and not (repo / implicit[check]).exists():
+                paths = [implicit[check]]
+            elif mod.resolve_argv(argv, repo) is None:
+                paths = [a for a in argv if mod._is_path_arg(a)]
+            else:
+                continue
+            if paths and not any(_ever_tracked(repo, p) for p in paths):
+                unbuilt.add(check)
+        return unbuilt
+    except Exception:  # noqa: BLE001 — fail safe: unresolved means skip, never n/a
         return set()
-    unbuilt = set()
-    for r in results:
-        detail = r.get("detail") or ""
-        if r.get("status") != "skipped" or not detail.startswith(NO_PATH):
-            continue
-        paths = detail[len(NO_PATH):].split()
-        if paths and not any(_ever_tracked(repo, p) for p in paths):
-            unbuilt.add(r["name"])
-    return unbuilt
+    finally:
+        sys.modules.pop(name, None)
 
 
-def verdict(out: str, code: int, fast: bool, unbuilt: set[str]) -> int:
-    """Turn the gate's human report into one unambiguous line + exit code."""
-    failed, skipped, na, lost, ran = [], [], [], [], 0
+def verdict(out: str, code: int, fast: bool, resolve_unbuilt: Callable[[], set[str]]) -> int:
+    """Turn the gate's human report into one unambiguous line + exit code.
+
+    `resolve_unbuilt` is called only when the verdict is not RED and some check was skipped
+    for a missing path.
+    """
+    failed, missing, other, ran = [], [], [], 0
     for line in out.splitlines():
         s = line.strip()
         if not s or s[0] not in "✅❌⏭":
@@ -182,21 +197,23 @@ def verdict(out: str, code: int, fast: bool, unbuilt: set[str]) -> int:
             ran += 1
         elif s.startswith("✅"):
             ran += 1
-        elif NO_PATH.strip() in s and name in unbuilt:
-            na.append(name)
+        elif NO_PATH.strip() in s:
+            missing.append(name)
         elif not (fast and "(--fast)" in s):
-            skipped.append(name)
-            if NO_PATH.strip() in s:
-                lost.append(name)
+            other.append(name)
+    if failed or (code != 0 and not ran):
+        print(f"VERDICT RED · failed: {', '.join(failed) or f'gate exit {code}'}")
+        return 1
+    unbuilt = resolve_unbuilt() if missing else set()
+    na = [n for n in missing if n in unbuilt]
+    lost = [n for n in missing if n not in unbuilt]
+    skipped = other + lost
     if na:
         print("NOTE    n/a = target path never existed in repo history (not yet built): "
               f"{', '.join(na)}")
     if lost:
         print("NOTE    missing path was tracked before (deleted/renamed?) or could not be "
               f"checked — still a skip: {', '.join(lost)}")
-    if failed or (code != 0 and not ran):
-        print(f"VERDICT RED · failed: {', '.join(failed) or f'gate exit {code}'}")
-        return 1
     if not ran:
         print("VERDICT INCONCLUSIVE · nothing ran")
         return 3
