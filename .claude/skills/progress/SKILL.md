@@ -18,5 +18,6 @@ Report from the two blocks above only — read nothing else:
 - **Next up** — the next 3 actionable tasks; anything in a `locked` phase says why.
 - **Blockers / open R-items** — every `!!` line, shortened to one line each. Open R-items halt the
   tasks they name, so call them out even when nothing is blocked yet.
+- **Board** — end with `Board: https://github.com/users/Keshav0375/projects/4` (it mirrors this tracker).
 
 Read-only. ≤ 25 lines.

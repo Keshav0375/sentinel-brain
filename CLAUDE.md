@@ -33,6 +33,8 @@ python3 scripts/arch.py infra --list        # TOC + token cost per §
 python3 scripts/arch.py infra 3.2 3.3       # just those sections (~3K tok, not 21K)
 python3 scripts/arch.py decisions R6        # one decision entry
 python3 scripts/gate.py <infra|deployment|backend> [--fast]   # the quality gate, done right
+python3 scripts/task_status.py <cat> <M.K> <status>           # flip a task + re-sync the board
+python3 scripts/board_sync.py [--issues <cat>-<M>]           # mirror tracker → board / look up issue #s
 ```
 
 | Need | Where |
@@ -67,7 +69,17 @@ orchestrates; specialists do the work in throwaway contexts:
 | `code-reviewer` · `safety-reviewer` | opus | correctness · agentic-safety invariants |
 
 Other skills: `/progress` (tracker overview) · `/check <cat>` (gate) · `/review [cat]` (quick diff
-review) · `/new-tool` · `/new-agent` (backend scaffolds).
+review) · `/new-ticket` (add a task/phase, tracker-first) · `/new-tool` · `/new-agent` (backend scaffolds).
+
+## Project board (Jira-style mirror)
+
+[Sentinel board](https://github.com/users/Keshav0375/projects/4): **Epic** (one per category) →
+**Phase** (parent, sub-issue) → **Task** (child, sub-issue), as issues in `sentinel-brain`. Fields:
+Status (Backlog → Ready → In progress → In review → Done), Level, Category, Phase, Task ID,
+Priority (build order: active phase P0, next P1, rest P2), Target date (gate date).
+`python3 scripts/board_sync.py` regenerates it from TODO.md + task files — a **one-way mirror**:
+never edit those issues by hand; the clerk re-syncs after every tracker commit. Ad-hoc bugs use
+the issue forms in `.github/ISSUE_TEMPLATE/`.
 
 ## Branch model (binding)
 

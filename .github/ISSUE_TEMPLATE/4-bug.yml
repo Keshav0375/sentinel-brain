@@ -1,0 +1,37 @@
+name: Bug
+description: Something built is broken. Link it to the task or phase it came from.
+title: "[Bug] "
+labels: [bug]
+projects: ["Keshav0375/4"]
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options: [infra, deployment, backend, tooling (brain)]
+    validations: { required: true }
+  - type: input
+    id: origin
+    attributes:
+      label: Introduced by
+      placeholder: "task #34 / PR Keshav0375/Sentinel-infra#12"
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options: ["P0 — blocks the build or a live estate", "P1 — wrong behaviour, workaround exists", "P2 — cosmetic / minor"]
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      render: bash
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+      value: |
+        **Expected:**
+        **Actual:**
+    validations: { required: true }

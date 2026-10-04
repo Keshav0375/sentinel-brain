@@ -53,6 +53,10 @@
       "Bash(gh workflow list *)",
       "Bash(gh workflow view *)",
       "Bash(gh repo view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh issue view *)",
+      "Bash(gh project view *)",
+      "Bash(gh project item-list *)",
       "Bash(gh auth status)",
 
       "Bash(cat *)",

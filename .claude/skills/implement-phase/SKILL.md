@@ -17,11 +17,12 @@ phase, so it holds only: the where.py block, the context brief, the contract, an
 | 0 locate | `python3 scripts/where.py` | — | ~175-token phase block |
 | 1 context | `phase-context-builder` | sonnet | ≤250-word brief |
 | 2 contract | `architecture-warden` · distill | opus | verbatim contract table |
-| 4a build | `task-implementer` (one per task) | opus | DONE / HALT block |
+| 4a build | `task_status.py … in-progress` → `task-implementer` (one per task) | opus | DONE / HALT block |
 | 4b verify | `gate-runner` | haiku | verdict block |
 | 4c record | `tracker-clerk` · record-task | sonnet | ≤6 lines |
 | 5 review | `architecture-warden` · review, `code-reviewer`, `safety-reviewer` | opus | finding lines |
-| 6 close | `tracker-clerk` · close-phase / sign-off | sonnet | PR url + checklist |
+| 6 close | `tracker-clerk` · close-phase / reopen / sign-off | sonnet | PR url + checklist |
+| board | `scripts/board_sync.py` (run by the clerk + `task_status.py`) | — | issues move with the tracker |
 
 Rules: ground-rules (always loaded via CLAUDE.md) — architecture is law, ask don't guess, no
 attribution, green means green, never open `archive/`.
@@ -46,7 +47,7 @@ predecessor gate, and the blockers/R-items gating this phase. Exit 1 = do not en
 
 Print two lines, never the outputs:
 ```
-ctx  ✓ <cat> phase <M> · <N> tasks · deps ok · blockers: none · drift: none
+ctx  ✓ <cat> phase <M> · <N> tasks · issues #<phase> · deps ok · blockers: none · drift: none
 arch ✓ <§ list> · <K> contracts · conflicts: none
 ```
 Any BLOCKERS / DRIFT / CONFLICTS / missing TOOLS → one 🚨 line each, then **halt and ask** with
@@ -69,8 +70,10 @@ implementer as NOTES.
 ## Step 4 — Per task: build → verify → record
 For each task in order:
 
-**4a. Build** — dispatch `task-implementer` (foreground) with `TASK` (file path), `REPO`, `BRANCH`,
-`CONTRACT` (only the rows relevant to this task, verbatim), `NOTES` (user answers so far).
+**4a. Build** — first `python3 scripts/task_status.py <cat> <M.K> in-progress` (tracker 🔵 + board
+"In progress", one command, no agent). Then dispatch `task-implementer` (foreground) with `TASK`
+(file path), `REPO`, `BRANCH`, `CONTRACT` (only the rows relevant to this task, verbatim), `ISSUE`
+(the task's number from the brief's ISSUES line), `NOTES` (user answers so far).
 - `HALT` → show its `ASK` to the user via `AskUserQuestion`; then `SendMessage` the **same**
   implementer the answer (its context is intact). If the user says stop → dispatch
   `tracker-clerk` record-task with the HALT and end the run.
@@ -119,8 +122,9 @@ reviewer that raised it.
 3. `AskUserQuestion` — "Does <cat> phase <M> work as expected?"
    - **Approve & merge** → `tracker-clerk` "mode: sign-off" with the PR number and the user's answer.
      State what's next in one line.
-   - **Changes needed** → their feedback goes to a `task-implementer` FIX batch (same branch, same
-     PR), then Step 4b–5 for the delta; the clerk records it.
+   - **Changes needed** → `tracker-clerk` "mode: reopen" (tasks back to In progress on the board),
+     then a `task-implementer` FIX batch (same branch, same PR), Step 4b–5 for the delta, and
+     `record-task` again per task.
    - **Hold** → leave the PR open.
 
 **Never** merge without an explicit Approve. **Never** mark `verified` what the user has not

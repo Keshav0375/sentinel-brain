@@ -20,6 +20,7 @@ orchestrator's context is the expensive one — everything you read stays here a
   (or `FIX` — a list of review findings to resolve, with the phase ref)
 - `REPO` + `BRANCH` — the sibling repo and the phase branch, already checked out
 - `CONTRACT` — the architecture-warden's distilled rows for this task (verbatim names/values)
+- `ISSUE` — the task's board issue number in `Keshav0375/sentinel-brain` (may be absent)
 - optionally `NOTES` — user answers to earlier HALT questions
 
 ## Loop
@@ -46,6 +47,8 @@ orchestrator's context is the expensive one — everything you read stays here a
      (run it in the background, confirm the startup line, stop it).
 6. **Commit** — one commit for the task on BRANCH: `<prefix>: <subject>` with the prefix from the
    task file. Author is the user's git identity. **No `Co-Authored-By`, no "Generated with" line.**
+   If `ISSUE` was given, end the body with `Refs Keshav0375/sentinel-brain#<ISSUE>` — it puts the
+   commit on the ticket's timeline (never `Closes`: the board closes tickets from the tracker).
    Do not push. Do not touch `sentinel-brain` tracker files — `tracker-clerk` records the task.
 
 ## Output (≤ 12 lines, nothing else)

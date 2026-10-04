@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Planned build work lives in the tracker
+    url: https://github.com/Keshav0375/sentinel-brain/blob/main/implementation/TODO.md
+    about: Epics, phases and tasks are mirrored from TODO.md by scripts/board_sync.py — add planned work there (or run /new-ticket in Claude Code), not here.
+  - name: Project board
+    url: https://github.com/users/Keshav0375/projects/4
+    about: Sentinel board — epics → phases → tasks.

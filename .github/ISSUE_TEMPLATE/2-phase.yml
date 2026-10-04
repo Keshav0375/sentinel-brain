@@ -1,0 +1,42 @@
+name: Phase (parent story)
+description: One branch + one PR in one code repo. Child of an epic, parent of tasks.
+title: "[<category>-<M>] "
+labels: [phase]
+projects: ["Keshav0375/4"]
+body:
+  - type: markdown
+    attributes:
+      value: "After creating, open the epic and **Add sub-issue → this phase**. Planned phases come from TODO.md via `scripts/board_sync.py`."
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options: [infra, deployment, backend]
+    validations: { required: true }
+  - type: input
+    id: branch
+    attributes:
+      label: Branch
+      placeholder: dev/<cat>-phase-<M>-<slug>
+    validations: { required: true }
+  - type: textarea
+    id: story
+    attributes:
+      label: User story
+      value: "As **<who>**, I want **<capability>**, so that **<outcome>**."
+    validations: { required: true }
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of done
+      value: |
+        - [ ] Every task `VERDICT GREEN` (`python3 scripts/gate.py <cat>`)
+        - [ ] architecture-warden CONFORMS · code-reviewer LGTM · safety-reviewer SAFE (backend)
+        - [ ] PR open into the integration branch, no Claude attribution
+        - [ ] reports/<cat>-phase-<M>.md written
+        - [ ] Owner ran the "see it working" checklist and approved
+  - type: input
+    id: deps
+    attributes:
+      label: Depends on
+      placeholder: "#12, infra-6"

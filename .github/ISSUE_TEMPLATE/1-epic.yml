@@ -1,0 +1,43 @@
+name: Epic
+description: A category-sized body of work (one per code repo). Parent of phases.
+title: "[Epic] "
+labels: [epic]
+projects: ["Keshav0375/4"]
+body:
+  - type: markdown
+    attributes:
+      value: "Epics hold phases as **sub-issues**. The three Phase-2 epics (infra · deployment · backend) are generated from the tracker — use this form only for a genuinely new body of work."
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options: [infra, deployment, backend, cross-cutting]
+    validations: { required: true }
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What exists when this epic is closed, in one or two sentences.
+    validations: { required: true }
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope / out of scope
+      value: |
+        **In:**
+        -
+        **Out:**
+        -
+  - type: textarea
+    id: success
+    attributes:
+      label: Success criteria
+      description: Observable, checkable outcomes.
+      value: |
+        - [ ]
+    validations: { required: true }
+  - type: input
+    id: arch
+    attributes:
+      label: Architecture refs
+      placeholder: architecture/infra.md §3

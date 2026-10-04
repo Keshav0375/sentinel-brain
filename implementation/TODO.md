@@ -113,7 +113,7 @@ _Implement second — the target app + deploy pipeline that generates real Datad
 
 ---
 
-## Category 3 — sentinel-backend  ·  `Keshav0375/Sentinel` (this repo)
+## Category 3 — sentinel-backend  ·  `Keshav0375/Sentinel`
 _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (see arch §13)._ · [Index](tasks/backend/README.md)
 
 ### Phase 1 — Data Layer Foundation  ·  branch `dev/backend-phase-1-data-layer`  ·  Gate: 🔒

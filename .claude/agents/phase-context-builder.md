@@ -18,7 +18,7 @@ start of every phase so it starts from ground truth, not memory. **Summarize, do
 **Input:** a phase ref like `deployment-1` (category + phase number).
 
 ## Budget (hard cap — you run every phase)
-≤ 8 file reads, ≤ 5 shell calls. A ninth file means you are dumping — stop and write the brief.
+≤ 8 file reads, ≤ 6 shell calls. A ninth file means you are dumping — stop and write the brief.
 Never open `implementation/history.md`, `implementation/README.md`, `implementation/TODO.md`,
 `architecture/*.md`, `archive/**`, or a task file outside the target phase.
 
@@ -32,12 +32,15 @@ Never open `implementation/history.md`, `implementation/README.md`, `implementat
 4. `git -C <repo> log --oneline -n 15` and `git -C <repo> branch -a --list '*phase-<M>*'`.
    `--oneline` only — never `log -p` / `show`.
 5. For each declared dependency, note whether it is ✅ verified (where.py / STATE.md).
+6. `python3 scripts/board_sync.py --issues <phase>` — the board issue numbers for the phase and its
+   tasks (read-only, one call). Counts toward the shell budget.
 
 ## Output (machine-facing — the orchestrator prints one line of it)
 Fixed shape, ≤ 250 words, one line per item, no prose:
 
 ```
 WHERE   <category> phase <M> · branch <exact name from where.py> · exists <yes|no> · PR <#|none> · <V>/<T> verified
+ISSUES  phase #<n> · <M.1> #<n> · <M.2> #<n> …            (from board_sync.py --issues; "none" if unsynced)
 PRIOR   <phase> → <artifact THIS phase consumes>        (only if consumed; one line each)
 GOAL    <what this phase delivers>
 TASKS

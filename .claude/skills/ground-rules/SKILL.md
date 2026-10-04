@@ -31,6 +31,10 @@ GitHub owner `Keshav0375`, repo casing exact (OIDC `sub` claims are case-sensiti
 7. **Backend boots.** After touching backend deps/imports/module-level code, `poetry run sentinel
    serve` (from `../Sentinel`) must start before the task is done.
 8. **Never pollute the code repos** with planning docs, agents, skills, trackers or reports.
+9. **The project board is a mirror.** Epic/phase/task issues in `sentinel-brain` (board:
+   `github.com/users/Keshav0375/projects/4`) are regenerated from TODO.md + task files by
+   `python3 scripts/board_sync.py`. Never edit, close or relabel them by hand — change the tracker
+   (`python3 scripts/task_status.py <cat> <M.K> <status>` for a status flip) and re-sync.
 
 **Token rules.** Never `Read` `architecture/*.md` (21–24K tokens each) — use
 `python3 scripts/arch.py <doc> <§>` (`--list` for the TOC, `--map` for concern → file). Never read

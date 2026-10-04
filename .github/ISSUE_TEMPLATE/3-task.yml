@@ -1,0 +1,59 @@
+name: Task (child)
+description: One commit-sized unit of work with tests. Child of a phase.
+title: "[<category> <M.K>] "
+labels: [task]
+projects: ["Keshav0375/4"]
+body:
+  - type: markdown
+    attributes:
+      value: "After creating, open the phase and **Add sub-issue → this task**. Planned tasks belong in the tracker (task file + TODO.md row) — `/new-ticket` in Claude Code does both and syncs the board."
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options: [infra, deployment, backend]
+    validations: { required: true }
+  - type: dropdown
+    id: prefix
+    attributes:
+      label: Commit prefix
+      options: ["feat:", "fix:", "refactor:", "test:", "docs:", "ci:", "chore:"]
+    validations: { required: true }
+  - type: textarea
+    id: spec
+    attributes:
+      label: Spec
+      description: Exactly what to build. Names, paths and contracts must match architecture/ verbatim.
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ]
+    validations: { required: true }
+  - type: textarea
+    id: tests
+    attributes:
+      label: Tests
+      value: |
+        - **Unit:**
+        - **Integration:**
+        - **Quality gate:** `python3 scripts/gate.py <category>` → `VERDICT GREEN`
+  - type: textarea
+    id: verify
+    attributes:
+      label: How to verify
+      description: Copy-pasteable commands for the phase gate.
+      render: bash
+  - type: input
+    id: arch
+    attributes:
+      label: Architecture refs
+      placeholder: architecture/deployment.md §2.2
+    validations: { required: true }
+  - type: input
+    id: deps
+    attributes:
+      label: Depends on
+      placeholder: "#34"
