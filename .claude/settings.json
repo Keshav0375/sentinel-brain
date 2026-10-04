@@ -1,79 +1,143 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "attribution": { "commit": "", "pr": "" },
+
+  "disableClaudeAiConnectors": true,
+  "enabledMcpjsonServers": ["github", "terraform", "azure"],
+  "enabledPlugins": {
+    "design@synced": false,
+    "marketing@synced": false,
+    "finance@synced": false,
+    "productivity@synced": false,
+    "cowork-plugin-management@synced": false,
+    "pdf-viewer@synced": false,
+    "desktop-commander@synced": false
+  },
+
   "permissions": {
+    "additionalDirectories": ["../Sentinel", "../Sentinel-deployment", "../Sentinel-infra"],
     "allow": [
       "Read",
-      "Write",
       "Edit",
-      "Bash(ruff*)",
-      "Bash(pyright*)",
-      "Bash(pytest*)",
-      "Bash(python*)",
-      "Bash(pip*)",
-      "Bash(poetry*)",
-      "Bash(uvicorn*)",
-      "Bash(terraform*)",
-      "Bash(tflint*)",
-      "Bash(actionlint*)",
-      "Bash(yamllint*)",
-      "Bash(cat*)",
-      "Bash(ls*)",
-      "Bash(find*)",
-      "Bash(grep*)",
-      "Bash(head*)",
-      "Bash(tail*)",
-      "Bash(wc*)",
-      "Bash(mkdir*)",
-      "Bash(cp*)",
-      "Bash(mv*)",
-      "Bash(touch*)",
-      "Bash(tree*)",
-      "Bash(echo*)",
-      "Bash(git*)",
-      "Bash(docker*)",
+      "Write",
+
+      "Bash(python3 *)",
+      "Bash(python3.12 *)",
+      "Bash(poetry *)",
+      "Bash(pip *)",
+      "Bash(ruff *)",
+      "Bash(pyright *)",
+      "Bash(pytest *)",
+      "Bash(uvicorn *)",
+      "Bash(../Sentinel/.venv/bin/*)",
+      "Bash(../Sentinel-deployment/.venv/bin/*)",
+      "Bash(../Sentinel-infra/.venv/bin/*)",
+
+      "Bash(terraform *)",
+      "Bash(tflint *)",
+      "Bash(tfsec *)",
+      "Bash(shellcheck *)",
+      "Bash(actionlint *)",
+      "Bash(yamllint *)",
+      "Bash(gitleaks *)",
+      "Bash(docker *)",
+      "Bash(az * show *)",
+      "Bash(az * list *)",
+      "Bash(az account *)",
+      "Bash(az version)",
+
+      "Bash(git *)",
       "Bash(gh pr *)",
-      "Bash(gh repo view*)",
+      "Bash(gh run *)",
+      "Bash(gh workflow list *)",
+      "Bash(gh workflow view *)",
+      "Bash(gh repo view *)",
       "Bash(gh auth status)",
-      "Bash(gh --version)",
-      "Edit(/.claude/skills/implement-phase/**)",
+
+      "Bash(cat *)",
+      "Bash(ls)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(sort *)",
+      "Bash(diff *)",
+      "Bash(jq *)",
+      "Bash(tree *)",
+      "Bash(which *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+
       "Skill(progress)",
-      "Skill(progress:*)",
-      "PowerShell(git -C \"..\\\\Sentinel-infra\" branch -a)",
-      "PowerShell(git -C \"..\\\\Sentinel-infra\" status --short)",
-      "PowerShell(git -C \"..\\\\Sentinel-infra\" log --oneline -5)",
-      "PowerShell(git -C \"..\\\\Sentinel-infra\" remote -v)",
-      "Bash(grep -n \"^#\\\\{1,4\\\\} \" \"C:/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/sentinel-brain/architecture/infra.md\")",
-      "Bash(grep -n \"^#\\\\{1,4\\\\} \\\\|^| *\\\\*\\\\*R[0-9]\\\\|^| *R[0-9]\\\\|^| *B[0-9]\" architecture/decisions.md)",
-      "Read(//c/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/**)",
-      "Bash(terraform version *)",
-      "Bash(az version *)",
-      "Bash(tflint --version)",
-      "Bash(gitleaks version *)",
-      "Bash(grep -n \"^#\\\\{1,4\\\\} \" architecture/decisions.md)",
-      "Bash(where.exe terraform *)",
-      "Bash(where.exe az *)",
-      "Bash(where.exe az.cmd)",
-      "Bash(where.exe python *)",
-      "Bash(cd \"C:/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/Sentinel\" && grep -n \"INCONCLUSIVE\\\\|not found\\\\|shutil.which\\\\|SKIP\" scripts/quality_gate.py | head -25)",
-      "Read(//c/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/Sentinel/**)",
-      "Read(//c/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/Sentinel-infra/**)",
-      "Bash(git -C \"C:/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/Sentinel-infra\" log --oneline -5)",
-      "Bash(git -C \"C:/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/Sentinel-infra\" branch -a)",
-      "Bash(cd \"C:/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/Sentinel\" && grep -n \"infra\" scripts/quality_gate.py | head -40)",
-      "Read(//c/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/Sentinel/scripts/**)",
-      "PowerShell(foreach \\($q in @\\('Hashicorp.Terraform','Microsoft.AzureCLI','tflint','gitleaks'\\)\\) { Write-Output \"=== $q ===\"; winget search $q --accept-source-agreements 2>$null | Select-Object -First 8 })"
+      "Skill(check)",
+      "Skill(review)",
+      "Skill(ground-rules)",
+
+      "mcp__github",
+      "mcp__terraform",
+      "mcp__azure"
+    ],
+    "ask": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean *)",
+      "Bash(git branch -D *)",
+      "Bash(git checkout -- *)",
+      "Bash(git restore *)",
+      "Bash(gh pr merge *)",
+      "Bash(terraform apply*)",
+      "Bash(terraform destroy*)",
+      "Bash(terraform import*)",
+      "Bash(terraform state *)",
+      "Bash(terraform workspace delete*)"
     ],
     "deny": [
-      "Bash(rm -rf /)*",
-      "Bash(curl*)",
-      "Bash(wget*)",
-      "Bash(sudo*)",
-      "Read(archive/**)",
+      "Bash(sudo *)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Read(/archive/**)",
       "Read(./archive/**)",
-      "Edit(archive/**)",
-      "Read(//c/Users/DELL/OneDrive - University of Windsor/Desktop/Agentic-Engineering/Sentinel-development-project/sentinel-brain/archive/**)"
+      "Edit(/archive/**)",
+      "Write(/archive/**)"
+    ]
+  },
+
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"${CLAUDE_PROJECT_DIR}\" && echo '[sentinel] where.py (live tracker):' && python3 scripts/where.py; exit 0",
+            "timeout": 20
+          }
+        ]
+      }
     ],
-    "additionalDirectories": [
-      "c:\\Users\\DELL\\OneDrive - University of Windsor\\Desktop\\Agentic-Engineering\\Sentinel-development-project"
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write|NotebookEdit|Grep|Glob|mcp__github__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

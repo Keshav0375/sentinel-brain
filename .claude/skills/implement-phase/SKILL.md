@@ -1,325 +1,131 @@
 ---
 name: implement-phase
-description: "Sentinel Phase 2 build orchestrator. Implements ONE whole phase end-to-end — identifies where we are, rebuilds full context (summarizing prior work), locks onto the architecture, then iterates task-by-task to a green phase, handing off to specialist subagents for context, architecture, code, and safety. Closes by asking the user to verify the phase works. Trigger: /implement-phase"
-trigger: /implement-phase
+description: Sentinel Phase-2 build orchestrator — builds ONE whole phase end-to-end (locate → context → architecture → per-task build/verify/record → review → PR → human sign-off) by handing each step to a specialist subagent. Trigger /implement-phase [<cat>-<M> | status | resume].
+argument-hint: "[<cat>-<M> | status | resume]"
+disable-model-invocation: true
 ---
 
 # /implement-phase
 
-The single build-time driver for Sentinel Phase 2. It owns **one phase at a time** and
-reaches the phase goal through **iteration + handoffs** to a small team of specialist
-subagents. You (the orchestrator) plan, sequence, edit code, and run gates; the subagents
-each do one thing well and hand their result back to you.
+You are the **orchestrator**. You sequence, decide, talk to the user, and integrate short reports.
+**You do not write code, run the gate, or edit the tracker yourself** — specialists do, each in a
+fresh context that is discarded afterwards. Your context is re-sent on every turn for the whole
+phase, so it holds only: the where.py block, the context brief, the contract, and ≤12-line reports.
 
-> **This replaces `/sentinel-build` + `/phase-gate` + `/sentinel-planner`.** There is no
-> separate task command and no separate gate command — a phase is planned, built, reviewed,
-> and signed off inside this one loop.
+| Step | Who | Model | Returns |
+|------|-----|-------|---------|
+| 0 locate | `python3 scripts/where.py` | — | ~175-token phase block |
+| 1 context | `phase-context-builder` | sonnet | ≤250-word brief |
+| 2 contract | `architecture-warden` · distill | opus | verbatim contract table |
+| 4a build | `task-implementer` (one per task) | opus | DONE / HALT block |
+| 4b verify | `gate-runner` | haiku | verdict block |
+| 4c record | `tracker-clerk` · record-task | sonnet | ≤6 lines |
+| 5 review | `architecture-warden` · review, `code-reviewer`, `safety-reviewer` | opus | finding lines |
+| 6 close | `tracker-clerk` · close-phase / sign-off | sonnet | PR url + checklist |
 
-## Core principles (do not violate)
-
-- **Rebuild full context every run.** Never assume memory of prior phases. Summarize what's
-  already done from the tracker + git, so each invocation starts from ground truth.
-- **Architecture is law.** Everything you build conforms to `ARCHITECTURE.md` for the active
-  repo. If the spec and the architecture disagree, **halt and ask** — never guess.
-- **Iterate to the goal.** Track the phase's tasks as a live goal list (TodoWrite). Loop each
-  task until its quality gate is green before moving on. The phase is done only when *all*
-  its tasks are green.
-- **Handoffs, not heroics.** Delegate context, architecture distillation, and review to the
-  specialist subagents (below). You integrate their outputs; you don't re-do their jobs.
-- **Your context is the expensive one.** Every token you read stays in your context and is
-  re-sent on every turn for the rest of the phase — a 9K-token file read at task 1 is paid
-  again at task 4's fifth gate re-run. A subagent's context is paid once and discarded. So
-  **when a read is big and its conclusion is small, delegate it.** The four subagents are a
-  token strategy, not just a division of labour. See the Token budget below.
-- **Ask when unsure. Halt when blocked.** Ambiguity in a task or architecture → stop and ask.
-  Missing prerequisite (tool, key, upstream task not verified) → write the blocker down, stop,
-  do not partially build.
-- **No Claude attribution — ever.** No `Co-Authored-By: Claude`, no "Generated with Claude
-  Code" in any commit or PR, in any of the three repos. The user is sole author. (See
-  CLAUDE.md Git Rule.)
-
-## Token budget (binding — this loop runs against a limited session)
-
-Five rules. They are the difference between a phase costing 200K tokens and 700K.
-
-1. **Never `Read` these**, in your context or a subagent's:
-   `architecture/*.md` (21-24K each → use `arch.py <doc> <§>`), `implementation/TODO.md`
-   (3.3K → `where.py`), `implementation/history.md` (audit record, never needed by a build),
-   `implementation/README.md`, `archive/**` (banned outright — wrong design).
-2. **Pull the subsection, not the parent.** `arch.py infra 3.2` is 1.6K tokens;
-   `arch.py infra 3` is 7.7K for the same answer. `arch.py <doc> --list` (~0.3K) when you
-   do not know the ref.
-3. **Never re-read what a subagent handed you.** The context brief carries the task specs;
-   the distilled contract carries the architecture. Re-reading the source behind a brief you
-   already hold is the most common way this loop burns a session.
-4. **Re-review is a delta review.** After fixing a reviewer's blockers, dispatch the
-   re-review as *"since `<sha>`"*. A second full-diff pass across three Opus reviewers can
-   cost as much as the whole build did.
-5. **Read the diff, not the tree.** `git diff --stat` first, then the hunks. Open a whole
-   file only when the hunk cannot answer the question.
-
-About to open a big file to extract one fact? Stop — reach for `where.py`, `arch.py`, or a
-subagent instead.
-
-## Reporting to the chat (binding — this is what the user actually sees)
-
-Everything else in this skill happens in your context. The user sees a **terminal chat**, so
-what you print is a **digest, never a transcript**.
-
-- **Never paste a subagent's output.** The context brief and the architecture contract are
-  working material for *you*. The user gets one line saying each landed.
-- **Verdict first.** Their only question is "is it green?" — answer it on line 1, then show
-  what is wrong.
-- **One line per finding**, in the agents' house style: `<icon> <file:line>  <the defect>`.
-  No paragraphs, no code blocks, no diff excerpts.
-- **Merge the reviewers into ONE block.** Never print three reports back to back — the user
-  does not care which agent found what, only what is broken.
-- **🚨 and ⚠️ only.** Collapse every ℹ️ into a `+N notes` count. Cap at 10 printed findings.
-- **Detail on request.** Close a findings block with `ask "why <n>" for detail`, and when they
-  ask, `SendMessage` the reviewer that raised it instead of re-deriving it yourself.
-- **No status narration.** Cut "Dispatching the warden…", "Now I'll review…", "Great, that
-  passed!". Show the result, not the process.
-- **Decisions you hand back for review get the same treatment** — the choice in one line, the
-  options in one line each, your recommendation marked. Not an essay.
-
-## The subagent team (handoff targets)
-
-| Subagent | Role | You call it… |
-|----------|------|--------------|
-| `phase-context-builder` | The **contexter/summarizer** — reads the phase folder + STATE.md history + git log, returns a compact "where we are" brief summarizing prior completed work and this phase's shape. | **Step 1**, at the start of every run. |
-| `architecture-warden` | The **architect** — `mode: distill` extracts the binding architecture constraints for this phase; `mode: review` checks the finished diff against spec + architecture. | **Step 2** (distill) and **Step 5** (review). |
-| `code-reviewer` | The **code reviewer** — correctness, coding standards, style-match on the phase diff. | **Step 5**. |
-| `safety-reviewer` | The **safety reviewer** — HITL gates, tool-call caps, destructive-action guards. | **Step 5**, for backend phases (or any diff touching tools/agents/orchestrator). |
-
-Repo locations (you already know these — do not ask). **You run from `sentinel-brain`; all
-three code repos are siblings:**
-- **infra** → `../Sentinel-infra`
-- **deployment** → `../Sentinel-deployment`
-- **backend** → `../Sentinel` (`Keshav0375/Sentinel` — the `Sentinel` repo *is* the backend)
-
-Never write code into `sentinel-brain`, and never write planning docs, agents or reports into
-a code repo. Brain drives; the code repos stay clean.
-
-## Branch model
-
-**The integration branch differs per repo. Resolve it BEFORE you branch:**
-
-| Category | Repo | Integration branch (branch from **and** PR into) |
-|----------|------|--------------------------------------------------|
-| infra | `../Sentinel-infra` | **`main`** |
-| deployment | `../Sentinel-deployment` | **`main`** |
-| backend | `../Sentinel` | **`release-phase-2`** |
-
-```
-infra / deployment          main ──►  dev/<cat>-phase-<M>-<slug>  ──PR──►  main
-
-backend (Sentinel)   release-phase-2 ──┬──►  dev/backend-phase-<M>-<slug> ──PR──► release-phase-2
-                                       └──────────────────────────────────────────►  main
-                                              (ONE final merge, end of Phase 2)
-```
-
-- Branch fresh from the integration branch (pulled), prefix **`dev/`**, PR back into that
-  same branch. `ci.yml` accepts only
-  `dev|feat|fix|refactor|ci|docs|test|chore|planning|ai|hotfix`.
-- **In `Sentinel` only**, `guard-main-source.yml` rejects a `dev/*` → `main` PR. Never open
-  one. `release-phase-2` → `main` happens once, at the end of Phase 2, and the user drives it.
-- The two sibling repos have no release branch — do not create one. `planning/phase-2-e2e`
-  is retired; never branch from it. (Full rationale: CLAUDE.md § Branch model.)
-
-**In `sentinel-brain` (the tracker):** commit straight to `main`. Brain has no CI, no branch
-protection, and no release train — its history *is* the build log. One phase therefore produces
-**one code PR** plus **tracker commits on brain `main`**. Push brain after each task so
-`implementation/STATE.md` never lags the code.
-
----
+Rules: ground-rules (always loaded via CLAUDE.md) — architecture is law, ask don't guess, no
+attribution, green means green, never open `archive/`.
 
 ## Usage
-
 ```
-/implement-phase              # Build the current active phase to completion
-/implement-phase <cat-phase>  # Build a specific phase, e.g. infra-2 or backend-4
-/implement-phase status       # Report where we are + the phase's task states (no changes)
-/implement-phase resume       # Resume the active phase from its last green task
-```
-
----
-
-## Step 0 — Locate ourselves (ONE command)
-
-```bash
-python scripts/where.py            # active phase
-python scripts/where.py infra-4    # a named phase
+/implement-phase              build the active phase
+/implement-phase <cat>-<M>    build a named phase (e.g. deployment-1)
+/implement-phase status       Step 0 only, print it, stop
+/implement-phase resume       Step 0, then continue from the first task not 🟡/✅
 ```
 
-That is the whole of Step 0. It prints the phase, repo, branch, integration target, task
-list, predecessor gate, and the blockers/R-items that gate *this* phase — ~175 tokens, and
-it exits **1** when you must not enter.
+## Step 0 — Locate (one command, no reads)
+`python3 scripts/where.py [<cat>-<M>]`. It prints phase, repo, branch, integration target, tasks,
+predecessor gate, and the blockers/R-items gating this phase. Exit 1 = do not enter:
+`PREV … UNSIGNED` → tell the user to sign off the predecessor · `REFUSE` → name the skipped phases ·
+`HALT` → report verbatim. Do **not** read STATE.md / TODO.md here.
 
-**Do not `Read` STATE.md, TODO.md, or a category README here.** Those three are ~9.6K tokens
-that would then sit in your context and be re-sent every turn for the rest of the phase, to
-tell you what one command already said. `phase-context-builder` (Step 1) reads them properly,
-in its own context, and hands you back the digest.
+## Steps 1 + 2 — Context and contract (ONE message, both agents in parallel)
+- `phase-context-builder`: "phase `<cat>-<M>`".
+- `architecture-warden`: "mode: distill, phase `<cat>-<M>`".
 
-Honour the exit code:
-- `PREV ... !! UNSIGNED` → the predecessor gate is not signed off. Stop; tell the user to
-  complete Step 6 sign-off on it first. Never enter the phase.
-- `REFUSE  would skip unfinished phase(s): ...` → say which, and do not proceed.
-- `HALT` → report the reason verbatim and stop.
+Print two lines, never the outputs:
+```
+ctx  ✓ <cat> phase <M> · <N> tasks · deps ok · blockers: none · drift: none
+arch ✓ <§ list> · <K> contracts · conflicts: none
+```
+Any BLOCKERS / DRIFT / CONFLICTS / missing TOOLS → one 🚨 line each, then **halt and ask** with
+`AskUserQuestion` (offer the concrete options). Record the user's answers — they go to the
+implementer as NOTES.
 
-## Steps 1 + 2 — Context and architecture (dispatch BOTH in one message)
-
-`phase-context-builder` and `architecture-warden` both need only the category + phase, which
-Step 0 already resolved. Neither consumes the other's output, so **dispatch them in parallel
-in a single message** — sequential dispatch doubles the wall-clock for no benefit.
-
-## Step 1 — Rebuild context (handoff → `phase-context-builder`)
-
-Dispatch `phase-context-builder` with the active category + phase. It returns a brief:
-what prior phases delivered (summarized, not dumped), this phase's tasks and their specs in
-one place, upstream dependencies + their status, and any standing blockers from STATE.md.
-**Do this every run** — it is how we start from ground truth instead of stale memory.
-
-**Print one line, not the brief:**
-`ctx ✓ <cat> phase <M> · <N> tasks · deps ok · blockers: none`
-Anything the brief flags under BLOCKERS or DRIFT gets its own 🚨 line and you halt.
-
-## Step 2 — Lock onto the architecture (handoff → `architecture-warden` · `mode: distill`)
-
-Dispatch `architecture-warden` in **distill** mode for this phase. It returns the exact
-architecture sections, contracts (resource/env/endpoint/table/model names, tool I/O types,
-Pydantic fields), and binding decisions this phase must honor. Keep this brief open — it is
-your conformance contract for the whole phase.
-
-**Print one line, not the contract:**
-`arch ✓ §3.2, §3.4 · 11 contracts locked · conflicts: none`
-The contract table is your working reference, not chat content. Conflicts get a 🚨 line each.
-
-If the context brief or the architecture reveals ambiguity or a spec/arch conflict → **halt
-and ask the user** before writing any code.
-
-## Step 3 — Set the goal (TodoWrite) + branch
-
-- Write one todo per task in the phase (this is the "goal" you iterate toward). Mark the first
-  `in_progress`.
-- Print a compact phase header so the user always sees the plan:
+## Step 3 — Goal + branch
+- One TodoWrite item per task; print the header:
   ```
-  ▶ <category> · phase <M> (<slug>)  —  <N> tasks
-    goal:   <one line: what this phase delivers>
-    repo:   <repo> (<local path>)
-    branch: dev/<cat>-phase-<M>-<slug>
-    tasks:  <K.1 …> · <K.2 …> · …
+  ▶ <cat> · phase <M> (<name>) — <N> tasks
+    repo <path> · branch <exact branch from where.py> · PR into <integration>
   ```
-- Resolve the integration branch from the **Branch model** table above (`main` for
-  infra/deployment, `release-phase-2` for backend), then branch off a fresh copy of it:
-  ```
-  git -C <repo> checkout <integration> && git -C <repo> pull
-  git -C <repo> checkout -b dev/<cat>-phase-<M>-<slug>
-  ```
-  If that integration branch does not exist in the target repo, **stop and ask** — never
-  substitute a different base, and never create an integration branch yourself.
-- **No branch is needed in `sentinel-brain`** — tracker updates commit to brain `main`
-  directly. Make sure brain is clean and pulled before you start.
+- Branch from a fresh integration branch (the branch name is **exactly** what where.py printed —
+  it comes from TODO.md; never re-derive it):
+  `git -C <repo> checkout <integration> && git -C <repo> pull --ff-only && git -C <repo> checkout -b <branch>`
+  (or `checkout <branch>` when resuming). Integration branch missing → stop and ask.
+- Brain must be clean and pulled (`git status --porcelain`, `git pull --ff-only`). Tracker commits
+  go straight to brain `main`.
 
-## Step 4 — Iterate the phase, task by task
+## Step 4 — Per task: build → verify → record
+For each task in order:
 
-For each task in order, run this loop (the "keep-checking" loop):
+**4a. Build** — dispatch `task-implementer` (foreground) with `TASK` (file path), `REPO`, `BRANCH`,
+`CONTRACT` (only the rows relevant to this task, verbatim), `NOTES` (user answers so far).
+- `HALT` → show its `ASK` to the user via `AskUserQuestion`; then `SendMessage` the **same**
+  implementer the answer (its context is intact). If the user says stop → dispatch
+  `tracker-clerk` record-task with the HALT and end the run.
+- Never re-read the task file or the architecture yourself.
 
-1. **Prerequisite check** — tools present, keys present (per STATE.md blockers), upstream
-   tasks `verified`, **and every STATE.md "Open Reconciliation" (R-item) that names this
-   task or its phase is RESOLVED**. An open R-item is a decision the user owes you — a value
-   you would otherwise silently invent (region, owner, repo name). If any is missing →
-   **halt**: write a BLOCKED note into the task file, mirror it to STATE.md Blockers, set
-   the task `blocked`, and STOP. Do not partially build, and never default an open R-item.
-2. **Implement** strictly to the task Spec + the `architecture-warden` contract. Match the
-   surrounding code's style. Do not exceed scope. Ambiguity or arch conflict → **halt and ask.**
-   **Do not re-read the task file or the architecture** — Steps 1 and 2 already put both in
-   your context. Re-read only if you hit something neither brief covered, and then pull the
-   one section (`arch.py <doc> <§>`), never the file.
-3. **Test** — add the unit + integration tests the task names.
-4. **Quality gate** — `python ../Sentinel/scripts/quality_gate.py --repo <infra|deployment|backend> --path <repo>`.
-   Red → fix and re-run. **Loop until green.** Green is mandatory before commit.
-   - `RESULT: INCONCLUSIVE` is **not** green — nothing ran. Say so and stop; don't commit.
-   - `PASS` with a `NOT verified (skipped)` line is a **partial** pass. Report exactly which
-     checks were skipped and why; never present it as a clean gate.
-   - If the task added a `tests/` package that isn't in `quality_gate.py`'s `MATRIX`, its tests
-     never ran — add the path to `MATRIX` in the same commit.
-5. **Commit** — one task = one commit, conventional prefix (`feat|fix|refactor|test|docs`).
-   **No Claude attribution.** Author is the user.
-6. **Record** — fill the task file's Report / Tests / How to Verify, set status
-   `done-pending-review`, update its TODO.md cell, mark its todo `completed`, advance to the next.
+**4b. Verify** — dispatch `gate-runner`: "category `<cat>`, repo `<repo>`, expected sha `<sha>`".
+- Must be `VERDICT GREEN`, `TREE clean`, `attribution none`, `MATCH ok`.
+- Anything else → `SendMessage` the implementer the gate-runner block to fix; re-verify. Two
+  failed rounds on the same check → stop and ask the user.
 
-Never skip step 1 or step 4.
+**4c. Record** — dispatch `tracker-clerk` "mode: record-task" with the task path and the DONE block,
+`run_in_background: true`; continue to the next task. Before the *next* clerk dispatch, make sure
+the previous one finished (one writer on brain at a time).
 
-## Step 5 — Review the finished phase (handoffs → reviewers)
+Print one line per task: `✓ <id> <title> · <sha> · gate GREEN (<N> ran)`.
 
-When every task is `done-pending-review` + green, run the review team over the whole phase diff
-— all three in **one** dispatch, in parallel, since none depends on another:
+## Step 5 — Review the phase (ONE message, reviewers in parallel)
+Record `git -C <repo> rev-parse HEAD` first. Dispatch:
+1. `architecture-warden` "mode: review, phase `<cat>-<M>`, repo, integration" + the contract.
+2. `code-reviewer` "repo, integration".
+3. `safety-reviewer` — backend phases, or any diff touching tools/agents/orchestrator/API/memory/
+   eval/identities/RBAC/workflows.
 
-1. `architecture-warden` · `mode: review` — spec + architecture conformance.
-2. `code-reviewer` — correctness + standards.
-3. `safety-reviewer` — **only** for backend phases or any diff touching tools/agents/orchestrator.
-
-**Relay them as ONE merged block — never three reports back to back.** Verdicts on line 2,
-then every 🚨 and ⚠️ from all three reviewers on one line each, blockers first, deduped
-(two reviewers flagging the same line = one line). Notes collapse to a count:
-
+Relay as **one merged block** — verdicts on line 2, every 🚨 then ⚠️ deduped, ℹ️ as a count:
 ```
-▪ review · infra phase 2 — 2 blockers, 1 warning
-  arch ✗ 2 · code ✓ LGTM · safety — n/a
-
-🚨 modules/keyvault/main.tf:23  soft-delete off — §3.4 requires 90d
-🚨 modules/acr/main.tf:11       sku Basic — §3.2 says Standard
-⚠️ modules/aks/main.tf:64       node pool max_count unset — unbounded scale
-+4 notes · ask "why 2" for detail
+▪ review · <cat> phase <M> — 1 blocker, 1 warning
+  arch ✗ 1 · code ✓ LGTM · safety — n/a
+🚨 app/main.py:23   route `/healthz` — §2.2 says `/health`
+⚠️ tests/test_app.py:12  asserts status only, not body
++3 notes · ask "why 1" for detail
 ```
+Clean → two lines (`— clean` + verdicts).
 
-Clean phase → two lines, nothing more:
-```
-▪ review · infra phase 2 — clean
-  arch ✓ CONFORMS · code ✓ LGTM · safety ✓ SAFE
-```
+Fix loop: dispatch **one** `task-implementer` with `FIX` = all 🚨 + the ⚠️ worth fixing (note the
+rest consciously), then `gate-runner`, then re-dispatch **only the reviewers that raised a 🚨** as
+"re-review since `<sha>`". Print only the delta (cleared / still open). A reviewer surfacing a gap
+the spec missed → one line to the user; never expand scope silently. "why N" → `SendMessage` the
+reviewer that raised it.
 
-Before dispatching, record the sha — `git -C <repo> rev-parse HEAD`. You need it to re-review.
+## Step 6 — Close (the human gate)
+1. Dispatch `tracker-clerk` "mode: close-phase" (phase, repo, branch, integration, DONE blocks,
+   review verdicts). It pushes, opens the PR, writes `reports/<cat>-phase-<M>.md`, commits brain.
+   `gh` unavailable → it returns manual commands; never fabricate a PR URL.
+2. Print the **see-it-working checklist** it returns: one line per task shipped, then the exact
+   copy-pasteable commands/URLs. Anything deferred or BLOCKED gets its own 🚨 line.
+3. `AskUserQuestion` — "Does <cat> phase <M> work as expected?"
+   - **Approve & merge** → `tracker-clerk` "mode: sign-off" with the PR number and the user's answer.
+     State what's next in one line.
+   - **Changes needed** → their feedback goes to a `task-implementer` FIX batch (same branch, same
+     PR), then Step 4b–5 for the delta; the clerk records it.
+   - **Hold** → leave the PR open.
 
-Then fix: every 🚨 BLOCKER is resolved before proceeding (loop back into Step 4 for fixes on
-the same branch); ⚠️ findings get fixed or consciously noted. **Re-dispatch as a delta
-review** — hand each reviewer *"re-review since `<sha>`; report only what changed"*, so it
-diffs `<sha>..HEAD` instead of re-reading the whole phase. Re-dispatch **only the reviewers
-that raised a blocker** — one that came back clean has nothing to re-check. Print **only the
-delta** — what cleared and what is still open — not the whole block again. If the user asks about a finding, `SendMessage` the reviewer that raised it;
-do not re-derive it. If a reviewer surfaces a real gap the spec missed, raise it with the
-user in one line rather than silently expanding scope.
+**Never** merge without an explicit Approve. **Never** mark `verified` what the user has not
+confirmed. **Never** merge a backend phase into `Sentinel` `main`.
 
-## Step 6 — Close the phase (human verification — the gate)
-
-1. Push the branch and open the PR **to the repo's integration branch** —
-   `gh pr create --base main` for infra/deployment, `gh pr create --base release-phase-2` for
-   backend (never `--base main` in `Sentinel`):
-   - Title: `<cat> phase <M> — <phase name>`.
-   - Body: one bullet per task (with commit subject) + the aggregated **How to Verify** steps.
-     **No Claude attribution in the body.** If `gh`/remote is unavailable, say so and give the
-     manual push/PR commands — never fabricate a PR URL.
-2. **Write the phase report** — `reports/<cat>-phase-<M>.md` from
-   `implementation/_templates/phase-report-template.md`. Short: what shipped, what it does,
-   what it unblocks, what is still blocked. Commit it to brain `main` with the tracker updates.
-3. Present the **"see it working" checklist** — this is the one thing the user acts on, so it
-   is the one thing that gets space. Still capped: **one line per task** for what shipped, then
-   the exact commands/URLs/UI steps to confirm it, ordered top-to-bottom, **copy-pasteable and
-   nothing else**. No recap of the build, no explanation of what each command does. Anything
-   deferred or BLOCKED gets its own 🚨 line (e.g. infra that needs a live Azure account) —
-   never bury it in prose and never present partial work as complete.
-4. **Ask the user to verify** with `AskUserQuestion` — "Does <phase> work as expected?":
-   - **Approve & merge** — verified → merge the code PR **into that repo's integration branch**
-     (`gh pr merge --squash --delete-branch` unless they prefer a merge commit), mark every task
-     `verified` (task files + TODO cells ✅), append a row to the Phase Gate Ledger in
-     `implementation/STATE.md`, unlock the next phase (drop its 🔒), push brain, state what's next.
-     **Never merge a backend phase into `Sentinel` `main`** — `release-phase-2` → `main` is a
-     single, separate merge at the end of Phase 2 and the user drives it. Infra and deployment
-     phases *do* merge into their own `main`; that is their integration branch.
-   - **Changes needed** — record their feedback into the relevant task(s) (`in_progress`) +
-     STATE.md, do NOT merge, loop back to Step 4; the same PR updates as fix commits land.
-   - **Hold** — leave the PR open, don't merge.
-
-**Never** merge without an explicit Approve. **Never** mark a phase `verified` the user hasn't
-confirmed with their own eyes. **Never** add Claude as a contributor to any commit, PR, or
-merge commit.
+## Chat output (binding)
+The user sees a terminal. Digest, never transcript: verdict first, one line per finding/task, 🚨/⚠️
+only, ≤10 findings, no pasted subagent output, no code blocks except the checklist. Detail on request.

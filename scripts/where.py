@@ -6,9 +6,10 @@ sit in the orchestrator's context for the whole session and get re-sent every tu
 Step 0 actually needs is: which phase is next, is its predecessor signed off, what is
 open against it, and where the repo is. This prints exactly that, in ~350 tokens.
 
-    python scripts/where.py            # resolve the active phase
-    python scripts/where.py infra-4    # locate a named phase
-    python scripts/where.py --json     # same, machine-readable
+    python3 scripts/where.py           # resolve the active phase
+    python3 scripts/where.py infra-4   # locate a named phase
+    python3 scripts/where.py --json    # same, machine-readable
+    python3 scripts/where.py --all     # every phase + every open blocker (/progress)
 
 Everything else — prior-phase summaries, task specs, deps — comes from
 `phase-context-builder`. Do not Read STATE.md or TODO.md in the orchestrator.
@@ -172,6 +173,28 @@ def predecessor(phases: list[dict], p: dict) -> dict | None:
     return ordered[idx - 1] if idx else None
 
 
+def overview(phases: list[dict], state: dict) -> int:
+    """`--all`: the whole tracker in ~30 lines, for /progress. Counts are computed, never
+    hardcoded — the task and phase totals have changed before (58 → 72 tasks)."""
+    verified = sum(1 for p in phases for t in p["tasks"] if t["status"] in DONE)
+    total = sum(len(p["tasks"]) for p in phases)
+    merged = sum(1 for p in phases if p["gate"] in DONE)
+    active, _ = resolve(phases, None)
+    print(f"COUNT   {verified}/{total} tasks verified · {merged}/{len(phases)} phases signed")
+    for p in sorted(phases, key=_key):
+        done = sum(1 for t in p["tasks"] if t["status"] in DONE)
+        mark = "  <- NEXT" if p is active else ""
+        print(f"  {p['category'] + '-' + str(p['phase']):<13}{ascii_status(p['gate']):<8}"
+              f"{done}/{len(p['tasks']):<4}{flatten(p['name'])[:60]}{mark}")
+    print("BLOCKERS" if state["blockers"] else "BLOCKERS: none")
+    for b in state["blockers"]:
+        print(f"  !! {flatten(b['label'])[:140]}")
+    print("OPEN-R" if state["reconciliations"] else "OPEN-R: none")
+    for r in state["reconciliations"]:
+        print(f"  !! {flatten(r['label'])[:140]}")
+    return 0
+
+
 def main() -> int:
     try:  # Windows consoles default to cp1252 and would die on a tracker glyph
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -180,10 +203,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Locate the phase /implement-phase should build")
     ap.add_argument("phase", nargs="?", help="e.g. infra-4, backend-2 (default: active phase)")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--all", action="store_true", help="one line per phase + every open blocker")
     a = ap.parse_args()
 
     phases = parse_todo()
     state = parse_state()
+    if a.all:
+        return overview(phases, state)
     target, refusal = resolve(phases, a.phase)
 
     if target is None:

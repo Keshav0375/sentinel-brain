@@ -5,7 +5,7 @@ downstream repo depends on the resources, secrets, and OIDC identity created her
 
 - **Repo:** `Keshav0375/Sentinel-infra` · local `../Sentinel-infra`
 - **Architecture:** [architecture/infra.md](../../../architecture/infra.md)
-- **Quality gate:** `python ../Sentinel/scripts/quality_gate.py --repo infra` (fmt · validate · tflint · tfsec · gitleaks)
+- **Quality gate:** `python3 scripts/gate.py infra` (wraps `../Sentinel/scripts/quality_gate.py` from `release-phase-2` + the repo `.venv`) (fmt · validate · tflint · tfsec · gitleaks)
 - **Env:** [implementation/env-examples/infra.env.example](../../env-examples/infra.env.example)
 
 > ⚠ Use real GitHub owner `Keshav0375` (not `keshxvDev`) in OIDC subjects and secret

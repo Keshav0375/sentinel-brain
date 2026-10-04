@@ -32,7 +32,7 @@ Intentionally minimal app — the deploy pipeline is the product; this is the ta
 
 ## Tests
 - **Unit:** covered by [[task-2-app-tests]] (kept as its own task so the app PR stays focused; both land in this phase).
-- **Quality gate:** `python ../Sentinel/scripts/quality_gate.py --repo deployment --path <repo>` (ruff · pytest).
+- **Quality gate:** `python3 scripts/gate.py deployment` (ruff · pytest) → `VERDICT GREEN`.
 
 ## How to Verify (phase gate)
 1. `pip install -r requirements.txt && uvicorn app.main:app --port 8000`.

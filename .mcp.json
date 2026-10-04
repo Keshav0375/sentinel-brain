@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/readonly",
+      "headersHelper": "printf '{\"Authorization\":\"Bearer %s\",\"X-MCP-Toolsets\":\"repos,pull_requests,actions\"}' \"$(gh auth token)\""
+    },
+    "terraform": {
+      "type": "stdio",
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "hashicorp/terraform-mcp-server:1.3.0", "--toolsets=registry"]
+    },
+    "azure": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y", "@azure/mcp@3.0.0-beta.49", "server", "start", "--read-only",
+        "--namespace", "group", "--namespace", "subscription",
+        "--namespace", "aks", "--namespace", "acr", "--namespace", "postgres",
+        "--namespace", "keyvault", "--namespace", "appservice", "--namespace", "storage",
+        "--namespace", "functionapp", "--namespace", "eventgrid", "--namespace", "role",
+        "--namespace", "monitor"
+      ]
+    }
+  }
+}

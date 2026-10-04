@@ -52,8 +52,10 @@ on the next occasion the platform is up.
 - **All four repos are PUBLIC.** Subscription and tenant ids are in `docs/BOOTSTRAP.md` and in
   git history; the admin UPN is now masked in new run logs but remains in old ones. Neither id
   authenticates anything. Whether the repos should be public at all is an open decision.
-- The infra quality gate has never run `shellcheck`, `actionlint`, `tflint`, `tfsec`, `yamllint`
-  or `gitleaks` — none on the author's PATH. CI runs Terraform only.
+- Infra gate tools are now installed locally (macOS, 2026-10-03): `python3 scripts/gate.py infra --fast`
+  ran tf-fmt/init/validate, tflint, shellcheck, py-unittest, tf-test, actionlint green. Still
+  open: `ruff-infra` (no `Sentinel-infra/.venv`) and `yamllint` reports `line too long` in
+  `.github/` (non-required, so shown as skipped). `tfsec`/`gitleaks` not yet run in full mode.
 
 ## Phase Gate Ledger
 

@@ -6,7 +6,7 @@ agents diagnose. **Implemented second** (needs infra: App Service, Key Vault, Po
 
 - **Repo:** `Keshav0375/Sentinel-deployment` · local `../Sentinel-deployment`
 - **Architecture:** [architecture/deployment.md](../../../architecture/deployment.md)
-- **Quality gate:** `python ../Sentinel/scripts/quality_gate.py --repo deployment` (ruff · actionlint · yamllint · gitleaks · pytest)
+- **Quality gate:** `python3 scripts/gate.py deployment` (wraps `../Sentinel/scripts/quality_gate.py` from `release-phase-2` + the repo `.venv`) (ruff · actionlint · yamllint · gitleaks · pytest)
 - **Env:** [implementation/env-examples/deployment.env.example](../../env-examples/deployment.env.example)
 
 > Cross-repo dependency: `ci_app_deployment.yml` reuses sentinel's composite actions

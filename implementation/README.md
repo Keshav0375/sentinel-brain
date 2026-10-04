@@ -19,8 +19,8 @@ Category  →  Phase (= 1 branch + 1 PR)  →  Task (= 1 commit, PR-sized)
 - **3 categories**, one per code repo, implemented **in dependency order**:
   **infra → deployment → backend**. Infra first so deployment and backend build on real,
   provisioned ground truth.
-- **16 phases** total. **Each phase is one git branch and one pull request** in its code repo.
-- **58 tasks** total. Each task is one PR-sized commit on its phase branch, ships
+- **18 phases** total (live count: `python3 scripts/where.py --all`). **Each phase is one git branch and one pull request** in its code repo.
+- **72 tasks** total. Each task is one PR-sized commit on its phase branch, ships
   **unit + integration tests**, and must pass the category **quality gate** (§7).
 
 The master checklist is [TODO.md](TODO.md) — headings + status only. The full technical
@@ -122,7 +122,7 @@ whole phase; within it, each task moves through:
    open R-item (e.g. don't silently pick a region).
 4. **Implement** in the correct repo, per the task's Spec + the architecture contract.
 5. **Test + gate** — add unit + integration tests, loop
-   `python ../Sentinel/scripts/quality_gate.py --repo <name> --path <repo>` to green (§7).
+   `python3 scripts/gate.py <name>` to `VERDICT GREEN` (§7).
 6. **Commit** one task = one commit (conventional prefix, **no Claude attribution**).
 7. **Report** — fill the task file's Report/Tests/How-to-Verify; flip status; update TODO + STATE.md.
 8. **Phase review** — when all tasks are green, `architecture-warden` (review) + `code-reviewer` +
@@ -138,7 +138,7 @@ branch it comes from and returns to differs per repo** — only the backend runs
 | Repo | Integration branch | Phase flow |
 |------|--------------------|-----------|
 | `Sentinel-infra` | `main` | `main` → `dev/infra-phase-<M>-<slug>` → PR → `main` |
-| `Sentinel-deployment` | `main` | `main` → `dev/deployment-phase-<M>-<slug>` → PR → `main` |
+| `Sentinel-deployment` | `main` | `main` → `dev/deploy-phase-<M>-<slug>` (exact name: TODO.md heading) → PR → `main` |
 | `Sentinel` (backend) | `release-phase-2` | `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR → `release-phase-2` |
 
 ```
@@ -195,7 +195,12 @@ So one phase = **one code PR** (in the target repo, `dev/*` → that repo's inte
 ## 7. Quality gate (reusable in CI)
 
 `../Sentinel/scripts/quality_gate.py --repo {infra|deployment|backend}` runs the right toolchain per
-repo type and is the exact body CI jobs call:
+repo type and is the exact body CI jobs call. **From brain, always run it through
+`python3 scripts/gate.py <cat>`**, which (a) takes the gate from `origin/release-phase-2` for
+infra/deployment and from the working tree for backend — the local `Sentinel` checkout may sit on a
+stale `main`; (b) puts the target repo's `.venv/bin` and a `python`→`python3` shim on PATH; (c) ends
+with one `VERDICT GREEN|PARTIAL|INCONCLUSIVE|RED` line and exits non-zero unless fully green
+(the gate itself exits 0 on INCONCLUSIVE).
 
 | Repo | Lint / Format | Types / Validate | Secrets / Security | Tests |
 |------|---------------|------------------|--------------------|-------|

@@ -32,7 +32,7 @@ Endpoint tests using FastAPI `TestClient`.
 
 ## How to Verify (phase gate)
 1. `pytest tests/ -q` → all pass.
-2. `python ../Sentinel/scripts/quality_gate.py --repo deployment --path <repo>` → PASS.
+2. `python3 scripts/gate.py deployment` → `VERDICT GREEN`.
 
 ## Report   ·   _filled on completion_
 _not yet implemented_

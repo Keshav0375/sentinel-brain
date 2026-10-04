@@ -11,7 +11,7 @@
 | **Local path** | `Sentinel-development-project/<repo>` (backend = `../Sentinel`) |
 | **Phase branch** | `dev/<cat>-phase-<M>-<slug>` (this task is a commit on the phase branch) |
 | **Commit prefix** | `feat:` \| `fix:` \| `refactor:` \| `test:` \| `docs:` |
-| **Arch refs** | `architecture/<repo>/ARCHITECTURE.md §X.Y` |
+| **Arch refs** | `architecture/<infra|deployment|backend>.md §X.Y` |
 | **Depends on** | [[task-file]] … (must be `verified` or same-phase `done-pending-review`) |
 | **Referenced by** | [[task-file]] … |
 
@@ -45,7 +45,7 @@
 <!-- Unit + integration to add, and how they run under the category quality gate. -->
 - **Unit:** …
 - **Integration:** …
-- **Quality gate:** `python ../Sentinel/scripts/quality_gate.py --repo <name>` (lint · types/validate · secrets · tests)
+- **Quality gate:** `python3 scripts/gate.py <name>` (lint · types/validate · secrets · tests)
 
 ## How to Verify (for the phase gate)
 <!-- Steps the human runs to see this feature actually working. Filled/confirmed at completion. -->

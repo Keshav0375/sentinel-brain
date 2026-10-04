@@ -7,7 +7,7 @@ prescribed migration order so Phase-1 keeps working until Phase-2 is proven.
 
 - **Repo:** `Keshav0375/Sentinel` (this repo) · local `../Sentinel`
 - **Architecture:** [architecture/backend.md](../../../architecture/backend.md) · cleanup plan §13
-- **Quality gate:** `python ../Sentinel/scripts/quality_gate.py --repo backend` (ruff · pyright · gitleaks · pip-audit · pytest unit+integration)
+- **Quality gate:** `python3 scripts/gate.py backend` (wraps `../Sentinel/scripts/quality_gate.py` from `release-phase-2` + the repo `.venv`) (ruff · pyright · gitleaks · pip-audit · pytest unit+integration)
 - **Env:** [implementation/env-examples/backend.env.example](../../env-examples/backend.env.example)
 
 > Follows arch §13.5 migration order: add deps → database.py → alembic → memory → tools →
