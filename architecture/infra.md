@@ -693,7 +693,7 @@ resource "azurerm_linux_web_app" "dummy_api" {
 
   app_settings = {
     "APP_VERSION" = "initial"
-    "DD_SERVICE"  = "dummy-api-0375"
+    "DD_SERVICE"  = "sentinel-watchtower"
     "DD_ENV"      = "dev"
     "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
   }

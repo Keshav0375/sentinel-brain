@@ -16,6 +16,26 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-04: Target app identity `sentinel-watchtower`; exact-pinned deps; `expected_culprit` label
+
+**Decision 1 — service name (closes R10).** The deployment target's logical service name is
+`sentinel-watchtower`. It is the Datadog `service` tag, the `deployments.service` value, the
+key every monitor query filters on and the app's `dd_service` default. It is deliberately
+**not** the Azure resource name (`app-<dep>-<env>-<uid>`): that name is unreadable in a facet
+and a rename would silently break every historical deploy↔incident join. `dummy-api-0375`
+was a placeholder and is retired as an identity; the resource-name occurrences left in
+`deployment.md` are R9's rewrite.
+
+**Decision 2 — every app dependency pinned `==`** (`deployment.md §2.3`), with `gunicorn`
+added because the §2.5 start command runs it. Test/lint tools go in a separate
+`requirements-dev.txt` that is never deployed. A deploy must be reproducible so that the only
+thing that changes what is installed is a scenario branch (e.g. `deployfail/01`).
+
+**Decision 3 — `expected_culprit` in `branches.yaml`.** The old labels graded *whether*
+Sentinel proposed a rollback, not *which* merge its revert PR targets. For case iii that is
+the whole point. Each case ii/iii entry now names the culprit (its own merge, bound to
+`pr-<N>-<sha>` at run time), so a revert PR is scored exactly against ground truth.
+
 ### 2026-08-30: LLM auth — federate the pod, do not ship an API key (deferred to backend phase 7)
 
 **Decision: the backend pod authenticates to Anthropic and OpenAI by workload identity

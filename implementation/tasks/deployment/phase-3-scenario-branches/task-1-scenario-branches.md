@@ -23,8 +23,10 @@ of three outcomes.
 **Files created:**
 - `scenarios/branches.yaml` — one entry per branch: `branch`, `case` (`pass|deployfail|runtime`),
   `fault` (what it injects), `expected_signal_type` (`—|deploy_failure|runtime_error`),
-  `expected_resolution` (`none|rollback|rollback_or_escalate`), and `expected_failed_stage`
-  for case ii. This file is the **ground truth** the eval runner (backend §6.2) scores against.
+  `expected_resolution` (`none|rollback|rollback_or_escalate`), `expected_failed_stage`
+  for case ii, and `expected_culprit` for cases ii–iii — the merge a correct revert PR must
+  target (`self`: this scenario's own merge; the eval runner binds it to the deployed
+  `pr-<N>-<sha>` at run time). `none` for case i. This file is the **ground truth** the eval runner (backend §6.2) scores against.
 - **30 branches** pushed to `Keshav0375/Sentinel-deployment`:
   - `pass/01..10` — trivial safe changes (add `/info`, tweak log line, add field to `GET /`,
     comment bump…). Green deploy, healthy, **no monitor fires** (true negatives).

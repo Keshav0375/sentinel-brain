@@ -47,7 +47,7 @@ PR merged to main
                     ┌──────────────────┐
                     │  Azure App       │
                     │  Service (F1)    │
-                    │  dummy-api-0375       │
+                    │  sentinel-watchtower  │
                     │  GET /health     │
                     │  GET /version    │
                     │  GET /           │
@@ -72,9 +72,9 @@ The app exists only to be deployed to and verified against. No business logic.
 
 | Method | Path | Response | Purpose |
 |--------|------|----------|---------|
-| `GET` | `/` | `{"message": "ok", "service": "dummy-api-0375"}` | Basic hello-world |
+| `GET` | `/` | `{"message": "ok", "service": "sentinel-watchtower"}` | Basic hello-world |
 | `GET` | `/health` | `{"status": "ok", "uptime_seconds": N}` | Deploy verification target |
-| `GET` | `/version` | `{"version": "pr-47-a3f9c2", "service": "dummy-api-0375"}` | Confirm which PR/SHA is live |
+| `GET` | `/version` | `{"version": "pr-47-a3f9c2", "service": "sentinel-watchtower"}` | Confirm which PR/SHA is live |
 
 ### 2.2 Startup Behavior
 
@@ -86,7 +86,7 @@ On boot, emit ONE structured log line to stdout:
   "level": "info",
   "message": "app.startup",
   "app_version": "pr-47-a3f9c2",
-  "dd.service": "dummy-api-0375",
+  "dd.service": "sentinel-watchtower",
   "dd.env": "dev",
   "dd.version": "pr-47-a3f9c2"
 }
@@ -97,12 +97,23 @@ The app doesn't talk to Datadog — the GHA pipeline does.
 ### 2.3 Tech Stack (app only)
 
 ```
-fastapi>=0.110.0
-uvicorn>=0.29.0
-pydantic-settings>=2.0.0
+# requirements.txt — what Oryx installs on App Service
+fastapi==0.142.2
+uvicorn==0.54.0
+pydantic-settings==2.15.0
+gunicorn==26.2.0
+
+# requirements-dev.txt — local + CI only, never deployed
+-r requirements.txt
+pytest==9.1.1
+httpx==0.28.1
+ruff==0.16.10
 ```
 
-Three dependencies.
+Every dependency is pinned exactly (`==`) so a deploy is reproducible and only a scenario
+branch can change what is installed. `gunicorn` is listed because the §2.5 start command
+runs it; the App Service image happening to ship one is not relied on. Bumps are deliberate
+PRs, never drift. (Decision 2026-10-04.)
 
 ### 2.4 App Config
 
@@ -111,7 +122,7 @@ class AppConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_version: str = "local-dev"
-    dd_service: str = "dummy-api-0375"
+    dd_service: str = "sentinel-watchtower"
     dd_env: str = "dev"
     port: int = 8000
 ```
@@ -170,7 +181,7 @@ POST https://api.datadoghq.com/api/v1/events
 {
   "title": "Build FAILED for PR #${PR_NUMBER}: ${PR_TITLE}",
   "text": "${BUILD_ERROR_OUTPUT}",
-  "tags": ["version:${APP_VERSION}", "service:dummy-api-0375", "env:dev",
+  "tags": ["version:${APP_VERSION}", "service:sentinel-watchtower", "env:dev",
            "stage:build", "deploy_status:failed"],
   "alert_type": "error"
 }
@@ -251,7 +262,7 @@ PGPASSWORD="$PGPASSWORD" psql \
 INSERT INTO deployments
   (service, pr_number, commit_sha, author, deploy_status, gha_run_id, files_changed, metadata)
 VALUES
-  ('dummy-api-0375', ${PR_NUMBER}, '${SHORT_SHA}', '${PR_AUTHOR}', '${STATUS}',
+  ('sentinel-watchtower', ${PR_NUMBER}, '${SHORT_SHA}', '${PR_AUTHOR}', '${STATUS}',
    ${GITHUB_RUN_ID}, '${FILES_CHANGED_JSON}'::jsonb,
    jsonb_build_object('failed_stage', '${FAILED_STAGE:-none}', 'version', '${APP_VERSION}'));
 SQL
@@ -276,7 +287,7 @@ Runs regardless of which stage succeeded or failed.
 ```json
 {
   "title": "Deployment ${STATUS} for PR #${PR_NUMBER}: ${PR_TITLE}",
-  "tags": ["version:${APP_VERSION}", "service:dummy-api-0375", "env:dev",
+  "tags": ["version:${APP_VERSION}", "service:sentinel-watchtower", "env:dev",
            "deploy_status:${STATUS}", "failed_stage:${FAILED_STAGE:-none}"],
   "alert_type": "info or error"
 }
@@ -288,9 +299,9 @@ Also ships a structured log line via the Datadog Log Intake API:
 {
   "message": "deploy.completed",
   "ddsource": "github-actions",
-  "ddtags": "version:pr-47-a3f9c2,service:dummy-api-0375,env:dev",
+  "ddtags": "version:pr-47-a3f9c2,service:sentinel-watchtower,env:dev",
   "hostname": "gha-runner",
-  "service": "dummy-api-0375",
+  "service": "sentinel-watchtower",
   "deploy": {
     "pr_number": 47,
     "version": "pr-47-a3f9c2",
@@ -342,7 +353,7 @@ on:
 
 env:
   DD_SITE: datadoghq.com
-  DD_SERVICE: dummy-api-0375
+  DD_SERVICE: sentinel-watchtower
   DD_ENV: dev
 
 jobs:
@@ -426,8 +437,11 @@ flow, observe the outcome.
 ### 4.1 Branch Catalog (10 per case)
 
 Ground-truth labels live in `scenarios/branches.yaml` — one entry per branch with
-its case, the fault it injects, and the expected `signal_type` + resolution. The
-eval harness reads this file to score agent runs against the known label. A
+its case, the fault it injects, the expected `signal_type` + resolution, and the
+`expected_culprit` — the deploy a correct revert PR must target (the scenario's own
+merge, `pr-<N>-<sha>`, bound when the branch is deployed). The eval harness reads this
+file to score agent runs against the known label: did it fire, did it classify, and did
+its revert PR revert the right merge. A
 representative spread (full 30 enumerated in the file):
 
 **Case i — `pass/*` (clean, 10):** trivial safe changes — add `/info`, tweak a log
@@ -481,7 +495,8 @@ sentinel-deployment/
 │   │   └── dd-report/             # Local composite action: Datadog event + log reporting
 │   └── workflows/
 │       └── ci_app_deployment.yml  # Build → Deploy → Verify → Record → Report
-├── requirements.txt
+├── requirements.txt          # pinned runtime deps (Oryx installs this)
+├── requirements-dev.txt      # + pytest, httpx, ruff — never deployed
 ├── .env.example
 ├── .gitignore
 └── README.md
@@ -506,7 +521,7 @@ Every deploy produces at least one Datadog Event. Failed deploys produce two
 | Tag | Value | Example |
 |-----|-------|---------|
 | `version` | PR number + SHA | `version:pr-47-a3f9c2` |
-| `service` | Fixed | `service:dummy-api-0375` |
+| `service` | Fixed | `service:sentinel-watchtower` |
 | `env` | Fixed | `env:dev` |
 | `deploy_status` | `succeeded` or `failed` | `deploy_status:failed` |
 | `failed_stage` | Which stage failed | `failed_stage:build` / `failed_stage:none` |

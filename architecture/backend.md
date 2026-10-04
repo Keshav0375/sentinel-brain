@@ -243,7 +243,7 @@ X-Correlation-ID: {correlation_id}
   "title": "Deploy FAILED for PR #5",
   "severity": "error",
   "tags": {
-    "service": "dummy-api-0375",
+    "service": "sentinel-watchtower",
     "deploy_status": "failed",
     "failed_stage": "verify",
     "version": "pr-5-a3f9c2"
@@ -343,7 +343,7 @@ Authorization: Bearer {entra-jwt}
 Response 200:
 {
   "title": "revert: roll back PR #5 — health endpoint 503s (incident inc-uuid)",
-  "description": "## Incident\n\nSentinel detected failed health checks on dummy-api-0375 starting 12:02 UTC...\n\n## Root Cause\n\nPR #5 (a3f9c2) changed /health to return 503 when any dependency is degraded...\n\n## Evidence\n\n- 3/3 verify health checks failed post-deploy\n- 503s in Datadog logs begin exactly at deploy time\n\n## Rollback\n\nThis PR reverts a3f9c2. Confidence: 0.85. Merge to deploy the fix; close to reject and handle manually.",
+  "description": "## Incident\n\nSentinel detected failed health checks on sentinel-watchtower starting 12:02 UTC...\n\n## Root Cause\n\nPR #5 (a3f9c2) changed /health to return 503 when any dependency is degraded...\n\n## Evidence\n\n- 3/3 verify health checks failed post-deploy\n- 503s in Datadog logs begin exactly at deploy time\n\n## Rollback\n\nThis PR reverts a3f9c2. Confidence: 0.85. Merge to deploy the fix; close to reject and handle manually.",
   "model_used": "anthropic/claude-haiku-4-5",
   "tokens_used": 245
 }

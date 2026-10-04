@@ -31,7 +31,7 @@ Rewrite `fetch_logs` to call the Datadog Logs API via httpx (was synthetic).
 
 ## How to Verify (phase gate)
 1. `pytest tests/test_tools/test_log_fetcher.py -q` green (mocked).
-2. (with B6) a live query returns recent logs for `dummy-api`.
+2. (with B6) a live query returns recent logs for `sentinel-watchtower`.
 
 ## Report   ·   _filled on completion_
 _not yet implemented_

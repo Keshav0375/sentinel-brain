@@ -14,9 +14,9 @@
 Endpoint tests using FastAPI `TestClient`.
 
 **Files created:** `tests/__init__.py`, `tests/test_app.py`
-- `test_root` — 200, body `{"message":"ok","service":"dummy-api"}`.
+- `test_root` — 200, body `{"message":"ok","service":"sentinel-watchtower"}`.
 - `test_health` — 200, `status == "ok"`, `uptime_seconds` is an int ≥ 0.
-- `test_version` — 200, `version` matches configured `app_version`, `service == "dummy-api"`.
+- `test_version` — 200, `version` matches configured `app_version`, `service == "sentinel-watchtower"`.
 - `test_startup_log` (optional) — capture the startup log line shape.
 - Add `pytest` (+`httpx`) to a dev-requirements or `requirements-dev.txt`.
 

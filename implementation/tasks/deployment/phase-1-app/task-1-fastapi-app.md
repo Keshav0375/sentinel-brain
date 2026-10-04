@@ -16,9 +16,10 @@ Intentionally minimal app — the deploy pipeline is the product; this is the ta
 
 **Files created:**
 - `app/__init__.py`
-- `app/main.py` — FastAPI app; `GET /` → `{"message":"ok","service":"dummy-api"}`; `GET /health` → `{"status":"ok","uptime_seconds":N}`; `GET /version` → `{"version": settings.app_version, "service":"dummy-api"}`; startup lifespan emits ONE structured JSON log line `app.startup` with dd.service/env/version (§2.2).
+- `app/main.py` — FastAPI app; `GET /` → `{"message":"ok","service": settings.dd_service}`; `GET /health` → `{"status":"ok","uptime_seconds":N}`; `GET /version` → `{"version": settings.app_version, "service": settings.dd_service}` (`dd_service` defaults to `sentinel-watchtower`, R10); startup lifespan emits ONE structured JSON log line `app.startup` with dd.service/env/version (§2.2).
 - `app/config.py` — `AppConfig(BaseSettings)` per §2.4: `app_version`, `dd_service`, `dd_env`, `port`.
-- `requirements.txt` — `fastapi>=0.110`, `uvicorn>=0.29`, `pydantic-settings>=2.0` (§2.3).
+- `requirements.txt` — exact `==` pins per §2.3: `fastapi`, `uvicorn`, `pydantic-settings`, `gunicorn` (the §2.5 start command needs it).
+- `requirements-dev.txt` — `-r requirements.txt` + pinned `pytest`, `httpx`, `ruff` (never deployed; Oryx installs only `requirements.txt`).
 - `.env.example` — from [implementation/env-examples/deployment.env.example](../../../env-examples/deployment.env.example) app section.
 - `.gitignore` (extend), `README.md` (run locally: `uvicorn app.main:app --reload`).
 
