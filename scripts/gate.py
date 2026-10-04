@@ -22,10 +22,16 @@ directly from brain has two traps, and this wrapper closes both:
 The gate's own exit code is 0 even for INCONCLUSIVE ("nothing was verified"), so this
 wrapper ends with one machine-readable verdict line and its own exit code:
 
-    VERDICT GREEN                     exit 0   every check ran and passed
+    VERDICT GREEN                     exit 0   every applicable check ran and passed
+    VERDICT GREEN · n/a: a, b         exit 0   same; a, b had no input yet (see below)
     VERDICT PARTIAL · skipped: a, b   exit 3   passed, but checks did not run — NOT green
     VERDICT INCONCLUSIVE              exit 3   nothing ran
     VERDICT RED · failed: a, b        exit 1   fix and re-run
+
+A check the gate skips with "no such path yet" has nothing to check: the repo has not
+created its input (e.g. `tests/` or `.github/workflows` before the task that adds them).
+That is n/a, not a gap — it is named on the verdict line (`· n/a: …`, on PARTIAL too)
+but does not demote it. Every other skip (tool not on PATH, …) still means PARTIAL.
 
 With --fast, skips caused by --fast itself are expected and do not demote the verdict;
 the line then reads `GREEN (fast — not final)`. Only a full run can be final.
@@ -121,7 +127,7 @@ def main() -> int:
 
 def verdict(out: str, code: int, fast: bool) -> int:
     """Turn the gate's human report into one unambiguous line + exit code."""
-    failed, skipped, ran = [], [], 0
+    failed, skipped, na, ran = [], [], [], 0
     for line in out.splitlines():
         s = line.strip()
         if not s or s[0] not in "✅❌⏭":
@@ -132,6 +138,8 @@ def verdict(out: str, code: int, fast: bool) -> int:
             ran += 1
         elif s.startswith("✅"):
             ran += 1
+        elif "no such path yet" in s:
+            na.append(name)
         elif not (fast and "(--fast)" in s):
             skipped.append(name)
     if failed or (code != 0 and not ran):
@@ -140,10 +148,11 @@ def verdict(out: str, code: int, fast: bool) -> int:
     if not ran:
         print("VERDICT INCONCLUSIVE · nothing ran")
         return 3
+    na_note = f" · n/a: {', '.join(na)}" if na else ""
     if skipped:
-        print(f"VERDICT PARTIAL · skipped: {', '.join(skipped)} — NOT green")
+        print(f"VERDICT PARTIAL · skipped: {', '.join(skipped)}{na_note} — NOT green")
         return 3
-    print("VERDICT GREEN (fast — not final)" if fast else "VERDICT GREEN")
+    print(f"VERDICT GREEN{' (fast — not final)' if fast else ''}{na_note}")
     return 0
 
 
