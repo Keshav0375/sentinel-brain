@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel-deployment` |
 | **Phase branch** | `dev/deploy-phase-1-app` |
 | **Commit prefix** | `test:` |
@@ -30,12 +30,14 @@ Endpoint tests using FastAPI `TestClient`.
 ## Tests
 - **Unit:** the file itself. **Quality gate:** `--repo deployment` (ruff + pytest + actionlint on any workflows present).
 
-## How to Verify (phase gate)
-1. `pytest tests/ -q` → all pass.
-2. `python3 scripts/gate.py deployment` → `VERDICT GREEN`.
+## Report
+Added tests/__init__.py, tests/test_app.py (4 tests: root, health, version via APP_VERSION, startup_log). Commit `04ad349` in Sentinel-deployment: test: add endpoint and startup-log tests for sentinel-watchtower. Env/.env isolation proven; mutation check confirmed failures on breakage.
+Gate: VERDICT GREEN (n/a: yamllint, actionlint; ran ruff-lint, gitleaks, pytest).
+Follow-up: StarletteDeprecationWarning (httpx -> httpx2 for TestClient) on pinned dev deps.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## How to Verify (phase gate)
+1. `pytest tests/ -q` -> all pass.
+2. `python3 scripts/gate.py deployment` -> `VERDICT GREEN`.
 
 ## BLOCKED
 _none — fully local._

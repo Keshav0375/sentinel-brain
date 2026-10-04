@@ -96,8 +96,8 @@ _Implement second — the target app + deploy pipeline that generates real Datad
 ### Phase 1 — The App  ·  branch `dev/deploy-phase-1-app`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
-| 1.1 | FastAPI app (3 routes + startup log + config) | [task-1](tasks/deployment/phase-1-app/task-1-fastapi-app.md) | ⬜ |
-| 1.2 | App tests (health / version / root) | [task-2](tasks/deployment/phase-1-app/task-2-app-tests.md) | ⬜ |
+| 1.1 | FastAPI app (3 routes + startup log + config) | [task-1](tasks/deployment/phase-1-app/task-1-fastapi-app.md) | 🟡 |
+| 1.2 | App tests (health / version / root) | [task-2](tasks/deployment/phase-1-app/task-2-app-tests.md) | 🟡 |
 
 ### Phase 2 — Deploy Pipeline  ·  branch `dev/deploy-phase-2-deploy-pipeline`  ·  Gate: 🔒
 | # | Task | File | Status |

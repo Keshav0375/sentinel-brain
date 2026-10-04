@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel-deployment` |
 | **Local path** | `../Sentinel-deployment` |
 | **Phase branch** | `dev/deploy-phase-1-app` |
@@ -35,12 +35,14 @@ Intentionally minimal app — the deploy pipeline is the product; this is the ta
 - **Unit:** covered by [[task-2-app-tests]] (kept as its own task so the app PR stays focused; both land in this phase).
 - **Quality gate:** `python3 scripts/gate.py deployment` (ruff · pytest) → `VERDICT GREEN`.
 
+## Report
+Built sentinel-watchtower FastAPI app (3 routes, one `app.startup` log line, AppConfig). Commit `bad8fbd` in Sentinel-deployment: feat: add sentinel-watchtower FastAPI app with startup log and config. Files: app/__init__.py, app/config.py, app/main.py, requirements.txt, requirements-dev.txt, .env.example, .gitignore, README.md.
+Gate: VERDICT GREEN (n/a: yamllint, actionlint, pytest; ran ruff-lint, gitleaks). 7 pins co-install on 3.12.15, pip check clean; uvicorn and gunicorn (§2.5) both boot.
+Gate rule change (user, 2026-10-04): missing-path skips report n/a (brain 80ce6fe).
+
 ## How to Verify (phase gate)
 1. `pip install -r requirements.txt && uvicorn app.main:app --port 8000`.
-2. `curl :8000/ :8000/health :8000/version` → documented JSON; logs show one `app.startup` line.
-
-## Report   ·   _filled on completion_
-_not yet implemented_
+2. `curl :8000/ :8000/health :8000/version` -> documented JSON; logs show one `app.startup` line.
 
 ## BLOCKED
 _none — fully local._

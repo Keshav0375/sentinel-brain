@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-09-13 (post acceptance run)
+> Last updated: 2026-10-04
 
 ## Current Position
 
@@ -13,9 +13,9 @@
 |-------|-------|
 | **Active category** | **deployment** — starting. infra is ✅ COMPLETE (2026-09-13) |
 | **Active phase** | deployment 1 — The App |
-| **Active branch** | none yet — branch `dev/deploy-phase-1-app` from `Sentinel-deployment` `main` |
+| **Active branch** | `dev/deploy-phase-1-app` (Sentinel-deployment) |
 | **Active PR** | none |
-| **Current task** | 1.1 — FastAPI app (3 routes + startup log + config) |
+| **Current task** | none — phase 1 tasks 1.1, 1.2 done-pending-review; close-phase next |
 | **Tasks verified** | 29 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
