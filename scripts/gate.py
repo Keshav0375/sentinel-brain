@@ -28,10 +28,16 @@ wrapper ends with one machine-readable verdict line and its own exit code:
     VERDICT INCONCLUSIVE              exit 3   nothing ran
     VERDICT RED · failed: a, b        exit 1   fix and re-run
 
-A check the gate skips with "no such path yet" has nothing to check: the repo has not
-created its input (e.g. `tests/` or `.github/workflows` before the task that adds them).
-That is n/a, not a gap — it is named on the verdict line (`· n/a: …`, on PARTIAL too)
-but does not demote it. Every other skip (tool not on PATH, …) still means PARTIAL.
+A check the gate skips with "no such path yet" is n/a — not a gap — only when the repo
+has not BUILT its input yet: every missing path has never been tracked in the target
+repo's history (`git log --all -- <path>` is empty), e.g. `tests/` or `.github/workflows`
+before the task that adds them. n/a is named on the verdict line (`· n/a: …`, on
+PARTIAL too) and explained on a NOTE line after the gate's report (which still lists it
+as skipped), but does not demote the verdict. A missing path that was ever tracked was
+LOST (deleted, renamed) — that check stays a skip and the verdict is PARTIAL. So does
+every other skip (tool not on PATH, …). The paths come from a second, `--json` run of
+the gate (only when some check reported a missing path) — never from the truncated
+human text; anything that cannot be resolved counts as a skip.
 
 With --fast, skips caused by --fast itself are expected and do not demote the verdict;
 the line then reads `GREEN (fast — not final)`. Only a full run can be final.
@@ -39,6 +45,7 @@ the line then reads `GREEN (fast — not final)`. Only a full run can be final.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -51,6 +58,7 @@ from where import REPO, ROOT  # noqa: E402  (single source for repo locations)
 SENTINEL = (ROOT / REPO["backend"]).resolve()
 GATE_REF = "origin/release-phase-2"
 GATE_PATH = "scripts/quality_gate.py"
+NO_PATH = "no such path yet: "  # the gate's skip detail for a check whose paths are missing
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -122,12 +130,48 @@ def main() -> int:
         sys.stderr.write(proc.stderr)
         if "--json" in passthrough:
             return proc.returncode
-        return verdict(proc.stdout, proc.returncode, fast="--fast" in passthrough)
+        unbuilt = never_built(repo, [*cmd, "--json"], env) if NO_PATH in proc.stdout else set()
+        return verdict(proc.stdout, proc.returncode, "--fast" in passthrough, unbuilt)
 
 
-def verdict(out: str, code: int, fast: bool) -> int:
+def _ever_tracked(repo: Path, path: str) -> bool:
+    """True if any commit on any ref touched `path` — or if git cannot say (fail safe)."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo), "log", "--all", "-1", "--format=%H", "--", path],
+            capture_output=True, text=True, timeout=60, check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return True
+    return proc.returncode != 0 or bool(proc.stdout.strip())
+
+
+def never_built(repo: Path, json_cmd: list[str], env: dict[str, str]) -> set[str]:
+    """Names of checks skipped for missing paths that the repo has never tracked.
+
+    Re-runs the gate with --json for the untruncated skip details. Anything that cannot
+    be parsed is left out, so it counts as a skip (PARTIAL) — never as n/a.
+    """
+    proc = subprocess.run(json_cmd, env=env, cwd=repo, capture_output=True, text=True,
+                          check=False)
+    try:
+        results = json.loads(proc.stdout)["results"]
+    except (ValueError, KeyError, TypeError):
+        return set()
+    unbuilt = set()
+    for r in results:
+        detail = r.get("detail") or ""
+        if r.get("status") != "skipped" or not detail.startswith(NO_PATH):
+            continue
+        paths = detail[len(NO_PATH):].split()
+        if paths and not any(_ever_tracked(repo, p) for p in paths):
+            unbuilt.add(r["name"])
+    return unbuilt
+
+
+def verdict(out: str, code: int, fast: bool, unbuilt: set[str]) -> int:
     """Turn the gate's human report into one unambiguous line + exit code."""
-    failed, skipped, na, ran = [], [], [], 0
+    failed, skipped, na, lost, ran = [], [], [], [], 0
     for line in out.splitlines():
         s = line.strip()
         if not s or s[0] not in "✅❌⏭":
@@ -138,10 +182,18 @@ def verdict(out: str, code: int, fast: bool) -> int:
             ran += 1
         elif s.startswith("✅"):
             ran += 1
-        elif "no such path yet" in s:
+        elif NO_PATH.strip() in s and name in unbuilt:
             na.append(name)
         elif not (fast and "(--fast)" in s):
             skipped.append(name)
+            if NO_PATH.strip() in s:
+                lost.append(name)
+    if na:
+        print("NOTE    n/a = target path never existed in repo history (not yet built): "
+              f"{', '.join(na)}")
+    if lost:
+        print("NOTE    missing path was tracked before (deleted/renamed?) or could not be "
+              f"checked — still a skip: {', '.join(lost)}")
     if failed or (code != 0 and not ran):
         print(f"VERDICT RED · failed: {', '.join(failed) or f'gate exit {code}'}")
         return 1
