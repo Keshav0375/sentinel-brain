@@ -15,8 +15,8 @@ Local composite action so every pipeline stage calls one Datadog reporter instea
 copy-pasted curl blocks.
 
 **Files created:** `.github/actions/dd-report/action.yml`
-- Inputs: `title`, `text`, `tags` (comma list), `alert-type` (`info|error`), optional `log-payload`, `dd-api-key`, `dd-site` (default `datadoghq.com`).
-- Steps: `send_dd_event` → POST `api.datadoghq.com/api/v1/events`; if `log-payload` set, `send_dd_log` → POST `https://http-intake.logs.${DD_SITE}/api/v2/logs` (§3.2 helper bodies).
+- Inputs: `title`, `text`, `tags` (comma list), `alert-type` (`info|error`), optional `log-payload`, `dd-api-key`, `dd-site` (**required**, no default: the org is on US5 `us5.datadoghq.com`, and a wrong default fails as a silent 403).
+- Steps: `send_dd_event` → POST `https://api.${DD_SITE}/api/v1/events`; if `log-payload` set, `send_dd_log` → POST `https://http-intake.logs.${DD_SITE}/api/v2/logs` (§3.2 helper bodies).
 - Mask the API key; fail soft (report failures shouldn't break the deploy record).
 
 ## Prerequisites

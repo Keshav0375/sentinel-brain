@@ -177,7 +177,7 @@ Azure's Oryx build system runs `pip install -r requirements.txt` on the server.
 **On failure** (missing files, zip error):
 
 ```
-POST https://api.datadoghq.com/api/v1/events
+POST https://api.${DD_SITE}/api/v1/events
 {
   "title": "Build FAILED for PR #${PR_NUMBER}: ${PR_TITLE}",
   "text": "${BUILD_ERROR_OUTPUT}",
@@ -343,7 +343,7 @@ every stage calls one implementation instead of copy-pasted curl blocks. Inputs:
 ```bash
 send_dd_event() {
   local title="$1" text="$2" alert_type="$3" tags="$4"
-  curl -sf -X POST "https://api.datadoghq.com/api/v1/events" \
+  curl -sf -X POST "https://api.${DD_SITE}/api/v1/events" \
     -H "DD-API-KEY: ${DD_API_KEY}" \
     -H "Content-Type: application/json" \
     -d "{\"title\":\"${title}\",\"text\":\"${text}\",\"tags\":[${tags}],\"alert_type\":\"${alert_type}\",\"source_type_name\":\"github\"}"
@@ -368,7 +368,7 @@ on:
     branches: [main]
 
 env:
-  DD_SITE: datadoghq.com
+  DD_SITE: ${{ vars.DD_SITE }}   # us5.datadoghq.com — never hardcode the site
   DD_SERVICE: sentinel-watchtower
   DD_ENV: dev
 
@@ -428,7 +428,7 @@ Everything lives on the **`sentinel-dev` environment** (not repo-level), pushed 
 | variable | `DEPLOYED_APP_URL` | infra output `app_url` |
 | variable | `PG_HOST` / `PG_DATABASE` | infra outputs `database_host` / `database_name` |
 | variable | `PG_USER` | `gha-app` |
-| variable | `DD_SITE` | `datadoghq.com` |
+| variable | `DD_SITE` | `us5.datadoghq.com` (the org lives on US5; an API key is valid on one site only) |
 
 **The merge gate.** `sentinel-dev` allows deployments from `main` only, and `main` requires a
 pull request — so only merged code can mint `gha-app`'s token, never a scenario branch or a PR
@@ -619,9 +619,9 @@ When the full Sentinel pipeline is connected:
 
 ### Datadog
 - [ ] Activate Student Pack Datadog offer (Pro, 10 servers, 2 years)
-- [ ] Note Datadog site (US1: `datadoghq.com` or US5: `us5.datadoghq.com`)
+- [x] Datadog site: **US5 `us5.datadoghq.com`** (verified 2026-10-05: key valid on US5, 403 on every other site)
 - [ ] Generate DD_API_KEY from Organization Settings → API Keys
-- [ ] Test Events API: `curl -X POST "https://api.datadoghq.com/api/v1/events" -H "DD-API-KEY: <key>" -d '{"title":"test","text":"hello"}'`
+- [ ] Test Events API: `curl -X POST "https://api.us5.datadoghq.com/api/v1/events" -H "DD-API-KEY: <key>" -d '{"title":"test","text":"hello"}'`
 
 ### Azure (all owned by Sentinel-infra — see its `docs/BOOTSTRAP.md` step 9)
 - [ ] `gha-app` identity exists (`scripts/bootstrap-identities.sh`, run by the subscription Owner)

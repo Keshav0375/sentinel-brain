@@ -63,7 +63,7 @@ after backend phase 1 and is not claimed by deploy phase 2.
 **R8 — distribution.** GitHub environment `sentinel-dev` in `Sentinel-deployment`.
 Secrets: `AZURE_CLIENT_ID` (gha-app), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`,
 `DD_API_KEY`. Variables (not secret, not masked): `AZURE_RG`, `APP_NAME`,
-`DEPLOYED_APP_URL`, `PG_HOST`, `PG_DATABASE`, `PG_USER`, `DD_SITE=datadoghq.com`. The values
+`DEPLOYED_APP_URL`, `PG_HOST`, `PG_DATABASE`, `PG_USER`, `DD_SITE=us5.datadoghq.com` (the org is on US5 — verified 2026-10-05; every Datadog URL is built from `DD_SITE`, never hardcoded). The values
 are deterministic (uid = `sha1(sub-dep-env)[0:4]`), so they are pushed once rather than resolved
 per run.
 
