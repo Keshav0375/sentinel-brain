@@ -190,22 +190,29 @@ POST https://api.datadoghq.com/api/v1/events
 #### Stage 3: Deploy
 
 ```bash
-# Login to Azure — OIDC via azure/login@v2 (client-id/tenant-id/subscription-id;
-# no client secret exists, see §3.4)
+# Login to Azure — OIDC via azure/login@v2 as `gha-app` (secrets.AZURE_CLIENT_ID /
+# AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID; no client secret exists, see §3.4).
+# The job declares `environment: sentinel-dev` — that is the only OIDC subject gha-app trusts.
 
 # Set app version env var
 az webapp config appsettings set \
-  --resource-group $AZURE_RG \
-  --name dummy-api-0375 \
+  --resource-group "$AZURE_RG" \
+  --name "$APP_NAME" \
   --settings APP_VERSION="${APP_VERSION}"
 
-# Deploy zip package
+# Deploy zip package (Entra auth — basic-auth publishing is disabled on the app)
 az webapp deploy \
-  --resource-group $AZURE_RG \
-  --name dummy-api-0375 \
+  --resource-group "$AZURE_RG" \
+  --name "$APP_NAME" \
   --src-path deploy.zip \
   --type zip
 ```
+
+`AZURE_RG` / `APP_NAME` / `DEPLOYED_APP_URL` are **environment variables** of `sentinel-dev`
+(`vars.*`), never hardcoded: the names come from infra's naming module
+(`rg-<dep>-<env>-cc`, `app-<dep>-<env>-<uid>`, uid = `sha1(sub-dep-env)[0:4]`), are stable across
+destroy/recreate, and are pushed once by infra `scripts/push-deploy-config.sh` (§3.4).
+`gha-app` holds `Website Contributor` on this one App Service and nothing else.
 
 **On failure** (auth error, deploy rejected, app crash):
 
@@ -249,22 +256,25 @@ and the deploy ↔ incident correlation depend on. **Failed deploys matter most*
 they're exactly the rows incidents join against.
 
 ```bash
-# OIDC login already done in Stage 3 (azure/login@v2)
+# OIDC login already done in Stage 3 (azure/login@v2, as gha-app)
 sudo apt-get install -y postgresql-client
 
 # Entra DB token as the psql password — no db-password secret anywhere.
-PGPASSWORD=$(az account get-access-token \
-  --resource https://ossrdbms-aad.database.windows.net \
+export PGPASSWORD=$(az account get-access-token --resource-type oss-rdbms \
   --query accessToken -o tsv)
 
-PGPASSWORD="$PGPASSWORD" psql \
-  "host=sentinel-pg-0375.postgres.database.azure.com dbname=sentinel user=sentinel-gha sslmode=require" <<SQL
+# Values go in as psql variables (:'name' quotes them) — NEVER interpolated into the SQL
+# text: PR titles, authors and file lists are attacker-influenced strings.
+psql "host=${PG_HOST} dbname=${PG_DATABASE} user=${PG_USER} sslmode=require" \
+  -X -v ON_ERROR_STOP=1 \
+  -v service="$DD_SERVICE" -v pr="$PR_NUMBER" -v sha="$SHORT_SHA" -v author="$PR_AUTHOR" \
+  -v status="$STATUS" -v run="$GITHUB_RUN_ID" -v files="$FILES_CHANGED_JSON" \
+  -v stage="${FAILED_STAGE:-none}" -v version="$APP_VERSION" <<'SQL'
 INSERT INTO deployments
   (service, pr_number, commit_sha, author, deploy_status, gha_run_id, files_changed, metadata)
 VALUES
-  ('sentinel-watchtower', ${PR_NUMBER}, '${SHORT_SHA}', '${PR_AUTHOR}', '${STATUS}',
-   ${GITHUB_RUN_ID}, '${FILES_CHANGED_JSON}'::jsonb,
-   jsonb_build_object('failed_stage', '${FAILED_STAGE:-none}', 'version', '${APP_VERSION}'));
+  (:'service', :'pr'::int, :'sha', :'author', :'status', :'run'::bigint, :'files'::jsonb,
+   jsonb_build_object('failed_stage', :'stage', 'version', :'version'));
 SQL
 ```
 
@@ -275,10 +285,16 @@ Notes:
   credential stored as a GitHub secret anywhere.
 - `incident_id` stays NULL here; the backend backfills it when an incident
   correlates to this deploy.
-- Implemented via sentinel's shared composite actions, referenced cross-repo:
-  `uses: Keshav0375/Sentinel/.github/actions/get-kv-secrets@main` and
-  `uses: Keshav0375/Sentinel/.github/actions/psql-exec@main` — one SQL/secret
-  implementation maintained in one place.
+- **Inline, not cross-repo actions** (decision 2026-10-05, R13): no
+  `Keshav0375/Sentinel/.github/actions/*` dependency — the deployment pipeline must not wait on
+  backend phases to exist.
+- **`continue-on-error: true`.** A failed record is reported to Datadog as `stage:record` and
+  **never changes `deploy_status`** — the run's colour describes the deploy, not bookkeeping.
+- `PG_USER` is `gha-app`, a database principal bound by object ID (infra
+  `scripts/grant-db-access.sh`), not a server admin. Its `INSERT, SELECT` on `deployments` is
+  granted by **backend phase 1's migration** (the table owner); until that migration runs the
+  record stage fails visibly with `relation "deployments" does not exist` — expected, and the
+  end-to-end "a row exists" check belongs after backend phase 1.
 
 #### Stage 6: Final Summary (if: always())
 
@@ -356,10 +372,19 @@ env:
   DD_SERVICE: sentinel-watchtower
   DD_ENV: dev
 
+permissions:
+  id-token: write   # OIDC token for azure/login
+  contents: read
+
+concurrency:
+  group: deploy-sentinel-dev
+  cancel-in-progress: false   # never abort a half-finished deploy
+
 jobs:
   build-deploy-verify:
     name: Build Deploy and Verify
     runs-on: ubuntu-latest
+    environment: sentinel-dev   # the only subject gha-app federates on; main-only policy
     steps:
       - name: Checkout
       - name: Extract PR metadata
@@ -374,7 +399,11 @@ jobs:
       - name: Report verify failure
         if: failure()
       - name: Record deployment in PostgreSQL
+        id: record
         if: always()
+        continue-on-error: true
+      - name: Report record failure
+        if: steps.record.outcome == 'failure'
       - name: Report final summary
         if: always()
 ```
@@ -383,23 +412,31 @@ jobs:
 goes directly to App Service. The record stage writes the `deployments` row that
 Sentinel's agents correlate incidents against.
 
-### 3.4 Required GitHub Secrets
+### 3.4 Required GitHub Configuration — environment `sentinel-dev`
 
-| Secret | Description | How Set |
-|--------|-------------|---------|
-| `AZURE_CLIENT_ID` | OIDC app client ID | Auto-pushed by sentinel-infra Terraform |
-| `AZURE_TENANT_ID` | Azure AD tenant ID | Auto-pushed by sentinel-infra Terraform |
-| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID | Auto-pushed by sentinel-infra Terraform |
-| `DD_API_KEY` | Datadog API key | Manual |
-| `DEPLOYED_APP_URL` | Public URL (e.g. `https://dummy-api-0375.azurewebsites.net`) | Manual |
+Everything lives on the **`sentinel-dev` environment** (not repo-level), pushed by infra
+`scripts/push-deploy-config.sh` after the deployment is applied (decision 2026-10-05, R8).
 
-DB access for the record-deployment stage needs no GitHub secret — the OIDC
-identity mints a short-lived Entra DB token at runtime (Postgres is Entra-only).
-There is no demo-PR workflow anymore; scenarios are real git branches (§4).
+| Kind | Name | Value / source |
+|------|------|----------------|
+| secret | `AZURE_CLIENT_ID` | `gha-app` client ID (bootstrap identity in `rg-sentinel-bootstrap`) |
+| secret | `AZURE_TENANT_ID` | tenant of the subscription |
+| secret | `AZURE_SUBSCRIPTION_ID` | Azure for Students subscription |
+| secret | `DD_API_KEY` | Datadog API key (US1) |
+| variable | `AZURE_RG` | infra output `deployment_resource_group` |
+| variable | `APP_NAME` | infra output `app_name` |
+| variable | `DEPLOYED_APP_URL` | infra output `app_url` |
+| variable | `PG_HOST` / `PG_DATABASE` | infra outputs `database_host` / `database_name` |
+| variable | `PG_USER` | `gha-app` |
+| variable | `DD_SITE` | `datadoghq.com` |
 
-**No `AZURE_CLIENT_SECRET`** — uses OIDC workload identity federation.
-OIDC federated credentials are provisioned by sentinel-infra Terraform (see sentinel-infra ARCHITECTURE.md §4).
-GitHub secrets for AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID are auto-pushed by Terraform's `github_actions_secret` resource.
+**The merge gate.** `sentinel-dev` allows deployments from `main` only, and `main` requires a
+pull request — so only merged code can mint `gha-app`'s token, never a scenario branch or a PR
+run. (Phase 2 adds the `Deploy` workflow as a required status check.)
+
+**No `AZURE_CLIENT_SECRET`, no DB password** — OIDC federation to `gha-app` (one subject:
+`repo:Keshav0375/Sentinel-deployment:environment:sentinel-dev`) and a short-lived Entra DB token.
+There is no demo-PR workflow; scenarios are real git branches (§4).
 
 ---
 
@@ -586,18 +623,17 @@ When the full Sentinel pipeline is connected:
 - [ ] Generate DD_API_KEY from Organization Settings → API Keys
 - [ ] Test Events API: `curl -X POST "https://api.datadoghq.com/api/v1/events" -H "DD-API-KEY: <key>" -d '{"title":"test","text":"hello"}'`
 
-### Azure
-- [ ] Create resource group: `az group create --name sentinel-rg --location eastus`
-- [ ] Create App Service plan (F1): `az appservice plan create --name sentinel-plan --resource-group sentinel-rg --sku F1 --is-linux`
-- [ ] Create web app: `az webapp create --resource-group sentinel-rg --plan sentinel-plan --name dummy-api-0375 --runtime "PYTHON:3.12"`
-- [ ] Configure startup command: `az webapp config set --resource-group sentinel-rg --name dummy-api-0375 --startup-file "gunicorn --bind=0.0.0.0 --timeout 600 -k uvicorn.workers.UvicornWorker app.main:app"`
-- [ ] OIDC federated credential for this repo — provisioned by sentinel-infra Terraform (see sentinel-infra ARCHITECTURE.md §4); no service principal secret to create
-- [ ] Note the app URL: `https://dummy-api-0375.azurewebsites.net`
+### Azure (all owned by Sentinel-infra — see its `docs/BOOTSTRAP.md` step 9)
+- [ ] `gha-app` identity exists (`scripts/bootstrap-identities.sh`, run by the subscription Owner)
+- [ ] Infra repo variable `GHA_APP_OBJECT_ID` set to `gha-app`'s principal ID
+- [ ] Deployment `sentinel`/`dev` applied (Actions → *Sentinel Infra — Deploy*, `apply`, `all`) —
+      App Service (F1, Python 3.12, §2.5 start command, basic-auth publishing off) + database
+- [ ] `scripts/grant-db-access.sh --deployment sentinel --environment dev` (human Entra admin)
 
 ### GitHub (sentinel-deployment repo)
-- [ ] Create repo manually
-- [ ] Secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` auto-pushed by Terraform; add manually: `DD_API_KEY`, `DEPLOYED_APP_URL`
-- [ ] Branch protection on main: require PR, require `Deploy` workflow to pass
+- [ ] `scripts/push-deploy-config.sh` (from Sentinel-infra) — creates `sentinel-dev` with the
+      main-only policy, pushes §3.4, protects `main` (require PR)
+- [ ] Phase 2: add the `Deploy` workflow as a required status check on `main`
 
 ### Local Development
 - [ ] Python 3.12 available
