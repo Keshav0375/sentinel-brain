@@ -13,9 +13,9 @@
 |-------|-------|
 | **Active category** | **deployment** — phase 1 signed; phase 2 next. infra is ✅ COMPLETE (2026-09-13) |
 | **Active phase** | deployment 2 — Deploy Pipeline |
-| **Active branch** | none yet (`dev/deploy-phase-2-deploy-pipeline` to be cut from `main`, Sentinel-deployment) |
+| **Active branch** | `dev/deploy-phase-2-deploy-pipeline` (Sentinel-deployment, local, not pushed yet) |
 | **Active PR** | none (deployment PR #1 merged 2026-10-04) |
-| **Current task** | deployment 2.2 — `ci_app_deployment.yml` (2.1 done-pending-review, `05d35ce`) |
+| **Current task** | deployment 2.3 (2.2 done-pending-review, `cc3dba6`) |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |

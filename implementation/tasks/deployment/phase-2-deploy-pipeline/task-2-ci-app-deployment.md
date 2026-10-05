@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel-deployment` |
 | **Phase branch** | `dev/deploy-phase-2-deploy-pipeline` |
 | **Commit prefix** | `feat:` |
@@ -44,7 +44,12 @@ writes the `deployments` row that backend correlation depends on.
 2. (wired) merge a trivial PR → app redeploys, Datadog event visible, `psql -c 'select * from deployments order by deployed_at desc limit 1'` shows the row.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built `ci_app_deployment.yml` (build, deploy, verify, record, summary) in Sentinel-deployment, commit `cc3dba6`.
+Files: `.github/workflows/ci_app_deployment.yml`, `.github/scripts/{deploy-metadata,deploy-status,set-env}.sh`, `tests/test_deploy_scripts.py`.
+Each report step is gated on its own stage outcome; login runs `if: always()` so failed builds are recorded. STATUS is `succeeded|failed`; record failures report `stage:record` without `deploy_status:failed`. appsettings set uses `--output none`.
+Not run live (estate destroyed). Deployments-row check deferred to backend 1.3 (R12). Limitation: if checkout fails, the local dd-report action is unavailable and nothing is reported.
+
+**Gate:** VERDICT GREEN, 5 ran (ruff-lint, yamllint, actionlint, gitleaks, pytest), none n/a; tree clean, attribution none. 34 tests (PR#/title parsing, files JSON, STATUS folding, payload, GITHUB_ENV injection).
 
 ## BLOCKED
 _None for the YAML. Live run needs the estate applied (`ci_infra.yml apply all sentinel dev`) + `grant-db-access.sh`. The `deployments` row is deferred to backend 1.3 (R12)._
