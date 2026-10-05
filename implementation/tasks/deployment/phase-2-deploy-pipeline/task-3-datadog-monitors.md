@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `in-progress` |
 | **Repo** | `Sentinel-deployment` |
 | **Phase branch** | `dev/deploy-phase-2-deploy-pipeline` |
 | **Commit prefix** | `feat:` |
@@ -26,7 +26,7 @@ The two monitors that turn Datadog signal into a `repository_dispatch`. Defined 
 
 **Decided 2026-10-05 (binding):**
 - **Applied locally by the owner**, not CI: monitors + webhook are versioned JSON under `datadog/`, applied by an idempotent `datadog/apply.sh` (reads `DD_API_KEY`/`DD_APP_KEY`/`DD_SITE` from an `--env-file`, never echoes them; `--dry-run`). Re-run after every estate recreate — the Event Grid topic key changes.
-- **Webhook contract:** a Datadog Webhooks-integration webhook `sentinel-event-grid` → the topic endpoint (`az eventgrid topic show … --query endpoint`), custom header `aeg-sas-key` (from `az eventgrid topic key list`, stored only in Datadog's webhook config), body in **Event Grid schema** `[{"id":"$ID","eventType":"datadog.monitor","subject":"$ALERT_ID","eventTime":"$DATE_ISO8601"-ish,"dataVersion":"1","data":{"title":"$EVENT_TITLE","tags":"$TAGS","alert_transition":"$ALERT_TRANSITION","link":"$LINK"}}]` — the bridge reads `data.tags`/`data.title`. Resource names from `az`/terraform outputs, never hardcoded.
+- **Webhook contract:** a Datadog Webhooks-integration webhook `sentinel-event-grid` → the topic endpoint (`az eventgrid topic show … --query endpoint`), custom header `aeg-sas-key` (from `az eventgrid topic key list`, stored only in Datadog's webhook config). The body is **flat JSON** `{"title":"$EVENT_TITLE","tags":"$TAGS","alert_transition":"$ALERT_TRANSITION","link":"$LINK","alert_id":"$ALERT_ID","date":"$DATE"}`. The topic's **CustomEventSchema** input mapping (infra, amended 2026-10-05) wraps it, so Event Grid stamps `id`/`eventTime` and the bridge reads it as `data`.
 - **Alert-only notify:** each monitor's message mentions `@webhook-sentinel-event-grid` inside `{{#is_alert}}…{{/is_alert}}` only — a recovery must never dispatch (the bridge would classify it `runtime_error`).
 - **`sentinel-runtime-health` = Datadog Synthetics API tests** on `GET /` and `GET /health` of `DEPLOYED_APP_URL`, 1 managed location, every 5 min, alert when a test fails (any location) for the 5-min window; renotify off. No Azure integration.
 - **`sentinel-deploy-failure`** = event monitor on `tags:deploy_status:failed service:sentinel-watchtower`; the alert payload carries `deploy_status:failed` so the bridge classifies `deploy_failure`.
