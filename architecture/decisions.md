@@ -34,9 +34,19 @@ They are deployment-layer outputs, consumed by the secret push (R8).
 `pgaadauth_create_principal('gha-app', false, false)` and grants CONNECT on the deployment
 database, plus INSERT/SELECT on `deployments`, through an idempotent
 `scripts/grant-db-access.sh`. Terraform cannot do this because there is no resource for
-in-database roles (infra §3.2). The `deployments` table is created by backend phase 1's
-migration, so the table grant is applied when that table exists. The script is re-run after
-that migration.
+in-database roles (infra §3.2). The role is bound by object ID
+(`pgaadauth_create_principal_with_oid`), not by display name.
+*Amended same day after review:* only a table's owner can grant on it, and `deployments` will be
+owned by backend phase 1's migration role. So **that migration grants**
+`INSERT, SELECT ON deployments TO "gha-app"` (guarded on the role existing), recorded as an
+acceptance criterion on backend task 1.3. `grant-db-access.sh` only **verifies** it with
+`has_table_privilege` and exits non-zero if it is missing. PUBLIC keeps the default CONNECT on
+the shared server's databases. This is accepted: CONNECT alone reaches no table.
+
+**Merge gate.** Environment `sentinel-dev` allows deployments from `main` only, and `main`
+requires a pull request. Together they mean only merged code can mint a `gha-app` token. The
+basic-auth publishing flags are off. Website Contributor could switch them back on, which is
+accepted because of the main-only gate, and the next apply reverts the drift.
 
 **R13 — SQL inline in `ci_app_deployment.yml`.** The workflow does not use cross-repo
 `get-kv-secrets` / `psql-exec` actions. The token comes from
