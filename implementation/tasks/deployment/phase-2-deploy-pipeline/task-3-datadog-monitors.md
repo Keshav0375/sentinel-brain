@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel-deployment` |
 | **Phase branch** | `dev/deploy-phase-2-deploy-pipeline` |
 | **Commit prefix** | `feat:` |
@@ -41,14 +41,16 @@ The two monitors that turn Datadog signal into a `repository_dispatch`. Defined 
 ## Tests
 - **Validate:** JSON/HCL lint; dry-run the monitor definition.
 - **Integration (estate applied):** trigger a failed deploy → deploy-failure monitor fires → dispatch reaches sentinel repo. Break `GET /` (PR #11 style) → runtime-health fires.
-- **Quality gate:** `--repo deployment`.
+- **Quality gate:** `--repo deployment` — VERDICT GREEN, 5 ran, no n/a (tree clean, attribution none, MATCH ok). 23 tests in tests/test_datadog.py.
 
 ## How to Verify (phase gate — end of Category 2)
-1. Monitor definitions validate.
+1. Monitor definitions validate: `python3 -m pytest tests/test_datadog.py` (Sentinel-deployment); `datadog/apply.sh --dry-run --env-file <env>`.
 2. (wired) a Condition-C PR fires `sentinel-deploy-failure`; a Condition-B PR fires `sentinel-runtime-health`; both produce an `incident-alert` dispatch in the sentinel repo Actions tab.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report
+Built commit `d5fa824` (feat: add Datadog deploy-failure and runtime-health triggers with apply script). Files: datadog/webhook.json, datadog/monitors/deploy-failure.json, datadog/synthetics/runtime-health-root.json, datadog/synthetics/runtime-health-health.json, datadog/apply.sh, datadog/README.md, tests/test_datadog.py.
+Flat webhook body to CustomEventSchema topic (infra PR #17). Synthetics: 2 API tests, aws:ca-central-1, every 5 min, min_failure_duration 300, timeout 60s.
+NOT live: estate destroyed, DD_APP_KEY not yet in Sentinel-infra/.env. Unverified: aws:ca-central-1 on US5, JSON-escaping of $EVENT_TITLE, end-to-end chain.
 
 ## BLOCKED
 _⛔ B6 (Datadog) + infra Event Grid/Function. Definitions writable now._

@@ -104,7 +104,7 @@ _Implement second — the target app + deploy pipeline that generates real Datad
 |---|------|------|--------|
 | 2.1 | `dd-report` composite action | [task-1](tasks/deployment/phase-2-deploy-pipeline/task-1-dd-report-action.md) | 🟡 |
 | 2.2 | `ci_app_deployment.yml` (Build→Deploy→Verify→Record[**Entra DB token**]→Summary) | [task-2](tasks/deployment/phase-2-deploy-pipeline/task-2-ci-app-deployment.md) | 🟡 |
-| 2.3 | Datadog monitors (deploy-failure → `deploy_failure`; runtime-health → `runtime_error`) | [task-3](tasks/deployment/phase-2-deploy-pipeline/task-3-datadog-monitors.md) | 🔵 |
+| 2.3 | Datadog monitors (deploy-failure → `deploy_failure`; runtime-health → `runtime_error`) | [task-3](tasks/deployment/phase-2-deploy-pipeline/task-3-datadog-monitors.md) | 🟡 |
 
 ### Phase 3 — Scenario Branches  ·  branch `dev/deploy-phase-3-scenario-branches`  ·  Gate: 🔒
 | # | Task | File | Status |

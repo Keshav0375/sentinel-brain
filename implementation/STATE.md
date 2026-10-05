@@ -15,7 +15,7 @@
 | **Active phase** | deployment 2 — Deploy Pipeline |
 | **Active branch** | `dev/deploy-phase-2-deploy-pipeline` (Sentinel-deployment, local, not pushed yet) |
 | **Active PR** | none (deployment PR #1 merged 2026-10-04) |
-| **Current task** | deployment 2.3 (2.2 done-pending-review, `cc3dba6`) |
+| **Current task** | none — deployment phase 2 tasks 2.1-2.3 all done-pending-review (2.3 `d5fa824`); next: close-phase. Infra PR #17 (Event Grid CustomEventSchema + outputs + seed-vault retry + DD_SITE refuse) is open, under review |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
