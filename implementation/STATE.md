@@ -11,26 +11,27 @@
 
 | Field | Value |
 |-------|-------|
-| **Active category** | **deployment** — starting. infra is ✅ COMPLETE (2026-09-13) |
-| **Active phase** | deployment 1 — The App |
-| **Active branch** | `dev/deploy-phase-1-app` (Sentinel-deployment) |
-| **Active PR** | https://github.com/Keshav0375/Sentinel-deployment/pull/1 |
-| **Current task** | none — phase 1 tasks 1.1, 1.2 done-pending-review; close-phase next |
-| **Tasks verified** | 29 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
-| **Phases merged** | 6 / 18 — infra 1-6, all merged |
+| **Active category** | **deployment** — phase 1 signed; phase 2 next. infra is ✅ COMPLETE (2026-09-13) |
+| **Active phase** | deployment 2 — Deploy Pipeline |
+| **Active branch** | none yet (`dev/deploy-phase-2-deploy-pipeline` to be cut from `main`, Sentinel-deployment) |
+| **Active PR** | none (deployment PR #1 merged 2026-10-04) |
+| **Current task** | deployment 2.1 — `dd-report` composite action |
+| **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
+| **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
 
-**Start deployment phase 1.** Branch `dev/deploy-phase-1-app` from `Sentinel-deployment` `main`,
-PR back into `main` (no release branch in this repo).
+**Start deployment phase 2.** Branch `dev/deploy-phase-2-deploy-pipeline` from `Sentinel-deployment`
+`main`, PR back into `main` (no release branch in this repo).
 
 | # | Task | What |
 |---|------|------|
-| 1.1 | FastAPI app | 3 routes + startup log + config — `architecture/deployment.md §2` |
-| 1.2 | App tests | health / version / root |
+| 2.1 | `dd-report` composite action | |
+| 2.2 | `ci_app_deployment.yml` | Build→Deploy→Verify→Record (Entra DB token)→Summary |
+| 2.3 | Datadog monitors | deploy-failure → `deploy_failure`; runtime-health → `runtime_error` |
 
 ## Carried into the deployment category
 
@@ -64,6 +65,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-10-04 | deployment | 1 — The App | `dev/deploy-phase-1-app` | [#1](https://github.com/Keshav0375/Sentinel-deployment/pull/1) | Keshav | 1.1, 1.2 verified; merged manually by Keshav (squash 852660e) |
 | 2026-09-13 | infra | **6 — Dynamic Deployments & Workflows** ✅ **CATEGORY COMPLETE** | `dev/infra-phase-6-dynamic-deployments` | [#8](https://github.com/Keshav0375/Sentinel-infra/pull/8) + [#9](https://github.com/Keshav0375/Sentinel-infra/pull/9) [#10](https://github.com/Keshav0375/Sentinel-infra/pull/10) [#11](https://github.com/Keshav0375/Sentinel-infra/pull/11) [#12](https://github.com/Keshav0375/Sentinel-infra/pull/12) [#13](https://github.com/Keshav0375/Sentinel-infra/pull/13) [#14](https://github.com/Keshav0375/Sentinel-infra/pull/14) [#15](https://github.com/Keshav0375/Sentinel-infra/pull/15) | Keshav | Full lifecycle proven live from an empty subscription: `apply·platform` 11 resources ([34778509991](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34778509991)), `apply·deployment` 31 resources incl. **`kubernetes_namespace sentinel-dev`** + quota + LimitRange + NetworkPolicy + ServiceAccount + federated credential ([34779137478](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34779137478)) — closing the kubelogin gap carried since 2026-08-25 — `destroy·deployment` ([34779589393](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34779589393)), `destroy·all` 7 destroyed, workspace deleted, verify **11/11 ok** ([34782250925](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34782250925)). Estate back to `rg-sentinel-bootstrap` + `NetworkWatcherRG` only. **Five defects found by reading the run history and fixed the same day, each proven in production**: identical run names + false-alarm verify + unseen F1 quota + a PR plan that tried to CREATE its workspace (#11); `apply` unguarded against a missing platform (#12); that refusal arriving 2m30s late (#13); **the destroy deadlock** — the Entra admin dropped concurrently with the database it owns, Postgres `2BP01`, 30 min hang, Postgres left billing (#14); and two security items (#15). **Signed with 6.8 (Pause/Resume) recorded as ⚠️ shipped-but-unexercised — zero runs, ever.** |
 | 2026-08-25 | infra | 5 — Dynamic Foundations | `dev/infra-phase-5-dynamic-foundations` | [#7](https://github.com/Keshav0375/Sentinel-infra/pull/7) | Keshav | Owner answered **Approve & merge**; merged `7849310`. Old estate destroyed (45 resources) and rebuilt as a two-layer platform. Proven live: a deployment workspace plans ZERO Azure resources and its `plan -destroy` reports nothing to destroy, while still reading platform outputs via `terraform_remote_state`; `gha-plan` holds `*/read` + 2 blob reads only. The merge was initially BLOCKED by the branch ruleset — the workflows still described the pre-phase-5 contract, fixed in-phase rather than deferred, which surfaced that Reader cannot refresh ACR/AKS. Superseded R5, R6, C1 and one-cluster-per-estate. |
 | 2026-08-24 | infra | 4 — Cross-Repo Wiring & CI | `dev/infra-phase-4-wiring-and-ci` | [#4](https://github.com/Keshav0375/Sentinel-infra/pull/4) | Keshav | Owner answered **Approve & merge** at the gate; PR #4 merged `09b2510`→`f2aa5da`. **The identity plane was proven live**: on its first-ever CI run Terraform refreshed the whole estate under the `sentinel-gha` UAMI, exercising the OIDC round trip, R5's RBAC grant and the state blob — none of which phases 1-3 had tested, since all three applied locally as Owner. `ci_runners` built and pushed the image; the first automated `apply` succeeded. Follow-ups landed as PR #5 (ten review fixes that never reached disk, the `environment:production` credential bootstrap, and a DB start-guard) and PR #6 (workflow renames, sha- image versioning, manual dispatch). Closed B16. **Ledger row written 2026-08-25** — the sign-off happened at merge time; recording it lagged. |

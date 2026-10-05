@@ -93,13 +93,13 @@ _Implement first — provisions the ground truth every other repo depends on._ �
 ## Category 2 — sentinel-deployment  ·  `Keshav0375/Sentinel-deployment`
 _Implement second — the target app + deploy pipeline that generates real Datadog signal._ · [Index](tasks/deployment/README.md)
 
-### Phase 1 — The App  ·  branch `dev/deploy-phase-1-app`  ·  Gate: ⬜ **← NEXT**
+### Phase 1 — The App  ·  branch `dev/deploy-phase-1-app`  ·  Gate: ✅ 2026-10-04
 | # | Task | File | Status |
 |---|------|------|--------|
-| 1.1 | FastAPI app (3 routes + startup log + config) | [task-1](tasks/deployment/phase-1-app/task-1-fastapi-app.md) | 🟡 |
-| 1.2 | App tests (health / version / root) | [task-2](tasks/deployment/phase-1-app/task-2-app-tests.md) | 🟡 |
+| 1.1 | FastAPI app (3 routes + startup log + config) | [task-1](tasks/deployment/phase-1-app/task-1-fastapi-app.md) | ✅ |
+| 1.2 | App tests (health / version / root) | [task-2](tasks/deployment/phase-1-app/task-2-app-tests.md) | ✅ |
 
-### Phase 2 — Deploy Pipeline  ·  branch `dev/deploy-phase-2-deploy-pipeline`  ·  Gate: 🔒
+### Phase 2 — Deploy Pipeline  ·  branch `dev/deploy-phase-2-deploy-pipeline`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 2.1 | `dd-report` composite action | [task-1](tasks/deployment/phase-2-deploy-pipeline/task-1-dd-report-action.md) | ⬜ |
