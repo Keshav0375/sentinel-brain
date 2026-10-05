@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel-deployment` |
 | **Phase branch** | `dev/deploy-phase-2-deploy-pipeline` |
 | **Commit prefix** | `feat:` |
@@ -32,11 +32,14 @@ copy-pasted curl blocks.
 - **Quality gate:** `--repo deployment`.
 
 ## How to Verify (phase gate)
+_Gate: VERDICT GREEN, 4 ran (ruff-lint, yamllint, gitleaks, pytest); actionlint n/a until task 2.2 adds .github/workflows. 12 tests against a stub curl. Action hand-checked from a scratch workflow._
 1. actionlint clean.
 2. (with DD key) a workflow step using the action posts a visible test event/log to Datadog.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report
+Built `dd-report` composite action. Commit `05d35ce` (Sentinel-deployment, feat: add dd-report composite action for Datadog events and logs).
+Files: `.github/actions/dd-report/action.yml`, `.github/actions/dd-report/dd-report.sh`, `.yamllint.yaml`, `tests/test_dd_report.py`.
+Key goes to curl via a 0600 header file (never in argv/output); JSON built with jq; `dd-site` required (US5), URLs built from it; `event-id` prefers id_str; fails soft with warnings. First commit d144d9b failed gitleaks on a fake key literal; amended to 05d35ce.
 
 ## BLOCKED
 _Live verify ⛔ B6. YAML + lint now._
