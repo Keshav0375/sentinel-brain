@@ -8,7 +8,7 @@
 | **Commit prefix** | `feat:` |
 | **Arch refs** | architecture/backend.md §8.5, §9 (actions table), §13.3 |
 | **Depends on** | [[task-2-k8s-manifests]]; infra [[task-1-aks-module]], [[task-3-keyvault-module]] |
-| **Referenced by** | ALL backend workflows (Phase 8), sentinel-deployment [[task-2-ci-app-deployment]] (cross-repo) |
+| **Referenced by** | ALL backend workflows (Phase 8). *Not* sentinel-deployment: its record stage inlines the SQL (decision 2026-10-05, R13). |
 
 > ⚠ **rev-5 (2026-07-12):** **seven** actions, not five. Two new token-minting actions replace
 > stored credentials — `get-db-token` (Entra token for Postgres) and `get-backend-token` (Entra

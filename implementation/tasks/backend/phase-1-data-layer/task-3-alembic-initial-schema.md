@@ -27,6 +27,7 @@ per §5.3.
 ## Acceptance Criteria
 - [ ] `alembic upgrade head` on a fresh pgvector DB creates extension + 3 tables + all indexes; `downgrade` reverses.
 - [ ] Column types/names match §5.3 exactly (conformance-checked).
+- [ ] The migration that creates `deployments` also runs `GRANT INSERT, SELECT ON deployments TO "gha-app"` (guarded by `IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gha-app')` so a local DB without the role still migrates). Only the table owner can grant, and that is the migration's role. Afterwards `Sentinel-infra/scripts/grant-db-access.sh` verifies it (decision 2026-10-05, R12).
 
 ## Tests
 - **Integration (`tests/test_infra/test_migrations.py`):** upgrade against local container, assert tables/columns/indexes via `information_schema` + `pg_indexes`; downgrade clean.

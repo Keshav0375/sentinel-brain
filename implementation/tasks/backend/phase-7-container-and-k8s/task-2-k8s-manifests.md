@@ -24,6 +24,7 @@ per run (dynamic URL, §8.5).
 ## Acceptance Criteria
 - [ ] `kubectl apply --dry-run=client -f azure/k8s/` validates both manifests.
 - [ ] Probes point at `/ready` + `/health`; envFrom the K8s Secret; Recreate strategy (never 2 pods on the 4 GB node).
+- [ ] A `NetworkPolicy` allowing ingress to the backend pods on the service port from the LoadBalancer and from the AKS health probes. The cluster enforces the namespace's `default-deny-ingress` via Cilium (infra PR #16, 2026-10-05), so without this rule `/health` is unreachable through the LB.
 
 ## Tests
 - **Validate:** `kubectl apply --dry-run=client`; kubeconform/kubeval (optional); yamllint.
