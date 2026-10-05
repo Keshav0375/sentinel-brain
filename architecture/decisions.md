@@ -16,6 +16,14 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-05: Deploy phase 2 — no required check, `succeeded|failed`, synthetic runtime monitor, local monitor apply
+
+- **No required status check on `Sentinel-deployment` `main`.** `ci_app_deployment.yml` runs only on push to `main`, so it can never report on a PR. `deployfail/*` scenario branches are deliberately broken and must stay mergeable. "PR required" plus the environment's main-only policy is the whole merge gate.
+- **One status vocabulary: `succeeded` | `failed` | `rolled_back`.** The same `$STATUS` feeds the Datadog `deploy_status` tag and `deployments.deploy_status`. backend §5.3 is amended before backend phase 1 builds it.
+- **Runtime-health = Datadog Synthetics API tests** on `GET /` and `GET /health`: 1 location, every 5 min. The app sends nothing to Datadog, and an Azure integration would need a long-lived credential.
+- **Monitors and the Datadog→Event Grid webhook are applied locally by the owner** with `datadog/apply.sh` (Datadog app key from the local env file, never CI). The webhook posts in Event Grid schema with the `aeg-sas-key` header. Its mention is gated `{{#is_alert}}` so recoveries never dispatch. Re-run after each estate recreate, because the topic key changes.
+- `deployments.dd_deploy_event_id` stays NULL in this phase; nothing captures the event id yet.
+
 ### 2026-10-05: Deployment pipeline prerequisites — `gha-app`, inline SQL, record-stage policy (R7, R8, R11, R12, R13)
 
 **R7 — a fourth CI identity, `gha-app`.** A user-assigned identity in `rg-sentinel-bootstrap`

@@ -726,7 +726,7 @@ CREATE TABLE deployments (
     pr_number INTEGER,
     commit_sha TEXT NOT NULL,
     author TEXT,
-    deploy_status TEXT NOT NULL,          -- 'success' | 'failed' | 'rolled_back'
+    deploy_status TEXT NOT NULL,          -- 'succeeded' | 'failed' | 'rolled_back' (same vocabulary as the Datadog deploy_status tag — decision 2026-10-05)
     gha_run_id BIGINT,                   -- GHA workflow run ID
     dd_deploy_event_id TEXT,             -- Datadog custom event ID for this deploy
     files_changed JSONB,                 -- list of changed files

@@ -422,7 +422,7 @@ Everything lives on the **`sentinel-dev` environment** (not repo-level), pushed 
 | secret | `AZURE_CLIENT_ID` | `gha-app` client ID (bootstrap identity in `rg-sentinel-bootstrap`) |
 | secret | `AZURE_TENANT_ID` | tenant of the subscription |
 | secret | `AZURE_SUBSCRIPTION_ID` | Azure for Students subscription |
-| secret | `DD_API_KEY` | Datadog API key (US1) |
+| secret | `DD_API_KEY` | Datadog API key (org on US5) |
 | variable | `AZURE_RG` | infra output `deployment_resource_group` |
 | variable | `APP_NAME` | infra output `app_name` |
 | variable | `DEPLOYED_APP_URL` | infra output `app_url` |
@@ -432,7 +432,7 @@ Everything lives on the **`sentinel-dev` environment** (not repo-level), pushed 
 
 **The merge gate.** `sentinel-dev` allows deployments from `main` only, and `main` requires a
 pull request — so only merged code can mint `gha-app`'s token, never a scenario branch or a PR
-run. (Phase 2 adds the `Deploy` workflow as a required status check.)
+run. **No required status check** (decision 2026-10-05): the deploy workflow runs only after merge, so it can never pass on a PR, and `deployfail/*` scenario branches must stay mergeable. "PR required" is the whole gate.
 
 **No `AZURE_CLIENT_SECRET`, no DB password** — OIDC federation to `gha-app` (one subject:
 `repo:Keshav0375/Sentinel-deployment:environment:sentinel-dev`) and a short-lived Entra DB token.
@@ -633,7 +633,6 @@ When the full Sentinel pipeline is connected:
 ### GitHub (sentinel-deployment repo)
 - [ ] `scripts/push-deploy-config.sh` (from Sentinel-infra) — creates `sentinel-dev` with the
       main-only policy, pushes §3.4, protects `main` (require PR)
-- [ ] Phase 2: add the `Deploy` workflow as a required status check on `main`
 
 ### Local Development
 - [ ] Python 3.12 available

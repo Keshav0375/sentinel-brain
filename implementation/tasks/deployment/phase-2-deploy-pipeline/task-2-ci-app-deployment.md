@@ -31,7 +31,8 @@ writes the `deployments` row that backend correlation depends on.
 - [ ] Workflow validates; Build→Deploy→Verify→Record→Summary present; failure paths report per §3.1.
 - [ ] Record stage runs `if: always()` (failed deploys recorded) and writes all `deployments` columns.
 - [ ] Uses OIDC as `gha-app` (no client secret); inline SQL with `psql -v` variables only.
-- [ ] Add `Deploy` as a required status check on `main` (completes the merge gate).
+- [ ] **No** required status check on `main` (decision 2026-10-05 — post-merge workflow can't gate a PR; scenario branches must merge).
+- [ ] `STATUS` is `succeeded` | `failed` — the same value for the Datadog tag and `deployments.deploy_status`.
 
 ## Tests
 - **Lint:** actionlint, yamllint.
@@ -46,4 +47,4 @@ writes the `deployments` row that backend correlation depends on.
 _not yet implemented_
 
 ## BLOCKED
-_Record stage needs backend 7.3 (psql-exec/get-kv-secrets). Live run ⛔ B1 + B6. YAML now._
+_None for the YAML. Live run needs the estate applied (`ci_infra.yml apply all sentinel dev`) + `grant-db-access.sh`. The `deployments` row is deferred to backend 1.3 (R12)._
