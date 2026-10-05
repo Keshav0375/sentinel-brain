@@ -16,6 +16,47 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-05: Deployment pipeline prerequisites — `gha-app`, inline SQL, record-stage policy (R7, R8, R11, R12, R13)
+
+**R7 — a fourth CI identity, `gha-app`.** A user-assigned identity in `rg-sentinel-bootstrap`
+(created by `scripts/bootstrap-identities.sh`, like the other three), so its client ID is
+stable across every destroy/recreate of a deployment and the GitHub secret is pushed once.
+It federates exactly one subject, `repo:Keshav0375/Sentinel-deployment:environment:sentinel-dev`.
+It holds **no subscription-scope role**. The deployment layer grants it `Website Contributor` on
+the deployment's App Service only (gated on the `app_service` component). New FICs on
+`gha-deploy` were rejected: that identity can empty the subscription, and the app pipeline
+runs on every merge to a repo whose branches are deliberately broken.
+
+**R11 — root outputs** `app_name`, `app_url`, `deployment_resource_group` and `database_name`.
+They are deployment-layer outputs, consumed by the secret push (R8).
+
+**R12 — `gha-app` is a database principal, not a server admin.** The human Entra admin runs
+`pgaadauth_create_principal('gha-app', false, false)` and grants CONNECT on the deployment
+database, plus INSERT/SELECT on `deployments`, through an idempotent
+`scripts/grant-db-access.sh`. Terraform cannot do this because there is no resource for
+in-database roles (infra §3.2). The `deployments` table is created by backend phase 1's
+migration, so the table grant is applied when that table exists. The script is re-run after
+that migration.
+
+**R13 — SQL inline in `ci_app_deployment.yml`.** The workflow does not use cross-repo
+`get-kv-secrets` / `psql-exec` actions. The token comes from
+`az account get-access-token --resource-type oss-rdbms` (after OIDC login as `gha-app`), and
+`psql` runs on the runner. Values go in through `psql -v` variables, never string-built SQL,
+because PR titles and authors are attacker-influenced text.
+
+**Record-stage policy.** Stage 5 is `continue-on-error`. A failed record is reported to
+Datadog as `stage:record` and **never changes `deploy_status`**: the run's colour describes the
+deploy, not bookkeeping. Until backend phase 1 creates `deployments`, the record stage fails
+visibly with "relation does not exist". The end-to-end "a row exists" check is deferred to
+after backend phase 1 and is not claimed by deploy phase 2.
+
+**R8 — distribution.** GitHub environment `sentinel-dev` in `Sentinel-deployment`.
+Secrets: `AZURE_CLIENT_ID` (gha-app), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`,
+`DD_API_KEY`. Variables (not secret, not masked): `AZURE_RG`, `APP_NAME`,
+`DEPLOYED_APP_URL`, `PG_HOST`, `PG_DATABASE`, `PG_USER`, `DD_SITE=datadoghq.com`. The values
+are deterministic (uid = `sha1(sub-dep-env)[0:4]`), so they are pushed once rather than resolved
+per run.
+
 ### 2026-10-04: Target app identity `sentinel-watchtower`; exact-pinned deps; `expected_culprit` label
 
 **Decision 1 — service name (closes R10).** The deployment target's logical service name is
