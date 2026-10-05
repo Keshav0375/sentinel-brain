@@ -92,12 +92,12 @@ External dependencies that halt verification. Mirror any task-level BLOCKED here
 
 | # | Item | Affects | Status / resolution |
 |---|------|---------|---------------------|
-| **R7** | No OIDC identity for `Sentinel-deployment`. | deploy 2.2 | **DECIDED 2026-10-05: `gha-app`** (decisions 2026-10-05). Code merged (infra PR #16, `eac94a8`). **⏳ LIVE (owner):** run `scripts/bootstrap-identities.sh` and set infra var `GHA_APP_OBJECT_ID`. |
-| **R8** | Cross-repo secret distribution. | deploy 2.2 | **DECIDED 2026-10-05:** environment `sentinel-dev` + `scripts/push-deploy-config.sh` (secrets, vars, main-only branch policy, main protection). Code merged (PR #16). **⏳ LIVE:** run it after apply. |
+| ~~R7~~ | ~~No OIDC identity for `Sentinel-deployment`~~ | — | ✅ **CLOSED 2026-10-05.** `gha-app` bootstrapped (principal `eff18b0a-…`), one FIC `environment:sentinel-dev`; live role = Website Contributor on `app-sentinel-dev-b136` only (verified). |
+| ~~R8~~ | ~~Cross-repo secret distribution~~ | — | ✅ **CLOSED 2026-10-05.** `push-deploy-config.sh` pushed 4 secrets + 7 vars to `sentinel-dev`; main-only branch policy; `main` requires PR. Datadog org is **US5**. Survives destroy (names deterministic). |
 | ~~R9~~ | ~~Stale names in `deployment.md`~~ | — | ✅ **CLOSED 2026-10-05.** §3.1/§3.3/§3.4/§8 rewritten to `vars.*` from infra outputs (`f5d07c5`); no hardcoded resource names remain. |
 | ~~R10~~ | ~~What is the `service` identity?~~ | — | ✅ **CLOSED 2026-10-04.** `service` = **`sentinel-watchtower`** — a stable logical name, decoupled from the Azure resource name (`app-<dep>-<env>-<uid>`), used for the Datadog `service` tag, `deployments.service`, monitor queries and the app's `dd_service` default. Docs updated. **Follow-up (infra):** `modules/app-service/main.tf` `DD_SERVICE` + `modules/functions/tests/test_handlers.py` fixtures still say `dummy-api` — lands with the R7/R11/R12 infra fix. |
 | ~~R11~~ | ~~App URL/name not root outputs~~ | — | ✅ **CLOSED 2026-10-05.** Outputs `app_name`, `app_url`, `deployment_resource_group`, `database_name`, `database_host` (infra PR #16). |
-| **R12** | Pipeline Postgres access. | deploy 2.2; backend 1.3 | **DECIDED 2026-10-05:** `gha-app` DB principal by object ID via `scripts/grant-db-access.sh` (verifies); the `deployments` table grant comes from backend 1.3's migration. Code merged (PR #16). **⏳ LIVE:** run grant-db-access after apply; re-run after backend 1.3. |
+| **R12** | Pipeline Postgres access. | backend 1.3 | **PARTLY CLOSED 2026-10-05.** `gha-app` is a DB principal on `sentinel_dev` (CONNECT/USAGE verified). ⏳ Table grant: backend 1.3's migration grants on `deployments`; re-run `grant-db-access.sh` after it **and after every platform recreate** (destroy drops the role). |
 | ~~R13~~ | ~~Cross-repo composite actions missing~~ | — | ✅ **CLOSED 2026-10-05.** Record stage inlines the SQL (`psql -v` vars only); no dependency on backend actions. |
 
 Resolved R1–R6 are in [history.md](history.md).
