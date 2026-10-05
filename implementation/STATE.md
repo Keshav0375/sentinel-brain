@@ -14,7 +14,7 @@
 | **Active category** | **deployment** — starting. infra is ✅ COMPLETE (2026-09-13) |
 | **Active phase** | deployment 1 — The App |
 | **Active branch** | `dev/deploy-phase-1-app` (Sentinel-deployment) |
-| **Active PR** | none |
+| **Active PR** | https://github.com/Keshav0375/Sentinel-deployment/pull/1 |
 | **Current task** | none — phase 1 tasks 1.1, 1.2 done-pending-review; close-phase next |
 | **Tasks verified** | 29 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged |

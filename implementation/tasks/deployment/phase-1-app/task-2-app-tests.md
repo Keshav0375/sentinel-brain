@@ -33,6 +33,7 @@ Endpoint tests using FastAPI `TestClient`.
 ## Report
 Added tests/__init__.py, tests/test_app.py (4 tests: root, health, version via APP_VERSION, startup_log). Commit `04ad349` in Sentinel-deployment: test: add endpoint and startup-log tests for sentinel-watchtower. Env/.env isolation proven; mutation check confirmed failures on breakage.
 Gate: VERDICT GREEN (n/a: yamllint, actionlint; ran ruff-lint, gitleaks, pytest).
+Review fix `fb84894` in Sentinel-deployment: test: assert exact /health response shape (Refs #41).
 Follow-up: StarletteDeprecationWarning (httpx -> httpx2 for TestClient) on pinned dev deps.
 
 ## How to Verify (phase gate)
