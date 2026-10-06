@@ -194,18 +194,20 @@ POST https://api.${DD_SITE}/api/v1/events
 # AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID; no client secret exists, see §3.4).
 # The job declares `environment: sentinel-dev` — that is the only OIDC subject gha-app trusts.
 
-# Set app version env var
-az webapp config appsettings set \
-  --resource-group "$AZURE_RG" \
-  --name "$APP_NAME" \
-  --settings APP_VERSION="${APP_VERSION}"
-
 # Deploy zip package (Entra auth — basic-auth publishing is disabled on the app)
 az webapp deploy \
   --resource-group "$AZURE_RG" \
   --name "$APP_NAME" \
   --src-path deploy.zip \
   --type zip
+
+# THEN set the app version (restarts the app). Order matters: if the zip/Oryx deploy
+# fails, the old code keeps its old APP_VERSION, so verify's /version check can detect
+# "old version still serving" (decision 2026-10-05, phase-2 review).
+az webapp config appsettings set \
+  --resource-group "$AZURE_RG" \
+  --name "$APP_NAME" \
+  --settings APP_VERSION="${APP_VERSION}" --output none
 ```
 
 `AZURE_RG` / `APP_NAME` / `DEPLOYED_APP_URL` are **environment variables** of `sentinel-dev`
@@ -368,7 +370,6 @@ on:
     branches: [main]
 
 env:
-  DD_SITE: ${{ vars.DD_SITE }}   # us5.datadoghq.com — never hardcode the site
   DD_SERVICE: sentinel-watchtower
   DD_ENV: dev
 
@@ -577,6 +578,7 @@ Queryable in Datadog Log Explorer:
 
 Two Datadog monitors, one per failure case (§4). Case i (clean pass) fires
 neither.
+`sentinel-runtime-health` is implemented as **two Synthetics API tests** (`GET /`, `GET /health`) sharing that name prefix and the same tags — decision 2026-10-05.
 
 | Monitor | Type | Fires On | Covers |
 |---------|------|----------|--------|
