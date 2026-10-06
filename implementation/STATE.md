@@ -14,7 +14,7 @@
 | **Active category** | **deployment** — phase 1 signed; phase 2 next. infra is ✅ COMPLETE (2026-09-13) |
 | **Active phase** | deployment 2 — Deploy Pipeline |
 | **Active branch** | `dev/deploy-phase-2-deploy-pipeline` (Sentinel-deployment, local, not pushed yet) |
-| **Active PR** | none (deployment PR #1 merged 2026-10-04) |
+| **Active PR** | https://github.com/Keshav0375/Sentinel-deployment/pull/2 |
 | **Current task** | none — deployment phase 2 tasks 2.1-2.3 all done-pending-review (2.3 `d5fa824`); next: close-phase. Infra PR #17 (Event Grid CustomEventSchema + outputs + seed-vault retry + DD_SITE refuse) is open, under review |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
