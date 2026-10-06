@@ -399,6 +399,10 @@ jobs:
       - name: Verify deployment
       - name: Report verify failure
         if: failure()
+      - name: Login to Azure for the record   # fresh OIDC assertion — the first one
+        id: login_record                      # expires (~5 min) before a long deploy ends
+        if: always()
+        continue-on-error: true
       - name: Record deployment in PostgreSQL
         id: record
         if: always()
