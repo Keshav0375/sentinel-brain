@@ -15,7 +15,7 @@
 | **Active category** | **deployment** — phases 1-2 signed; phase 3 in review. infra is ✅ COMPLETE (2026-09-13) |
 | **Active phase** | deployment 3 — Scenario Branches (task 3.1 done-pending-review) |
 | **Active branch** | `dev/deploy-phase-3-scenario-branches` (Sentinel-deployment, HEAD `b5c0b05`) |
-| **Active PR** | none (deployment PR #2 merged `4d9bc88`, follow-up #3 merged `e67e19d`) |
+| **Active PR** | deployment PR #4 — https://github.com/Keshav0375/Sentinel-deployment/pull/4 |
 | **Current task** | none — 3.1 done-pending-review; next: close-phase deployment 3 |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
