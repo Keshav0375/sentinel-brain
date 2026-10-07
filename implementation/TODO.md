@@ -109,7 +109,7 @@ _Implement second — the target app + deploy pipeline that generates real Datad
 ### Phase 3 — Scenario Branches  ·  branch `dev/deploy-phase-3-scenario-branches`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
-| 3.1 | **30 scenario branches** (10 per case) + `scenarios/branches.yaml` catalog — replaces `ci_demo_prs.yml` | [task-1](tasks/deployment/phase-3-scenario-branches/task-1-scenario-branches.md) | 🔵 |
+| 3.1 | **30 scenario branches** (10 per case) + `scenarios/branches.yaml` catalog — replaces `ci_demo_prs.yml` | [task-1](tasks/deployment/phase-3-scenario-branches/task-1-scenario-branches.md) | 🟡 |
 
 ---
 

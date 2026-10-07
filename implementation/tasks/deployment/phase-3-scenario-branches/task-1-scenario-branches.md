@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel-deployment` |
 | **Phase branch** | `dev/deploy-phase-3-scenario-branches` |
 | **Commit prefix** | `feat:` |
@@ -54,12 +54,18 @@ No `ci_demo_prs.yml`. No backend involvement. No `SENTINEL_API_URL`.
 - **Quality gate:** `--repo deployment`.
 
 ## How to Verify (phase gate)
+_Local:_ `python3 scripts/gate.py deployment`; `pytest tests/test_scenarios.py tests/test_datadog.py` in Sentinel-deployment. Live smoke pending estate.
+
 1. `branches.yaml` schema-valid, 30 entries; a dry apply of a sample from each case produces the expected diff.
 2. Deploy `deployfail/01` (previous version keeps serving; `deploy_failure` event) and `runtime/01`
    (green deploy, `runtime_error` after verify) → both reproduce the documented Datadog signal.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report
+Built 30 scenario branches (pass/01-10, deployfail/01-10, runtime/01-10), each one `scenario:` commit on main e67e19d, pushed (pass/02 re-cut to 5038939: refactors startup timestamp, identical output). Phase branch commits 12f1904, 074948d, f879ce3, b5c0b05 (HEAD). Files: scenarios/branches.yaml, scenarios/README.md, datadog/synthetics/runtime-health-root.json, datadog/README.md, requirements-dev.txt (PyYAML==6.0.3), tests/test_scenarios.py, tests/test_datadog.py.
+Risk: runtime/07 mtime anchor assumes zip/Oryx keep file mtime (~3 min margin); unproven live. Live per-case smoke not done (estate destroyed).
+
+## Tests
+Gate VERDICT GREEN: 5 ran, 248 tests, scenario refs fetched; tree clean, attribution none, MATCH ok. Faults proven locally (incl. pip --dry-run ResolutionImpossible for deployfail/04).
 
 ## BLOCKED
 _End-to-end signal needs Category-2 phase-2 wired + Datadog/App Service live (B6). Branches + catalog writable now._

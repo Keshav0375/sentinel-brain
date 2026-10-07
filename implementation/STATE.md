@@ -12,11 +12,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Active category** | **deployment** — phase 1 signed; phase 2 next. infra is ✅ COMPLETE (2026-09-13) |
-| **Active phase** | deployment 3 — Scenario Branches (locked until unblocked; deployment 2 signed) |
-| **Active branch** | `dev/deploy-phase-2-deploy-pipeline` (Sentinel-deployment, local, not pushed yet) |
+| **Active category** | **deployment** — phases 1-2 signed; phase 3 in review. infra is ✅ COMPLETE (2026-09-13) |
+| **Active phase** | deployment 3 — Scenario Branches (task 3.1 done-pending-review) |
+| **Active branch** | `dev/deploy-phase-3-scenario-branches` (Sentinel-deployment, HEAD `b5c0b05`) |
 | **Active PR** | none (deployment PR #2 merged `4d9bc88`, follow-up #3 merged `e67e19d`) |
-| **Current task** | none — deployment 2 signed 2026-10-07; next phase deployment 3 |
+| **Current task** | none — 3.1 done-pending-review; next: close-phase deployment 3 |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
@@ -25,14 +25,14 @@
 
 ## Next Action
 
-**Start deployment phase 2.** Branch `dev/deploy-phase-2-deploy-pipeline` from `Sentinel-deployment`
-`main`, PR back into `main` (no release branch in this repo).
+**Close deployment phase 3.** Task 3.1 is done-pending-review (30 scenario branches pushed, catalog +
+tests, gate GREEN). Next: open the phase PR and report. Live per-case smoke (pass/01, deployfail/03,
+runtime/01) still needs the estate, which was destroyed 2026-10-07 (only rg-sentinel-bootstrap +
+NetworkWatcherRG remain). Risk: runtime/07 mtime anchor unproven live.
 
 | # | Task | What |
 |---|------|------|
-| 2.1 | `dd-report` composite action | |
-| 2.2 | `ci_app_deployment.yml` | Build→Deploy→Verify→Record (Entra DB token)→Summary |
-| 2.3 | Datadog monitors | deploy-failure → `deploy_failure`; runtime-health → `runtime_error` |
+| 3.1 | 30 scenario branches + `branches.yaml` | done-pending-review |
 
 ## Carried into the deployment category
 
