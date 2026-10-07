@@ -458,7 +458,7 @@ push-only, the environment is main-only, and the path filter skips any change ou
 | Case | Branches | Pipeline | App at runtime | Datadog signal | `signal_type` | Sentinel outcome |
 |------|----------|----------|----------------|----------------|---------------|------------------|
 | **i — clean pass** | `pass/01..10` | Green | Healthy | success event only | `none` | **No incident** (true negative) |
-| **ii — deploy fails** | `deployfail/01..10` | **Red** | build/deploy stage: previous version keeps serving · **verify stage: the new, broken version IS live** (F1 has no slots) | deploy-failure event monitor | `deploy_failure` | rollback (revert the merge) |
+| **ii — deploy fails** | `deployfail/01..10` | **Red** | build stage or Oryx build failure: previous version keeps serving · **app fails to start, or verify fails: the new, broken version IS live** (F1 has no slots) | deploy-failure event monitor | `deploy_failure` | rollback (revert the merge) |
 | **iii — runtime error** | `runtime/01..10` | **Green** | the new version is live and broken | runtime-health synthetics | `runtime_error` | full incident response, rollback or escalate |
 
 **Determinism rules (decision 2026-10-07, phase-3 redesign).** Every scenario must produce
@@ -470,6 +470,8 @@ and unloads the process after about 20 idle minutes. The synthetics send only `G
   process uptime.
 - Faults the repo cannot express are excluded: the start command, app settings and port
   are owned by Terraform.
+
+**A deploy-stage failure is not always "previous version live".** `az webapp deploy` waits for the app to start (`--track-status`). An Oryx build failure leaves the previous version serving. A new version that *can't boot* fails the deploy stage too, and then the broken code is live and down.
 
 **Two signals from one deploy.** A verify-stage failure that leaves the app down or
 `/health` broken *also* trips a synthetic within about 30 min. Those branches carry
@@ -503,14 +505,14 @@ logic into a helper. Every one keeps `GET /` JSON with `message: ok`.
 |--------|-------|-------|-----------|-----------------|
 | `deployfail/01` | symlink inside `app/` (build refuses it) | build | previous | — |
 | `deployfail/02` | delete `requirements.txt` | build | previous | — |
-| `deployfail/03` | `nonexistent-package==1.0.0` in requirements.txt | deploy (Oryx) | previous | — |
+| `deployfail/03` | pin `fastapi==0.0.0` (a version that can't exist, so nobody can squat it) | deploy (Oryx) | previous | — |
 | `deployfail/04` | unsatisfiable pin (`starlette` version incompatible with pinned `fastapi`) | deploy (Oryx) | previous | — |
 | `deployfail/05` | `/health` returns 503 | verify | broken | `runtime_error` |
 | `deployfail/06` | `/version` hardcoded to `"wrong"` | verify | broken (`/` + `/health` fine) | — |
-| `deployfail/07` | syntax error in `main.py` | verify | down | `runtime_error` |
-| `deployfail/08` | import of a module that doesn't exist | verify | down | `runtime_error` |
-| `deployfail/09` | required `AppConfig` field with no default and no env | verify | down | `runtime_error` |
-| `deployfail/10` | lifespan raises at startup | verify | down | `runtime_error` |
+| `deployfail/07` | syntax error in `main.py` | deploy (app fails to start) | down | `runtime_error` |
+| `deployfail/08` | import of a module that doesn't exist | deploy (app fails to start) | down | `runtime_error` |
+| `deployfail/09` | required `AppConfig` field with no default and no env | deploy (app fails to start) | down | `runtime_error` |
+| `deployfail/10` | lifespan raises at startup | deploy (app fails to start) | down | `runtime_error` |
 
 **Case iii — `runtime/*`** (verify only calls `/health` and `/version`, so all pass it):
 
@@ -522,7 +524,7 @@ logic into a helper. Every one keeps `GET /` JSON with `message: ok`.
 | `runtime/04` | blocks 90 s (> 60 s check timeout) | `GET /` timeout |
 | `runtime/05` | reads a required env var per request (missing) → 500 | `GET /` status |
 | `runtime/06` | calls an unreachable downstream (5 s timeout) → 500 | `GET /` status |
-| `runtime/07` | `/health` returns 503 once > 5 min after the **deploy** (file mtime) | `GET /health` status |
+| `runtime/07` | `/health` returns 503 once > 10 min after the **deploy** (file mtime; a slow F1 verify can take ~5 min) | `GET /health` status |
 | `runtime/08` | returns `text/plain` instead of JSON | `GET /` content-type assertion |
 | `runtime/09` | returns `{"message":"error"}` with 200 | `GET /` body assertion (`$.message == "ok"`) |
 | `runtime/10` | "maintenance mode" 503 | `GET /` status |
