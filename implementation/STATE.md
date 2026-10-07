@@ -12,11 +12,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Active category** | **deployment** — phases 1-2 signed; phase 3 in review. infra is ✅ COMPLETE (2026-09-13) |
-| **Active phase** | deployment 3 — Scenario Branches (task 3.1 done-pending-review) |
-| **Active branch** | `dev/deploy-phase-3-scenario-branches` (Sentinel-deployment, HEAD `b5c0b05`) |
-| **Active PR** | deployment PR #4 — https://github.com/Keshav0375/Sentinel-deployment/pull/4 |
-| **Current task** | none — 3.1 done-pending-review; next: close-phase deployment 3 |
+| **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
+| **Active phase** | backend 1 — Data Layer Foundation |
+| **Active branch** | none yet (`dev/backend-phase-1-data-layer` off `release-phase-2`) |
+| **Active PR** | none |
+| **Current task** | backend 1.1 — FIRST STEP: deferred deployment live smoke (see Next Action) |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
@@ -25,14 +25,12 @@
 
 ## Next Action
 
-**Close deployment phase 3.** Task 3.1 is done-pending-review (30 scenario branches pushed, catalog +
-tests, gate GREEN). Next: open the phase PR and report. Live per-case smoke (pass/01, deployfail/03,
-runtime/01) still needs the estate, which was destroyed 2026-10-07 (only rg-sentinel-bootstrap +
-NetworkWatcherRG remain). Risk: runtime/07 mtime anchor unproven live.
+**Deployment category CLOSED** (phase 3 signed 2026-10-07, PR #4 merged 427646324c51, 3.1 verified on OFFLINE proof only). Next: backend phase 1.
 
-| # | Task | What |
-|---|------|------|
-| 3.1 | 30 scenario branches + `branches.yaml` | done-pending-review |
+Deferred, to do as the FIRST STEP of backend work, once the estate is up:
+- Live smoke: one scenario per case (pass/01, deployfail/03, runtime/01), plus the runtime/07 mtime anchor (unproven live).
+- After the next apply, re-run `datadog/apply.sh` so the GET / synthetic gets the new content-type/body assertions.
+- `ci_app_deployment.yml` "old version still serving" strings (L136-137, 167, 202) need a PR merged while the estate is up, because that path triggers a deploy.
 
 ## Carried into the deployment category
 
@@ -69,6 +67,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-10-07 | deployment | 3 — Scenario Branches ✅ **CATEGORY COMPLETE** | `dev/deploy-phase-3-scenario-branches` | [#4](https://github.com/Keshav0375/Sentinel-deployment/pull/4) | Keshav | 3.1 verified on OFFLINE proof (gate GREEN); user chose "Merge & sign off now". Merged 427646324c51 (squash); no deploy triggered. **Live smoke DEFERRED** to first step of backend work (pass/01, deployfail/03, runtime/01 + runtime/07 mtime anchor). Re-run `datadog/apply.sh` after next apply (new synthetic assertions). `ci_app_deployment.yml` "old version still serving" strings (L136-137, 167, 202) need a PR merged while estate is up. Scenario branches never merged. |
 | 2026-10-07 | deployment | 2 — Deploy Pipeline | `dev/deploy-phase-2-deploy-pipeline` | [#2](https://github.com/Keshav0375/Sentinel-deployment/pull/2) + [#3](https://github.com/Keshav0375/Sentinel-deployment/pull/3) | Keshav | 2.1-2.3 verified; live run 37564896708 green (pr-3-e67e19d live, gha-app OIDC + Postgres Entra ok, DD events/logs accepted, Event Grid DeliverySuccess; record failed only on missing `deployments` table, deferred to backend 1.3). Estate destroyed after test. Merged 4d9bc88, e67e19d |
 | 2026-10-04 | deployment | 1 — The App | `dev/deploy-phase-1-app` | [#1](https://github.com/Keshav0375/Sentinel-deployment/pull/1) | Keshav | 1.1, 1.2 verified; merged manually by Keshav (squash 852660e) |
 | 2026-09-13 | infra | **6 — Dynamic Deployments & Workflows** ✅ **CATEGORY COMPLETE** | `dev/infra-phase-6-dynamic-deployments` | [#8](https://github.com/Keshav0375/Sentinel-infra/pull/8) + [#9](https://github.com/Keshav0375/Sentinel-infra/pull/9) [#10](https://github.com/Keshav0375/Sentinel-infra/pull/10) [#11](https://github.com/Keshav0375/Sentinel-infra/pull/11) [#12](https://github.com/Keshav0375/Sentinel-infra/pull/12) [#13](https://github.com/Keshav0375/Sentinel-infra/pull/13) [#14](https://github.com/Keshav0375/Sentinel-infra/pull/14) [#15](https://github.com/Keshav0375/Sentinel-infra/pull/15) | Keshav | Full lifecycle proven live from an empty subscription: `apply·platform` 11 resources ([34778509991](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34778509991)), `apply·deployment` 31 resources incl. **`kubernetes_namespace sentinel-dev`** + quota + LimitRange + NetworkPolicy + ServiceAccount + federated credential ([34779137478](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34779137478)) — closing the kubelogin gap carried since 2026-08-25 — `destroy·deployment` ([34779589393](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34779589393)), `destroy·all` 7 destroyed, workspace deleted, verify **11/11 ok** ([34782250925](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34782250925)). Estate back to `rg-sentinel-bootstrap` + `NetworkWatcherRG` only. **Five defects found by reading the run history and fixed the same day, each proven in production**: identical run names + false-alarm verify + unseen F1 quota + a PR plan that tried to CREATE its workspace (#11); `apply` unguarded against a missing platform (#12); that refusal arriving 2m30s late (#13); **the destroy deadlock** — the Entra admin dropped concurrently with the database it owns, Postgres `2BP01`, 30 min hang, Postgres left billing (#14); and two security items (#15). **Signed with 6.8 (Pause/Resume) recorded as ⚠️ shipped-but-unexercised — zero runs, ever.** |

@@ -106,17 +106,17 @@ _Implement second — the target app + deploy pipeline that generates real Datad
 | 2.2 | `ci_app_deployment.yml` (Build→Deploy→Verify→Record[**Entra DB token**]→Summary) | [task-2](tasks/deployment/phase-2-deploy-pipeline/task-2-ci-app-deployment.md) | ✅ |
 | 2.3 | Datadog monitors (deploy-failure → `deploy_failure`; runtime-health → `runtime_error`) | [task-3](tasks/deployment/phase-2-deploy-pipeline/task-3-datadog-monitors.md) | ✅ |
 
-### Phase 3 — Scenario Branches  ·  branch `dev/deploy-phase-3-scenario-branches`  ·  Gate: ⬜ **← NEXT**
+### Phase 3 — Scenario Branches  ·  branch `dev/deploy-phase-3-scenario-branches`  ·  Gate: ✅ 2026-10-07
 | # | Task | File | Status |
 |---|------|------|--------|
-| 3.1 | **30 scenario branches** (10 per case) + `scenarios/branches.yaml` catalog — replaces `ci_demo_prs.yml` | [task-1](tasks/deployment/phase-3-scenario-branches/task-1-scenario-branches.md) | 🟡 |
+| 3.1 | **30 scenario branches** (10 per case) + `scenarios/branches.yaml` catalog — replaces `ci_demo_prs.yml` | [task-1](tasks/deployment/phase-3-scenario-branches/task-1-scenario-branches.md) | ✅ |
 
 ---
 
 ## Category 3 — sentinel-backend  ·  `Keshav0375/Sentinel`
 _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (see arch §13)._ · [Index](tasks/backend/README.md)
 
-### Phase 1 — Data Layer Foundation  ·  branch `dev/backend-phase-1-data-layer`  ·  Gate: 🔒
+### Phase 1 — Data Layer Foundation  ·  branch `dev/backend-phase-1-data-layer`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 1.1 | Add Phase-2 deps (asyncpg, pgvector, alembic, langfuse, **pyjwt[crypto], azure-identity, azure-keyvault-secrets**) | [task-1](tasks/backend/phase-1-data-layer/task-1-phase2-dependencies.md) | ⬜ |
