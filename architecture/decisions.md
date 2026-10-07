@@ -16,6 +16,20 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-07: Scenario catalog redesigned for determinism (deploy phase 3)
+
+The architecture review found that roughly half of the original §4.1 faults could not produce their label on the stack as built.
+- **Terraform-owned settings:** the start command, env and port are not repo changes.
+- **Undetectable runtime faults:** load, payload, intermittent and uptime-relative faults can't be caught by synthetics that send `GET /` and `GET /health` every 30 min, on an F1 app that restarts after idle.
+- **A random fault:** the 60 s lifespan sleep usually passes verify.
+
+**Decision:** replace the catalog with 30 deterministic, repo-only faults (deployment.md §4.1, exhaustive) and record the dropped ones with reasons.
+- **Verify-stage failures leave the broken version live** (no slots). "Previous version stays live" is true only for build/deploy-stage failures.
+- **Branches that also trip a synthetic** carry `also_expected: [runtime_error]`. The ground truth is one deploy, two correlated alerts.
+- **Rejected: pipeline auto-rollback.** GHA would remediate on its own, which breaks HITL.
+- **The `GET /` synthetic gains assertions:** `content-type` contains `application/json`, and `$.message == "ok"`. There is still no latency assertion, because F1 cold starts would false-alarm.
+- **Enum fix:** `expected_signal_type` for case i is `none` (was `—`).
+
 ### 2026-10-07: Synthetics every 30 min; deploy only on app-affecting paths
 
 - **The runtime-health synthetics run every 30 minutes**, with one retry a minute later (`tick_every: 1800`, `retry {count 1, interval 60s}`, `min_failure_duration: 0`). They no longer run every 5. F1 sleeps after about 20 idle minutes and has a 60 CPU-minute daily quota. In the first live run the 5-minute checks cold-started gunicorn all day and put the app into `QuotaExceeded`, so the next deploy got a Kudu 403. The monitor broke the thing it watches. A condition-B demo now alerts within about 30 minutes; trigger "Run test now" to demo faster.

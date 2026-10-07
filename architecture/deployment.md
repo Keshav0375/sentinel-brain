@@ -447,76 +447,100 @@ There is no demo-PR workflow; scenarios are real git branches (§4).
 
 ## 4. Scenario Surface — 30 Branches, 3 Cases
 
-**Pivot (supersedes the old demo-PR model):** the demo app is now **real ground
-truth** — genuinely deployed to App Service, genuinely emitting logs to Datadog.
-There is no PR-faking workflow: **`ci_demo_prs.yml` is removed.** Instead the repo
-ships **30 pre-authored scenario branches** (10 per case, expandable later). Each
-branch is a self-contained change with a known ground-truth label; deploying it
-produces exactly one of three outcomes.
+**Pivot (supersedes the old demo-PR model):** the app is **real ground truth**. It is
+genuinely deployed to App Service, and genuinely watched by Datadog. **`ci_demo_prs.yml`
+is removed.** The repo ships **30 scenario branches** (10 per case). Each is a
+self-contained change to `app/**` or `requirements.txt`, with a fixed ground-truth label.
+A scenario is **run by merging its branch to `main` through a PR**: the deploy is
+push-only, the environment is main-only, and the path filter skips any change outside
+`app/**` and `requirements.txt`. The scenario's merge is then reverted before the next one.
 
-| Case | 10 branches | Deploy pipeline | App at runtime | Datadog signal | `signal_type` | Sentinel outcome |
-|------|-------------|-----------------|----------------|----------------|---------------|------------------|
-| **i — clean pass** | `pass/01..10` | Green | Healthy, every endpoint 200 | success event only (no monitor) | — | **No incident** — true negative / baseline memory |
-| **ii — deploy fails** | `deployfail/01..10` | **Red** (build/deploy/verify) | Previous good version stays live | deploy-failure event monitor (`deploy_status:failed`) | `deploy_failure` | **Case 2 — rollback** (heal main's deployability) |
-| **iii — runtime error** | `runtime/01..10` | **Green** (verify passes) | Live app throws 5xx / errors | runtime-health monitor (5xx / failed pings) | `runtime_error` | **Case 3 — full incident response** (diagnose → rollback/escalate) |
+| Case | Branches | Pipeline | App at runtime | Datadog signal | `signal_type` | Sentinel outcome |
+|------|----------|----------|----------------|----------------|---------------|------------------|
+| **i — clean pass** | `pass/01..10` | Green | Healthy | success event only | `none` | **No incident** (true negative) |
+| **ii — deploy fails** | `deployfail/01..10` | **Red** | build/deploy stage: previous version keeps serving · **verify stage: the new, broken version IS live** (F1 has no slots) | deploy-failure event monitor | `deploy_failure` | rollback (revert the merge) |
+| **iii — runtime error** | `runtime/01..10` | **Green** | the new version is live and broken | runtime-health synthetics | `runtime_error` | full incident response, rollback or escalate |
 
-**Two signal types → two handling paths** (case i produces neither):
+**Determinism rules (decision 2026-10-07, phase-3 redesign).** Every scenario must produce
+its label without load, payloads or timing luck. The F1 plan has a 60 CPU-min/day quota
+and unloads the process after about 20 idle minutes. The synthetics send only `GET /` and
+`GET /health`, every 30 min, retried once a minute later. So:
+- A runtime fault must make one of those two requests fail persistently.
+- "After N minutes" faults anchor to the **deploy** (the package files' mtime), never to
+  process uptime.
+- Faults the repo cannot express are excluded: the start command, app settings and port
+  are owned by Terraform.
 
-- **`deploy_failure` (case ii):** the deploy never went live, so App Service keeps
-  serving the previous version. The fix is a simple rollback of `main` to the last
-  good SHA — no deep diagnosis. Evidence = the deploy-failure event + CI logs.
-- **`runtime_error` (case iii):** the broken version **is** live. Headline case —
-  the full agent pipeline correlates runtime error logs with the most-recent
-  successful deploy (the `deployments` table), then rolls back or escalates.
+**Two signals from one deploy.** A verify-stage failure that leaves the app down or
+`/health` broken *also* trips a synthetic within about 30 min. Those branches carry
+`also_expected: [runtime_error]`. The ground truth is that Sentinel should correlate both
+alerts to the same deploy, not open two unrelated incidents.
 
-**Why branches, not PRs:** each branch is a stable, replayable scenario with a
-fixed ground-truth label. The sentinel-repo eval harness deploys a branch, watches
-what Datadog + the agents do, and scores against the known label — so **the 30
-branches _are_ the eval dataset** (they replace the Phase-1 synthetic scenario
-JSON). To run one: deploy the branch via `ci_app_deployment.yml`, let the signal
-flow, observe the outcome.
+### 4.1 Branch Catalog (exhaustive)
 
-### 4.1 Branch Catalog (10 per case)
+`scenarios/branches.yaml` holds one entry per branch with these fields:
+- `branch`
+- `case`
+- `fault`
+- `expected_signal_type` (`none|deploy_failure|runtime_error`)
+- `expected_resolution` (`none|rollback|rollback_or_escalate`)
+- `expected_failed_stage` (case ii: `build|deploy|verify`)
+- `also_expected` (list, may be empty)
+- `expected_culprit` (`self` for ii–iii, bound at run time to the merge's `pr-<N>-<sha>`; `none` for i)
 
-Ground-truth labels live in `scenarios/branches.yaml` — one entry per branch with
-its case, the fault it injects, the expected `signal_type` + resolution, and the
-`expected_culprit` — the deploy a correct revert PR must target (the scenario's own
-merge, `pr-<N>-<sha>`, bound when the branch is deployed). The eval harness reads this
-file to score agent runs against the known label: did it fire, did it classify, and did
-its revert PR revert the right merge. A
-representative spread (full 30 enumerated in the file):
+The eval runner (backend §13.2, `src/sentinel/eval/runner.py`) scores four things: did
+it fire, did it classify, did it correlate, and did its revert PR target the right merge.
 
-**Case i — `pass/*` (clean, 10):** trivial safe changes — add `/info`, tweak a log
-line, add a field to `GET /`, bump a comment. All deploy green and stay healthy.
-These are the true negatives that prove Sentinel doesn't cry wolf.
+**Case i — `pass/*`** (every one touches `app/`): 01 add `GET /info` · 02 reword the
+startup log message field · 03 add a `region` field to `GET /` · 04 a comment in
+`main.py` · 05 module docstrings · 06 type hints · 07 extract a response helper · 08
+rename an internal variable · 09 add an `X-Service` response header · 10 move uptime
+logic into a helper. Every one keeps `GET /` JSON with `message: ok`.
 
-**Case ii — `deployfail/*` (deploy fails, previous version stays live, 10):**
+**Case ii — `deployfail/*`:**
 
-| Branch | Fault injected | Failed stage |
-|--------|----------------|--------------|
-| `deployfail/01` | Add `nonexistent-package==1.0.0` to requirements.txt | deploy (Oryx pip install) |
-| `deployfail/02` | `/health` returns 503 | verify |
-| `deployfail/03` | 60s `asyncio.sleep` in lifespan → health timeout | verify |
-| `deployfail/04` | Hardcode `/version` to `"wrong"` → version mismatch | verify |
-| `deployfail/05` | Syntax error in `main.py` → app won't boot | verify |
-| `deployfail/06–10` | Spread across build/deploy/verify (bad start command, missing module, bad env, port clash, import error) | build/deploy/verify |
+| Branch | Fault | Stage | Live after | `also_expected` |
+|--------|-------|-------|-----------|-----------------|
+| `deployfail/01` | symlink inside `app/` (build refuses it) | build | previous | — |
+| `deployfail/02` | delete `requirements.txt` | build | previous | — |
+| `deployfail/03` | `nonexistent-package==1.0.0` in requirements.txt | deploy (Oryx) | previous | — |
+| `deployfail/04` | unsatisfiable pin (`starlette` version incompatible with pinned `fastapi`) | deploy (Oryx) | previous | — |
+| `deployfail/05` | `/health` returns 503 | verify | broken | `runtime_error` |
+| `deployfail/06` | `/version` hardcoded to `"wrong"` | verify | broken (`/` + `/health` fine) | — |
+| `deployfail/07` | syntax error in `main.py` | verify | down | `runtime_error` |
+| `deployfail/08` | import of a module that doesn't exist | verify | down | `runtime_error` |
+| `deployfail/09` | required `AppConfig` field with no default and no env | verify | down | `runtime_error` |
+| `deployfail/10` | lifespan raises at startup | verify | down | `runtime_error` |
 
-**Case iii — `runtime/*` (green deploy, breaks at runtime, 10):**
+**Case iii — `runtime/*`** (verify only calls `/health` and `/version`, so all pass it):
 
-| Branch | Fault injected | How it slips past verify |
-|--------|----------------|--------------------------|
-| `runtime/01` | `GET /` returns 500 every call; `/health`+`/version` fine | verify only checks `/health`+`/version` |
-| `runtime/02` | `/health` 200 for first ~5 min, then 503 | degrades after the verify window |
-| `runtime/03` | Memory leak → 5xx under sustained traffic | fine at first ping |
-| `runtime/04` | Unhandled exception on a specific payload | verify uses a safe payload |
-| `runtime/05` | Latency spike (blocking call) on `GET /` | verify tolerates one slow call |
-| `runtime/06–10` | Spread (intermittent 5xx, bad downstream call, resource exhaustion, wrong content-type, silent data error) | passes the narrow verify checks |
+| Branch | Fault (on `GET /` unless noted) | Synthetic that fires |
+|--------|-------------------------------|----------------------|
+| `runtime/01` | returns 500 | `GET /` status |
+| `runtime/02` | route removed (404) | `GET /` status |
+| `runtime/03` | unhandled exception | `GET /` status |
+| `runtime/04` | blocks 90 s (> 60 s check timeout) | `GET /` timeout |
+| `runtime/05` | reads a required env var per request (missing) → 500 | `GET /` status |
+| `runtime/06` | calls an unreachable downstream (5 s timeout) → 500 | `GET /` status |
+| `runtime/07` | `/health` returns 503 once > 5 min after the **deploy** (file mtime) | `GET /health` status |
+| `runtime/08` | returns `text/plain` instead of JSON | `GET /` content-type assertion |
+| `runtime/09` | returns `{"message":"error"}` with 200 | `GET /` body assertion (`$.message == "ok"`) |
+| `runtime/10` | "maintenance mode" 503 | `GET /` status |
 
-**The nuance that makes case iii the star:** the verify stage only probes `/health`
-and `/version`. Any break elsewhere — or a delayed break — sails through the
-pipeline green and can only be caught by runtime monitoring, which is exactly where
-Sentinel's diagnostic value lives (correlate the runtime symptom back to "what
-deployed most recently and succeeded?" via the `deployments` table).
+**Dropped as untestable on this stack:**
+
+| Fault | Why |
+|---|---|
+| bad start command, bad env, port clash | Terraform owns them |
+| 60 s lifespan sleep | Verify usually passes, so the outcome is random |
+| memory leak, resource exhaustion, sustained-traffic 5xx | Nothing generates load; F1 recycles the process and caps CPU |
+| exception on a specific payload | The synthetics send no payloads |
+| latency spike under 60 s | A latency assertion would false-alarm on F1 cold starts |
+| intermittent 5xx | The attempt and its retry must both fail, so it fires probabilistically |
+| `/health` degrading after N min of uptime | The process restarts on every idle cycle |
+
+The synthetic `GET /` asserts status 200, `content-type` contains `application/json`,
+and `$.message == "ok"`. `GET /health` asserts status 200.
 
 ---
 

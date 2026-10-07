@@ -16,40 +16,36 @@
 > branch set doubles as the eval dataset (replaces Phase-1 synthetic scenario JSON).
 
 ## Spec
-Author 30 scenario branches off `main` and a machine-readable catalog. Each branch is a
-self-contained change that, when deployed by `ci_app_deployment.yml`, produces exactly one
-of three outcomes.
+The binding catalog is **deployment.md §4.1**, which is exhaustive (redesigned 2026-10-07; read `python3 scripts/arch.py deployment 4.1`). Author 30 branches off `main` and the machine-readable catalog.
 
-**Files created:**
-- `scenarios/branches.yaml` — one entry per branch: `branch`, `case` (`pass|deployfail|runtime`),
-  `fault` (what it injects), `expected_signal_type` (`—|deploy_failure|runtime_error`),
-  `expected_resolution` (`none|rollback|rollback_or_escalate`), `expected_failed_stage`
-  for case ii, and `expected_culprit` for cases ii–iii — the merge a correct revert PR must
-  target (`self`: this scenario's own merge; the eval runner binds it to the deployed
-  `pr-<N>-<sha>` at run time). `none` for case i. This file is the **ground truth** the eval runner (backend §6.2) scores against.
-- **30 branches** pushed to `Keshav0375/Sentinel-deployment`:
-  - `pass/01..10` — trivial safe changes (add `/info`, tweak log line, add field to `GET /`,
-    comment bump…). Green deploy, healthy, **no monitor fires** (true negatives).
-  - `deployfail/01..10` — deploy breaks (bad requirement, `/health` 503, slow-startup timeout,
-    version mismatch, syntax error, bad start command…). Previous version stays live →
-    `deploy-failure` event monitor → `signal_type=deploy_failure`.
-  - `runtime/01..10` — green deploy, breaks at runtime (`GET /` 500 with verify passing,
-    delayed `/health` degradation, memory leak, unhandled exception on a payload…) →
-    `runtime-health` monitor → `signal_type=runtime_error`.
+**Files created on the phase branch:**
+- `scenarios/branches.yaml`: 30 entries with the §4.1 fields:
+  - `branch`, `case`, `fault`
+  - `expected_signal_type` (`none|deploy_failure|runtime_error`)
+  - `expected_resolution` (`none|rollback|rollback_or_escalate`)
+  - `expected_failed_stage` (case ii only)
+  - `also_expected` (list)
+  - `expected_culprit` (`self` / `none`)
+- `scenarios/README.md`: how to run a scenario (merge the branch via PR, observe, revert the merge), detection latency (up to ~31 min for runtime; "Run test now" to speed it up), and that each must be reverted before the next.
+- `datadog/synthetics/runtime-health-root.json`: add the `content-type` and `$.message == "ok"` assertions.
+- `requirements-dev.txt`: pin PyYAML (and jsonschema if used) for the schema test.
+- `tests/test_scenarios.py`:
+  - schema: 30 entries, 10 per case, enums, `expected_failed_stage` iff case ii, `also_expected` ⊆ {runtime_error}
+  - every branch exists on origin
+  - its diff vs `main` touches `app/**` or `requirements.txt`
+  - it applies cleanly
+- The **30 branches**, each cut from `main` *after* the phase PR's catalog lands (or from the phase branch's base, see Notes). Each has exactly one focused commit implementing its §4.1 fault.
 
-No `ci_demo_prs.yml`. No backend involvement in authoring. No `SENTINEL_API_URL`.
+No `ci_demo_prs.yml`. No backend involvement. No `SENTINEL_API_URL`.
 
 ## Prerequisites
-- [ ] task 1.1 app to mutate. [ ] task 2.2 `ci_app_deployment.yml` exists. [ ] task 2.3 monitors defined.
-- [ ] `gh` + repo write to push branches. [ ] Datadog + App Service live (⛔ B6 + Azure) for end-to-end signal.
+- [ ] Deploy phases 1–2 ✅. [ ] `gh` with repo write. [ ] Live estate only for the integration smoke (apply → grant → `datadog/apply.sh`).
 
 ## Acceptance Criteria
-- [ ] `scenarios/branches.yaml` validates (schema) with exactly 30 entries, 10 per case.
-- [ ] Every branch exists, applies cleanly on `main`, and matches its catalogued fault.
-- [ ] Deploying a `deployfail/*` branch yields `deploy_status:failed` + the catalogued `failed_stage`;
-      the previously-deployed version keeps serving.
-- [ ] Deploying a `runtime/*` branch passes verify (`/health`+`/version`) but the runtime monitor fires.
-- [ ] Deploying a `pass/*` branch stays green and fires no monitor.
+- [ ] `branches.yaml` validates; 30 entries, 10 per case, matching §4.1 exactly.
+- [ ] Every branch exists on origin, applies cleanly to `main`, touches `app/**` or `requirements.txt`, and implements its catalogued fault (unit-checked locally where possible: e.g. `pass/*` keeps the test suite green; `runtime/*` passes `/health` + `/version` locally but fails its targeted check; `deployfail/*` reproduces its failure locally where it can).
+- [ ] `GET /` synthetic asserts content-type + body.
+- [ ] Live smoke (one per case, estate up): `pass/01` green with no alert; `deployfail/03` `failed_stage:deploy` and the previous version still serving; `runtime/01` green, then the `GET /` synthetic alerts and the bridge dispatches `runtime_error`.
 
 ## Tests
 - **Lint:** `yamllint` on `branches.yaml`; assert each branch diff applies to `main`.
