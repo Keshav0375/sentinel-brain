@@ -5,7 +5,7 @@
 | **Repo** | `Sentinel-deployment` |
 | **Branch → PR** | `dev/deploy-phase-2-deploy-pipeline` → `main` · PR #2 — https://github.com/Keshav0375/Sentinel-deployment/pull/2 |
 | **Tasks** | 3/3 green (gate GREEN at bab357c) |
-| **Gate** | ⬜ awaiting sign-off |
+| **Gate** | ✅ signed 2026-10-07 (PR #2 `4d9bc88`, follow-up PR #3 `e67e19d`) |
 
 ## What shipped
 
@@ -19,32 +19,18 @@
 
 ## See it working
 
-NOT VERIFIED LIVE: estate destroyed 2026-10-05; DD_APP_KEY not yet in Sentinel-infra/.env. First real run, Datadog events/logs, monitor firing and Event Grid to bridge dispatch are unproven.
+VERIFIED LIVE 2026-10-07:
 
-1. ```bash
-   gh workflow run ci_infra.yml apply all sentinel dev   # then approve
-   ```
-2. ```bash
-   bash scripts/grant-db-access.sh --deployment sentinel --environment dev
-   ```
-3. Add DD_APP_KEY to Sentinel-infra/.env, then from Sentinel-deployment:
-   ```bash
-   bash datadog/apply.sh --dry-run
-   bash datadog/apply.sh
-   ```
-4. Merge the phase PR, watch the ci_app_deployment run, then:
-   ```bash
-   curl $DEPLOYED_APP_URL/version
-   ```
-   → expect events/logs in Datadog US5
-5. Expected record-stage failure: `relation deployments does not exist`
-6. Destroy the estate afterwards.
+- Run 37564896708: build, deploy, verify succeeded; `pr-3-e67e19d` live; gha-app OIDC login worked twice; gha-app Postgres Entra login worked; record failed only on `relation "deployments" does not exist` (expected, R12 / backend 1.3); Datadog events and logs accepted.
+- Event Grid: Datadog monitor test notification -> PublishSuccess, then DeliverySuccess at 2026-10-07T03:32Z, so the bridge dispatched to Keshav0375/Sentinel.
+- Earlier run 37559626662 proved the failure-reporting path (deploy failed on F1 QuotaExceeded).
+- Infra repairs merged along the way: PR #18 (f4292a4: az OIDC refresh per layer, kubelogin wrapper, FIC deprecations, preflight ownership) and PR #19 (001cece: github-pat seeded from DISPATCH_PAT, bridge skips an unresolved token).
+- The estate was destroyed again after the test (destroy run in flight at sign-off).
 
 ## Not done / blocked
 
 - **deployments row** — deferred to backend 1.3 (R12).
-- **Live verification** — all of it (see above).
-- **Follow-ups:** bridge alert_transition filter (infra); shellcheck for `.github/scripts` and `datadog/apply.sh` in the deployment gate; a checkout failure leaves dd-report unresolvable; Synthetics location aws:ca-central-1 on US5 unverified; `$EVENT_TITLE` escaping; 15 test-suite notes.
+- **Follow-ups:** DISPATCH_PAT 90-day expiry has no automated warning; Datadog app key is unscoped; synthetics must be deleted/paused while the estate is down; bridge alert_transition filter (infra); the gate has no shellcheck for `.github/scripts` and `datadog/apply.sh`; a checkout failure leaves dd-report unresolvable; Synthetics location aws:ca-central-1 on US5 unverified; `$EVENT_TITLE` escaping; 15 test-suite notes.
 - **Skipped checks:** none.
 
 ## Decisions made during the build

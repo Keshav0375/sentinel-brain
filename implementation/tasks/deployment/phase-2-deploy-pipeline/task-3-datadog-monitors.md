@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `done-pending-review` |
+| **Status** | `verified` |
 | **Repo** | `Sentinel-deployment` |
 | **Phase branch** | `dev/deploy-phase-2-deploy-pipeline` |
 | **Commit prefix** | `feat:` |

@@ -99,14 +99,14 @@ _Implement second — the target app + deploy pipeline that generates real Datad
 | 1.1 | FastAPI app (3 routes + startup log + config) | [task-1](tasks/deployment/phase-1-app/task-1-fastapi-app.md) | ✅ |
 | 1.2 | App tests (health / version / root) | [task-2](tasks/deployment/phase-1-app/task-2-app-tests.md) | ✅ |
 
-### Phase 2 — Deploy Pipeline  ·  branch `dev/deploy-phase-2-deploy-pipeline`  ·  Gate: ⬜ **← NEXT**
+### Phase 2 — Deploy Pipeline  ·  branch `dev/deploy-phase-2-deploy-pipeline`  ·  Gate: ✅ 2026-10-07
 | # | Task | File | Status |
 |---|------|------|--------|
-| 2.1 | `dd-report` composite action | [task-1](tasks/deployment/phase-2-deploy-pipeline/task-1-dd-report-action.md) | 🟡 |
-| 2.2 | `ci_app_deployment.yml` (Build→Deploy→Verify→Record[**Entra DB token**]→Summary) | [task-2](tasks/deployment/phase-2-deploy-pipeline/task-2-ci-app-deployment.md) | 🟡 |
-| 2.3 | Datadog monitors (deploy-failure → `deploy_failure`; runtime-health → `runtime_error`) | [task-3](tasks/deployment/phase-2-deploy-pipeline/task-3-datadog-monitors.md) | 🟡 |
+| 2.1 | `dd-report` composite action | [task-1](tasks/deployment/phase-2-deploy-pipeline/task-1-dd-report-action.md) | ✅ |
+| 2.2 | `ci_app_deployment.yml` (Build→Deploy→Verify→Record[**Entra DB token**]→Summary) | [task-2](tasks/deployment/phase-2-deploy-pipeline/task-2-ci-app-deployment.md) | ✅ |
+| 2.3 | Datadog monitors (deploy-failure → `deploy_failure`; runtime-health → `runtime_error`) | [task-3](tasks/deployment/phase-2-deploy-pipeline/task-3-datadog-monitors.md) | ✅ |
 
-### Phase 3 — Scenario Branches  ·  branch `dev/deploy-phase-3-scenario-branches`  ·  Gate: 🔒
+### Phase 3 — Scenario Branches  ·  branch `dev/deploy-phase-3-scenario-branches`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 3.1 | **30 scenario branches** (10 per case) + `scenarios/branches.yaml` catalog — replaces `ci_demo_prs.yml` | [task-1](tasks/deployment/phase-3-scenario-branches/task-1-scenario-branches.md) | ⬜ |

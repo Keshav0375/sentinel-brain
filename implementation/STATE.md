@@ -5,20 +5,18 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-10-04
+> Last updated: 2026-10-07
 
-
-> **Deployment phase 2 — live status (2026-10-07).** PR #2 is merged (`4d9bc88`) but **NOT signed off**; tasks 2.1–2.3 stay 🟡. First live run 37559626662: build ✓, OIDC as gha-app ✓ (both logins), deploy ✗ Kudu 403 because the F1 app was in `QuotaExceeded` (the 5-min synthetics burned the 60 CPU-min/day quota). Failure reporting ✓ (deploy-failure event, record attempt, summary). Datadog objects were applied live (webhook, monitor 22933405, 2 synthetics). Fix: Sentinel-deployment PR #3 (30-min synthetics, deploy path filter), HELD. Merging it after the next apply IS the retest. **Next live session:** apply all → grant-db-access.sh → datadog/apply.sh (unpauses the tests) → merge PR #3 → verify /version + Datadog events/logs + monitor/Event Grid dispatch → destroy. Estate destroyed again 2026-10-07.
 
 ## Current Position
 
 | Field | Value |
 |-------|-------|
 | **Active category** | **deployment** — phase 1 signed; phase 2 next. infra is ✅ COMPLETE (2026-09-13) |
-| **Active phase** | deployment 2 — Deploy Pipeline |
+| **Active phase** | deployment 3 — Scenario Branches (locked until unblocked; deployment 2 signed) |
 | **Active branch** | `dev/deploy-phase-2-deploy-pipeline` (Sentinel-deployment, local, not pushed yet) |
-| **Active PR** | https://github.com/Keshav0375/Sentinel-deployment/pull/2 |
-| **Current task** | none — deployment phase 2 tasks 2.1-2.3 all done-pending-review (2.3 `d5fa824`); next: close-phase. Infra PR #17 (Event Grid CustomEventSchema + outputs + seed-vault retry + DD_SITE refuse) is open, under review |
+| **Active PR** | none (deployment PR #2 merged `4d9bc88`, follow-up #3 merged `e67e19d`) |
+| **Current task** | none — deployment 2 signed 2026-10-07; next phase deployment 3 |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
@@ -71,6 +69,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-10-07 | deployment | 2 — Deploy Pipeline | `dev/deploy-phase-2-deploy-pipeline` | [#2](https://github.com/Keshav0375/Sentinel-deployment/pull/2) + [#3](https://github.com/Keshav0375/Sentinel-deployment/pull/3) | Keshav | 2.1-2.3 verified; live run 37564896708 green (pr-3-e67e19d live, gha-app OIDC + Postgres Entra ok, DD events/logs accepted, Event Grid DeliverySuccess; record failed only on missing `deployments` table, deferred to backend 1.3). Estate destroyed after test. Merged 4d9bc88, e67e19d |
 | 2026-10-04 | deployment | 1 — The App | `dev/deploy-phase-1-app` | [#1](https://github.com/Keshav0375/Sentinel-deployment/pull/1) | Keshav | 1.1, 1.2 verified; merged manually by Keshav (squash 852660e) |
 | 2026-09-13 | infra | **6 — Dynamic Deployments & Workflows** ✅ **CATEGORY COMPLETE** | `dev/infra-phase-6-dynamic-deployments` | [#8](https://github.com/Keshav0375/Sentinel-infra/pull/8) + [#9](https://github.com/Keshav0375/Sentinel-infra/pull/9) [#10](https://github.com/Keshav0375/Sentinel-infra/pull/10) [#11](https://github.com/Keshav0375/Sentinel-infra/pull/11) [#12](https://github.com/Keshav0375/Sentinel-infra/pull/12) [#13](https://github.com/Keshav0375/Sentinel-infra/pull/13) [#14](https://github.com/Keshav0375/Sentinel-infra/pull/14) [#15](https://github.com/Keshav0375/Sentinel-infra/pull/15) | Keshav | Full lifecycle proven live from an empty subscription: `apply·platform` 11 resources ([34778509991](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34778509991)), `apply·deployment` 31 resources incl. **`kubernetes_namespace sentinel-dev`** + quota + LimitRange + NetworkPolicy + ServiceAccount + federated credential ([34779137478](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34779137478)) — closing the kubelogin gap carried since 2026-08-25 — `destroy·deployment` ([34779589393](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34779589393)), `destroy·all` 7 destroyed, workspace deleted, verify **11/11 ok** ([34782250925](https://github.com/Keshav0375/Sentinel-infra/actions/runs/34782250925)). Estate back to `rg-sentinel-bootstrap` + `NetworkWatcherRG` only. **Five defects found by reading the run history and fixed the same day, each proven in production**: identical run names + false-alarm verify + unseen F1 quota + a PR plan that tried to CREATE its workspace (#11); `apply` unguarded against a missing platform (#12); that refusal arriving 2m30s late (#13); **the destroy deadlock** — the Entra admin dropped concurrently with the database it owns, Postgres `2BP01`, 30 min hang, Postgres left billing (#14); and two security items (#15). **Signed with 6.8 (Pause/Resume) recorded as ⚠️ shipped-but-unexercised — zero runs, ever.** |
 | 2026-08-25 | infra | 5 — Dynamic Foundations | `dev/infra-phase-5-dynamic-foundations` | [#7](https://github.com/Keshav0375/Sentinel-infra/pull/7) | Keshav | Owner answered **Approve & merge**; merged `7849310`. Old estate destroyed (45 resources) and rebuilt as a two-layer platform. Proven live: a deployment workspace plans ZERO Azure resources and its `plan -destroy` reports nothing to destroy, while still reading platform outputs via `terraform_remote_state`; `gha-plan` holds `*/read` + 2 blob reads only. The merge was initially BLOCKED by the branch ruleset — the workflows still described the pre-phase-5 contract, fixed in-phase rather than deferred, which surfaced that Reader cannot refresh ACR/AKS. Superseded R5, R6, C1 and one-cluster-per-estate. |
