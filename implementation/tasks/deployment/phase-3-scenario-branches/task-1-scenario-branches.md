@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `in-progress` |
 | **Repo** | `Sentinel-deployment` |
 | **Phase branch** | `dev/deploy-phase-3-scenario-branches` |
 | **Commit prefix** | `feat:` |

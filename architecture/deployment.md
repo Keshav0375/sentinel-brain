@@ -491,8 +491,8 @@ alerts to the same deploy, not open two unrelated incidents.
 The eval runner (backend §13.2, `src/sentinel/eval/runner.py`) scores four things: did
 it fire, did it classify, did it correlate, and did its revert PR target the right merge.
 
-**Case i — `pass/*`** (every one touches `app/`): 01 add `GET /info` · 02 reword the
-startup log message field · 03 add a `region` field to `GET /` · 04 a comment in
+**Case i — `pass/*`** (every one touches `app/`): 01 add `GET /info` · 02 refactor the
+startup log line's timestamp into a helper (identical output — §2.2 is a contract) · 03 add a `region` field to `GET /` · 04 a comment in
 `main.py` · 05 module docstrings · 06 type hints · 07 extract a response helper · 08
 rename an internal variable · 09 add an `X-Service` response header · 10 move uptime
 logic into a helper. Every one keeps `GET /` JSON with `message: ok`.
