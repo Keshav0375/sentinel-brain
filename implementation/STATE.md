@@ -7,6 +7,9 @@
 >
 > Last updated: 2026-10-04
 
+
+> **Deployment phase 2 — live status (2026-10-07).** PR #2 is merged (`4d9bc88`) but **NOT signed off**; tasks 2.1–2.3 stay 🟡. First live run 37559626662: build ✓, OIDC as gha-app ✓ (both logins), deploy ✗ Kudu 403 because the F1 app was in `QuotaExceeded` (the 5-min synthetics burned the 60 CPU-min/day quota). Failure reporting ✓ (deploy-failure event, record attempt, summary). Datadog objects were applied live (webhook, monitor 22933405, 2 synthetics). Fix: Sentinel-deployment PR #3 (30-min synthetics, deploy path filter), HELD. Merging it after the next apply IS the retest. **Next live session:** apply all → grant-db-access.sh → datadog/apply.sh (unpauses the tests) → merge PR #3 → verify /version + Datadog events/logs + monitor/Event Grid dispatch → destroy. Estate destroyed again 2026-10-07.
+
 ## Current Position
 
 | Field | Value |
