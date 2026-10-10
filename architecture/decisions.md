@@ -16,6 +16,21 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-10: Backend phase 1 — real service registry, Langfuse v3, `SentinelMemoryError`
+
+- **The `services` registry holds the one real service: `sentinel-watchtower`.** It replaces the 8 Phase-1 acme-corp fixtures, because fake services don't belong in the real DB (§13.1). Row:
+  - team `sentinel`, tier `standard`, dependencies `[]`
+  - metadata: repo `Keshav0375/Sentinel-deployment`, platform `azure-app-service-f1`
+  - runbook: the revert-PR rollback procedure, with a pointer to `Sentinel-deployment/scenarios/README.md`
+  - embedding computed at seed time with the existing `EmbeddingClient` (all-MiniLM-L6-v2, 384)
+
+  Test fixtures may still use synthetic services; the real seed must not.
+- **Langfuse v3.** An unconstrained `langfuse` resolves to v3, and §6.2/§4.5 use v2-only APIs (`langfuse.decorators`, `langfuse.trace`). Pin v3 now. §6.2/§4.5 are rewritten to the v3 API before backend phase 2 (tracing) builds them.
+- **The DB error is `SentinelMemoryError`, not `MemoryError`.** The old name shadows Python's built-in out-of-memory exception, so a broad `except MemoryError` would swallow real OOMs. The hierarchy lives in `src/sentinel/exceptions.py`: `SentinelError` → `ToolError`, `SentinelMemoryError`, `AgentError`, `EvalError`. `CONVENTIONS.md`/`CLAUDE.md` in `Sentinel` are updated with it.
+- **Defaults chosen for this phase:**
+  - `create_pool` takes an optional `password` (str or callable), so it can use refreshed Entra tokens later (the server is password-less).
+  - Settings `database_url`, `sentinel_db_pool_min` (2) and `sentinel_db_pool_max` (10) match the existing `.env` names.
+
 ### 2026-10-07: Scenario catalog redesigned for determinism (deploy phase 3)
 
 The architecture review found that roughly half of the original §4.1 faults could not produce their label on the stack as built.
