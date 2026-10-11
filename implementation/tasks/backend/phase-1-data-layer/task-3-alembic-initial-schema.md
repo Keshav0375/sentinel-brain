@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-1-data-layer` |
 | **Commit prefix** | `feat:` |
@@ -38,7 +38,13 @@ per §5.3.
 2. `\d+ incidents` shows the vector column + ivfflat index.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built (commit 75564fa, `feat: alembic setup + 001_initial_schema`): §5.3 DDL verbatim — vector extension, 3 tables, 8 indexes (ivfflat lists 10/5). gha-app grant guarded on role existing (closes R12; verified has_table_privilege INSERT+SELECT plus a real INSERT as gha-app). Pipeline INSERT shape proven for succeeded/failed/rolled_back. Downgrade keeps the extension (shared server-wide). env.py uses asyncpg async_creator; DSN from config.attributes, env, or .env. Run via `poetry run alembic upgrade head` (not wired into startup). conftest now runs `alembic upgrade head` on the test DB.
+Files: alembic.ini, alembic/env.py, alembic/script.py.mako, alembic/versions/001_initial_schema.py, tests/test_infra/test_migrations.py, tests/conftest.py, pyproject.toml, CONVENTIONS.md, .env.example.
+Follow-ups: Dockerfile must COPY alembic/ (§13.5 step 9, phase 7). After 1.3 is live on Azure, re-run Sentinel-infra/scripts/grant-db-access.sh to verify the grant.
+
+**Tests / gate:** VERDICT GREEN · 7 ran · env GROQ_API_KEY=fake-key-for-ci, DATABASE_URL=local pgvector container. Tree clean, attribution none.
+
+**How to verify:** with GROQ_API_KEY=fake-key-for-ci and DATABASE_URL set to local pgvector: `poetry run alembic upgrade head` (3 tables), then `\d+ incidents` (vector column + ivfflat index); `poetry run alembic downgrade base` reverses.
 
 ## BLOCKED
 _none locally. Azure `alembic upgrade head` (infra §10 step 10) ⛔ B1 — separate from this task._
