@@ -15,7 +15,7 @@
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 1 — Data Layer Foundation |
 | **Active branch** | `dev/backend-phase-1-data-layer` (off `release-phase-2`) |
-| **Active PR** | none |
+| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/19 |
 | **Current task** | backend phase 1 — all 4 tasks done-pending-review; next: phase review and close-phase |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
