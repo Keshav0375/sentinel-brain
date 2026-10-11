@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-10-07
+> Last updated: 2026-10-11
 
 
 ## Current Position
@@ -14,9 +14,9 @@
 |-------|-------|
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 1 — Data Layer Foundation |
-| **Active branch** | none yet (`dev/backend-phase-1-data-layer` off `release-phase-2`) |
+| **Active branch** | `dev/backend-phase-1-data-layer` (off `release-phase-2`) |
 | **Active PR** | none |
-| **Current task** | backend 1.1 — FIRST STEP: deferred deployment live smoke (see Next Action) |
+| **Current task** | backend 1.2 — asyncpg pool (`infra/database.py`) |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |

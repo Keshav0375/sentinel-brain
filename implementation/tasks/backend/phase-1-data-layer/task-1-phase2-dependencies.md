@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-1-data-layer` |
 | **Commit prefix** | `feat:` |
@@ -33,7 +33,13 @@ ensure `httpx`. Keep `aiosqlite`/`numpy` for now. Update lockfile.
 2. App boots without import errors; `pytest -q` green.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built: Phase-2 deps added (asyncpg, pgvector, alembic, langfuse v3, sqlalchemy[asyncio]); pip-audit added to dev group; requires-python now >=3.12,<4.0 (langfuse). Commits 3fcfd6e (feat: add Phase-2 deps) + 679343e (fix(deps): clear pip-audit advisories). Files: pyproject.toml, poetry.lock.
+User decision 2026-10-10: upgrade pre-existing vulnerable deps inside 1.1 (aiohttp, anyio, cryptography, fsspec, litellm, mcp, multidict, pyasn1, pydantic-settings, pyjwt, python-multipart, sentence-transformers, setuptools, starlette/fastapi 0.143.0, torch, transformers, urllib3). No ignores; openai-agents held at 0.6.4.
+Follow-ups: Dockerfile `pip install .` ignores poetry.lock (task 7.1); local Sentinel/.env GROQ_API_KEY empty, so local gate/boot need a dummy key.
+
+Tests: gate VERDICT GREEN, 7 ran, 0 skipped (pip-audit: no known vulnerabilities), run with GROQ_API_KEY=fake-key-for-ci. 1527 tests pass; `sentinel serve` boots.
+
+Verify: `poetry install`; `GROQ_API_KEY=fake-key-for-ci poetry run pytest -q`; `GROQ_API_KEY=fake-key-for-ci poetry run sentinel serve`; `python3 scripts/gate.py backend`.
 
 ## BLOCKED
 _none — local._
