@@ -25,6 +25,8 @@ wrapper ends with one machine-readable verdict line and its own exit code:
     VERDICT GREEN                     exit 0   every applicable check ran and passed
     VERDICT GREEN · n/a: a, b         exit 0   same; a, b had no input yet (see below)
     VERDICT PARTIAL · skipped: a, b   exit 3   passed, but checks did not run — NOT green
+                                              (backend: also when TEST_DATABASE_URL is unset — the
+                                              Postgres tests skip, so they did not run)
     VERDICT INCONCLUSIVE              exit 3   nothing ran
     VERDICT RED · failed: a, b        exit 1   fix and re-run
 
@@ -132,8 +134,20 @@ def main() -> int:
         sys.stderr.write(proc.stderr)
         if "--json" in passthrough:
             return proc.returncode
-        return verdict(proc.stdout, proc.returncode, "--fast" in passthrough,
-                       lambda: never_built(src, cat, repo))
+        fast = "--fast" in passthrough
+        # The backend's Postgres tests (pool, migrations, seed, lifespan) SKIP without
+        # TEST_DATABASE_URL, and pytest still exits 0, so the gate's own report shows
+        # pytest-integration as passed. That is not green: say so here.
+        unseen = []
+        if cat == "backend" and not fast and not os.environ.get("TEST_DATABASE_URL"):
+            print("NOTE    TEST_DATABASE_URL is unset, so the Postgres tests skipped. Start one with:\n"
+                  "        docker run -d --name sentinel-pg-test -e POSTGRES_PASSWORD=test "
+                  "-e POSTGRES_DB=sentinel -p 55432:5432 pgvector/pgvector:pg16\n"
+                  "        TEST_DATABASE_URL=postgresql://postgres:test@localhost:55432/sentinel "
+                  "python3 scripts/gate.py backend")
+            unseen = ["pytest-db (no TEST_DATABASE_URL)"]
+        return verdict(proc.stdout, proc.returncode, fast,
+                       lambda: never_built(src, cat, repo), unseen)
 
 
 def _ever_tracked(repo: Path, path: str) -> bool:
@@ -180,7 +194,8 @@ def never_built(src: Path, cat: str, repo: Path) -> set[str]:
         sys.modules.pop(name, None)
 
 
-def verdict(out: str, code: int, fast: bool, resolve_unbuilt: Callable[[], set[str]]) -> int:
+def verdict(out: str, code: int, fast: bool, resolve_unbuilt: Callable[[], set[str]],
+            unseen: list[str] | None = None) -> int:
     """Turn the gate's human report into one unambiguous line + exit code.
 
     `resolve_unbuilt` is called only when the verdict is not RED and some check was skipped
@@ -207,7 +222,7 @@ def verdict(out: str, code: int, fast: bool, resolve_unbuilt: Callable[[], set[s
     unbuilt = resolve_unbuilt() if missing else set()
     na = [n for n in missing if n in unbuilt]
     lost = [n for n in missing if n not in unbuilt]
-    skipped = other + lost
+    skipped = other + lost + list(unseen or [])
     if na:
         print("NOTE    n/a = target path never existed in repo history (not yet built): "
               f"{', '.join(na)}")
