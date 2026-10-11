@@ -16,7 +16,7 @@
 | **Active phase** | backend 1 — Data Layer Foundation |
 | **Active branch** | `dev/backend-phase-1-data-layer` (off `release-phase-2`) |
 | **Active PR** | none |
-| **Current task** | backend 1.4 — Seed services migration |
+| **Current task** | backend phase 1 — all 4 tasks done-pending-review; next: phase review and close-phase |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
