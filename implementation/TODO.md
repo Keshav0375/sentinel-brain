@@ -120,7 +120,7 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 | # | Task | File | Status |
 |---|------|------|--------|
 | 1.1 | Add Phase-2 deps (asyncpg, pgvector, alembic, langfuse, **pyjwt[crypto], azure-identity, azure-keyvault-secrets**) | [task-1](tasks/backend/phase-1-data-layer/task-1-phase2-dependencies.md) | 🟡 |
-| 1.2 | asyncpg pool — `infra/database.py` | [task-2](tasks/backend/phase-1-data-layer/task-2-asyncpg-database-pool.md) | ⬜ |
+| 1.2 | asyncpg pool — `infra/database.py` | [task-2](tasks/backend/phase-1-data-layer/task-2-asyncpg-database-pool.md) | 🟡 |
 | 1.3 | Alembic setup + `001_initial_schema` (3 tables + pgvector) | [task-3](tasks/backend/phase-1-data-layer/task-3-alembic-initial-schema.md) | ⬜ |
 | 1.4 | `002_seed_services` migration | [task-4](tasks/backend/phase-1-data-layer/task-4-seed-services-migration.md) | ⬜ |
 

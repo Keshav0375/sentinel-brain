@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-1-data-layer` |
 | **Commit prefix** | `feat:` |
@@ -32,11 +32,18 @@ until Phase 9 per §13.5 step 2).
 - **Quality gate:** `--repo backend`.
 
 ## How to Verify (phase gate)
-1. `docker run pgvector/pgvector:pg16`; set DATABASE_URL local.
-2. `pytest tests/test_infra/test_database.py -q` → green (pool + vector round-trip).
+1. `docker run -d --name sentinel-pg-test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=sentinel -p 55432:5432 pgvector/pgvector:pg16`
+2. `DATABASE_URL=postgresql://postgres:test@localhost:55432/sentinel GROQ_API_KEY=fake-key-for-ci poetry run pytest tests/test_infra/test_database.py -q` → green.
+3. `poetry run sentinel serve` boots (DATABASE_URL blank or container).
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built asyncpg + pgvector pool in `infra/database.py`: `create_pool(dsn, *, min_size, max_size, password=str|callable)`, `register_vector` via init, `acquire()` helper; lifespan opens pool only when DATABASE_URL is a Postgres URL. `SentinelError` hierarchy in `sentinel/exceptions.py`; added dev dep asyncpg-stubs.
+Commits (Sentinel): 12bb1c2 feat: asyncpg + pgvector pool in infra/database.py; bdaa4dc fix: blank DATABASE_URL in .env.example; never-blank pool errors.
+Files: src/sentinel/infra/database.py, exceptions.py, config.py, main.py, CONVENTIONS.md, tests/conftest.py, tests/test_infra/test_database.py, tests/test_config.py, pyproject.toml, poetry.lock, .env.example.
+Notes: local Sentinel/.env has stale Azure placeholder DSN picked up by litellm load_dotenv; blank it or point at container. conftest session fixture creates vector extension until 1.3 alembic replaces it.
+
+## Tests
+Gate VERDICT GREEN, 7 ran, 31 tests (GROQ_API_KEY=fake-key-for-ci, DATABASE_URL=postgresql://postgres:test@localhost:55432/sentinel, container `sentinel-pg-test`). Tree clean, attribution none.
 
 ## BLOCKED
 _none locally (uses local pgvector). Azure DB verify ⛔ B1 (not required for this task)._
