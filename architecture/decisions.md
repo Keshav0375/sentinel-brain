@@ -16,6 +16,42 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-12: Langfuse v3 API in §4.5/§6
+
+Follows 2026-10-10 (pin v3). Verified against the installed `langfuse 3.15.0` source and the Langfuse
+docs. backend.md §4.5, §6.1 (Tracing row), §6.2, §6.3, §6.4 and backend task 2.4 are rewritten; the
+changed blocks are marked "(v3 API, amended 2026-10-12)".
+
+- **API mapping (v2 → v3):**
+  - `Langfuse()` module global → `get_client()` singleton (`Langfuse(...)` still exists)
+  - `from langfuse.decorators import observe, langfuse_context` → `from langfuse import observe, propagate_attributes, get_client`
+  - `langfuse.trace(name=, id=str(incident_id), metadata=)` → root `@observe(name="incident-pipeline")` called with `langfuse_trace_id=incident_id.hex`; no trace object exists
+  - `RunContext.langfuse_trace` (object) → `RunContext.langfuse_trace_id` (str, from `get_current_trace_id()`)
+  - `langfuse_context.update_current_trace(metadata, tags)` → `propagate_attributes(metadata=, tags=)` (v3's recommended form; `get_client().update_current_trace` still exists)
+  - `langfuse_context.update_current_observation` → `update_current_span` / `update_current_generation`
+  - `@observe(as_type="tool")` → unchanged spelling. It is now a real type; v3 types: span, generation, embedding, agent, tool, chain, retriever, evaluator, guardrail. Agents use `as_type="agent"`.
+  - `get_prompt(name, cache_ttl_seconds=300)` / `.compile()` → unchanged. Prompt → generation link is `update_current_generation(prompt=prompt_client)`.
+  - `langfuse.score(trace_id=, name=, value=)` → `create_score(trace_id=, name=, value=, data_type="NUMERIC")`. Inside a live trace you can use `score_current_trace` / `score_current_span`.
+  - `flush()` → unchanged; `shutdown()` is also registered at `atexit`
+- **Behaviour differences that matter:**
+  - **Trace ids are W3C, 32 lowercase hex.** `str(uuid)` (with dashes) is invalid. We use `incident_id.hex`, the same UUID without dashes, which `incidents.langfuse_trace_id` stores, so incident ↔ trace stays 1:1.
+  - **Context is OTel `contextvars`.** An asyncio Task inherits the span that was current when it was created; `asyncio.to_thread` copies it too, but `run_in_executor` does not. Incident tasks are created outside any span, so they stay separate traces.
+  - **Trace attributes.** `propagate_attributes` metadata values must be str ≤200 chars, and only spans created after entering it carry them, so enter it first thing.
+  - **Exporting is a background OTel batch.** The FastAPI lifespan calls `shutdown()` and eval/CLI entry points call `flush()`. Otherwise scale-to-zero or SIGTERM can drop the tail of a trace.
+  - **Missing keys give a disabled client** (warning, no-op tracer): `@observe` and `create_score` become silent no-ops. But `get_prompt` **raises** ("SDK is not correctly initialized"), and v3's `fallback=` argument never runs in that case, so §6.3's try/except file fallback is mandatory.
+- **Env var: `LANGFUSE_BASE_URL` is correct for v3.** Resolution order: `base_url=` arg → `LANGFUSE_BASE_URL` → `host=` arg → `LANGFUSE_HOST` (deprecated) → `https://cloud.langfuse.com`. This matches KV/`seed-vault.sh`/`ci_infra.yml` (B7). Drift to fix in their own tasks:
+  - `Sentinel/.env.example` still says `LANGFUSE_HOST`
+  - backend task 3.1 (config) names the setting `langfuse_host`; it should be `langfuse_base_url`
+- **openai-agents coexistence.**
+  - openai-agents 0.6.4 traces via its own `TracingProcessor` system, not OTel, and Langfuse v3 has no native hook into it.
+  - Langfuse's documented integration is the third-party `openinference-instrumentation-openai-agents` (`OpenAIAgentsInstrumentor().instrument()`). It re-emits Agents-SDK spans as OTel spans, which the Langfuse client exports. That package is not installed or listed in §11.
+  - Langfuse sets the global OTel `TracerProvider` only if none exists.
+  - Any route must add processors (`add_trace_processor`), never replace them (`set_trace_processors` / `set_tracing_disabled`), or `SentinelTracer`/`DashboardEventEmitter` stop.
+- **⚠️ FLAGGED — contracts v3 cannot meet without a decision we don't have:**
+  1. **§6.1 Cost Tracking and "each LLM call = 1 generation".** Token usage and model only exist on `generation` observations. `@observe` on an agent wrapper does not create them, because the LLM calls happen inside `Runner.run` → `LitellmModel`. Meeting this needs a new dependency or a custom bridge from the Agents-SDK processor to `start_observation(as_type="generation")`. **Undecided — needs an R-item.** Until then the 50K-token alert and per-agent cost are unmet, and task 2.4 ships span tree + latency only.
+  2. **§6.3 "versioning shows which prompt version produced which scores".** In v3 the prompt link is made on the generation, so it depends on (1). It is not met until (1) is decided.
+  - Not answered from the installed code (openinference is not installed): whether OpenInference spans nest under the active `@observe` span. Verify when (1) is decided.
+
 ### 2026-10-10: Backend phase 1 — real service registry, Langfuse v3, `SentinelMemoryError`
 
 - **The `services` registry holds the one real service: `sentinel-watchtower`.** It replaces the 8 Phase-1 acme-corp fixtures, because fake services don't belong in the real DB (§13.1). Row:

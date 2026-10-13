@@ -570,29 +570,45 @@ If ESCALATE → no PR created. Teams notification with full context. Human decid
 
 Multiple incidents can run simultaneously. Each pipeline run is an independent `asyncio.Task` with its own short-term memory (Python dict keyed by `incident_id`).
 
+**(v3 API, amended 2026-10-12)** — Langfuse v3 has no trace object (`langfuse.trace()` is gone). The trace
+is the active OpenTelemetry context opened by the root `@observe`; `RunContext` carries the trace **id**
+(a string), not a trace handle.
+
 ```python
+from langfuse import get_client, observe, propagate_attributes
+
+langfuse = get_client()
+
 async def handle_incident(payload: IncidentPayload) -> None:
     incident_id = uuid4()
     short_term = ShortTermMemory(incident_id)
-    
-    langfuse_trace = langfuse.trace(
-        name="incident-pipeline",
-        id=str(incident_id),
-        metadata={"correlation_id": payload.correlation_id}
-    )
-    
-    result = await Runner.run(
-        orchestrator,
-        input=payload.model_dump_json(),
-        context=RunContext(
-            incident_id=incident_id,
-            short_term=short_term,
-            langfuse_trace=langfuse_trace,
-        ),
-    )
-    
+
+    # v3 trace ids are W3C: 32 lowercase hex. incident_id.hex is the same UUID without dashes,
+    # so trace <-> incident stays 1:1; this value is what incidents.langfuse_trace_id stores.
+    result = await run_pipeline_traced(
+        payload, incident_id, short_term, langfuse_trace_id=incident_id.hex,
+    )  # langfuse_trace_id is a reserved @observe kwarg — consumed by the decorator, never passed through
+
     await store_incident(result, short_term)
+
+@observe(name="incident-pipeline")
+async def run_pipeline_traced(payload, incident_id, short_term) -> RunResult:
+    with propagate_attributes(metadata={"correlation_id": str(payload.correlation_id)}):
+        return await Runner.run(
+            orchestrator,
+            input=payload.model_dump_json(),
+            context=RunContext(
+                incident_id=incident_id,
+                short_term=short_term,
+                langfuse_trace_id=langfuse.get_current_trace_id(),
+            ),
+        )
 ```
+
+Context propagation is OTel `contextvars`: an `asyncio.Task` inherits the span context that was current
+when it was **created**. Each incident task is created by the request handler, outside any span, so
+concurrent incidents are separate root traces; spans opened inside a run (including in tasks it spawns
+or `asyncio.to_thread`) nest under that run's trace. `loop.run_in_executor` does **not** copy context.
 
 No locking needed — incidents are independent. Each gets its own DB connection from the asyncpg pool (min=2, max=10). The single backend replica on the B2pls_v2 node (ARM64, 2 vCPU, 4 GB) handles 2-3 concurrent pipeline runs comfortably (each run uses ~500 MB peak during LLM calls) — concurrent incidents arrive as separate `ci_incident_response.yml` runs all POSTing to the same always-on backend.
 
@@ -770,7 +786,7 @@ LangFuse is not just "logging LLM calls." It provides:
 
 | Feature | How Sentinel Uses It |
 |---------|---------------------|
-| **Tracing** | Every incident pipeline run = 1 trace. Each agent handoff = 1 span. Each tool call = 1 generation. Full tree view of the entire pipeline. |
+| **Tracing** | Every incident pipeline run = 1 trace. Each agent handoff = 1 span (v3 observation type `agent`). Each tool call = 1 observation (v3 type `tool`; v2 had no tool type and logged it as a generation). Each LLM call = 1 `generation` — see the gap note in §6.2. Full tree view of the entire pipeline. *(v3 API, amended 2026-10-12)* |
 | **Prompt Management** | System prompts for all agents stored and versioned in LangFuse. Swap prompts without code deploy — pull from LangFuse API at startup. |
 | **Scoring** | Judge agent's eval scores piped into LangFuse as trace-level scores. Dashboard shows score trends over time. |
 | **Cost Tracking** | Token usage per agent, per incident, per day. Alerts if a single incident exceeds 50K tokens. |
@@ -778,49 +794,83 @@ LangFuse is not just "logging LLM calls." It provides:
 
 ### 6.2 SDK Integration Pattern
 
-```python
-from langfuse import Langfuse
-from langfuse.decorators import observe, langfuse_context
+**(v3 API, amended 2026-10-12)** — langfuse `>=3,<4` (installed 3.15.0). v3 is built on OpenTelemetry:
+`langfuse.decorators` / `langfuse_context` no longer exist; everything is imported from `langfuse`.
 
-langfuse = Langfuse()
+```python
+from langfuse import get_client, observe, propagate_attributes
+
+# Singleton. Reads LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_BASE_URL from env.
+# (LANGFUSE_HOST is the deprecated v2 name; v3 checks LANGFUSE_BASE_URL first.)
+# Missing keys -> a disabled client (warning logged, no-op tracer): @observe and
+# create_score become no-ops, but get_prompt RAISES — hence the try/except in §6.3.
+langfuse = get_client()
 
 @observe(name="incident-pipeline")
 async def run_pipeline(payload: IncidentPayload) -> IncidentResult:
-    langfuse_context.update_current_trace(
+    # Trace-level attributes. propagate_attributes is v3's recommended replacement for
+    # update_current_trace (which still exists): it also stamps every child observation,
+    # so per-trace filters/aggregations see them. Metadata values: str, <=200 chars.
+    with propagate_attributes(
         metadata={"correlation_id": str(payload.correlation_id)},
         tags=["incident", payload.tags.service],
-    )
-    
-    triage_result = await run_triage(payload)
-    analysis_result = await run_analysis(triage_result)
-    # ... etc
+    ):
+        triage_result = await run_triage(payload)
+        analysis_result = await run_analysis(triage_result)
+        # ... etc
 
-@observe(name="triage-agent")
+@observe(name="triage-agent", as_type="agent")
 async def run_triage(payload: IncidentPayload) -> TriageResult:
-    # LangFuse automatically captures:
-    # - Input/output
-    # - Token usage
-    # - Latency
-    # - Model name
+    # @observe captures: input/output (capture_input/capture_output, default on), latency, errors.
+    # It does NOT capture token usage or model name — those exist only on `generation`
+    # observations, and the LLM calls happen inside Runner.run (openai-agents -> LitellmModel).
     ...
 
 @observe(name="fetch-logs", as_type="tool")
 async def fetch_logs(query: LogQuery) -> LogAnalysis:
+    # langfuse.update_current_span(...) / update_current_generation(...) enrich the active observation
     ...
 ```
+
+`as_type` values in v3: `span` (default), `generation`, `embedding`, `agent`, `tool`, `chain`,
+`retriever`, `evaluator`, `guardrail`. Shutdown: v3 batches spans in a background OTel processor and
+registers `shutdown()` at `atexit`; the FastAPI lifespan calls `langfuse.shutdown()` explicitly on exit
+(pod scale-to-zero / SIGTERM), and CLI/eval entry points call `langfuse.flush()` before returning.
+
+**Gap — LLM generations (tokens, model, cost) are not wired.** openai-agents 0.6.4 has its own tracing
+system (`TracingProcessor`, not OTel); Langfuse v3 has no native hook into it. Langfuse's documented
+integration is the third-party `openinference-instrumentation-openai-agents`
+(`OpenAIAgentsInstrumentor().instrument()`), which turns Agents-SDK spans into OTel spans that the
+Langfuse client exports. It is **not** a dependency today (§11). Until it is chosen (open decision —
+see `decisions.md` 2026-10-12), `@observe` gives the span tree + latency only, and the §6.1 Cost
+Tracking row (per-agent tokens, 50K-token alert) is unmet. Whatever is chosen must use
+`add_trace_processor` (never `set_trace_processors` / `set_tracing_disabled`), so `SentinelTracer` and
+`DashboardEventEmitter` keep firing (see `providers/__init__.py`).
 
 ### 6.3 Prompt Management
 
 Instead of loading prompts from `src/sentinel/agents/prompts/*.txt`, Phase 2 loads them from LangFuse with a local file fallback:
 
+**(v3 API, amended 2026-10-12)** — `get_prompt` / `compile()` / `cache_ttl_seconds` are unchanged in v3.
+
 ```python
-async def load_prompt(agent_name: str) -> str:
+async def load_prompt(agent_name: str) -> TextPromptClient | str:
     try:
+        # Sync call: blocks only on a cache miss (first load); a stale cached prompt is returned
+        # immediately and refreshed on a background thread. v3's own `fallback=` arg is NOT enough:
+        # a keyless/disabled client raises before reaching it, so the file fallback stays here.
         prompt = langfuse.get_prompt(agent_name, cache_ttl_seconds=300)
-        return prompt.compile()
+        return prompt          # caller uses prompt.compile(**vars) for the text
     except Exception:
         return Path(f"src/sentinel/agents/prompts/{agent_name}.txt").read_text()
 ```
+
+Returning the `TextPromptClient` (not just the compiled string) is what makes version tracking
+possible: v3 links a prompt version to an LLM call via `update_current_generation(prompt=prompt)` (or
+`start_as_current_observation(as_type="generation", prompt=prompt)`), which must run **inside the
+generation observation**. Those generations are created inside `Runner.run`, so the link depends on the
+§6.2 gap (generation wiring) — until that lands, prompt-version → score attribution below is not
+achieved.
 
 This means you can A/B test prompt changes without deploying code. LangFuse versioning shows which prompt version produced which scores.
 
@@ -828,18 +878,25 @@ This means you can A/B test prompt changes without deploying code. LangFuse vers
 
 After the Judge agent scores a trajectory, the scores are pushed to LangFuse:
 
+**(v3 API, amended 2026-10-12)** — `langfuse.score()` is gone; `create_score` takes the same trace
+id that `incidents.langfuse_trace_id` stores (32-hex, §4.5). The judge runs after the pipeline trace
+has closed, so it scores by explicit id (`score_current_trace` only works inside the live trace).
+
 ```python
-langfuse.score(
+langfuse.create_score(
     trace_id=trace_id,
     name="triage_accuracy",
     value=judge_result.triage_accuracy,
+    data_type="NUMERIC",
 )
-langfuse.score(
+langfuse.create_score(
     trace_id=trace_id,
     name="root_cause_correctness",
     value=judge_result.root_cause_correctness,
+    data_type="NUMERIC",
 )
 # ... one score per eval dimension
+langfuse.flush()   # eval runner is short-lived: flush before exit
 ```
 
 The LangFuse dashboard then shows: average scores over time, regression detection, per-model comparison.

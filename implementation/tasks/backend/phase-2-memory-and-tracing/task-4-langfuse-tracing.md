@@ -15,11 +15,18 @@ Replace custom trace capture with LangFuse: `@observe` decorators, LangFuse-firs
 loading with local fallback, and score piping (§6.2–6.4).
 
 **Files modified:** `src/sentinel/infra/tracing.py`
-- Init `Langfuse()` from env (public/secret/host).
-- `@observe` wrappers (or helpers) for pipeline / agent / tool spans; `langfuse_context.update_current_trace(metadata, tags)`.
-- `async def load_prompt(agent_name)` — LangFuse `get_prompt(cache_ttl=300)` with fallback to `agents/prompts/{name}.txt` (§6.3).
-- `push_score(trace_id, name, value)` for judge dimensions (§6.4).
-- Degrade gracefully when LangFuse is unreachable (fallback to file prompts, no crash).
+_(v3 API, amended 2026-10-12 — langfuse 3.x; see decisions.md 2026-10-12)_
+- Client via `from langfuse import get_client` → `get_client()`, from env `LANGFUSE_PUBLIC_KEY` /
+  `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL` (not the deprecated `LANGFUSE_HOST`). No `langfuse.decorators`.
+- `from langfuse import observe` wrappers for pipeline / agent / tool (`as_type="agent"` / `"tool"`);
+  trace attributes via `propagate_attributes(metadata, tags)` (§6.2). Trace id = `incident_id.hex`
+  passed as `langfuse_trace_id=` to the root observed call; `RunContext` carries the id string (§4.5).
+- `async def load_prompt(agent_name)` — `get_prompt(name, cache_ttl_seconds=300)` inside try/except,
+  fallback to `agents/prompts/{name}.txt` (§6.3). Keyless client raises in `get_prompt` — the except is required.
+- `push_score(trace_id, name, value)` → `create_score(trace_id=…, name=…, value=…, data_type="NUMERIC")` (§6.4).
+- `shutdown()` on app exit, `flush()` at the end of CLI/eval runs.
+- Degrade gracefully when LangFuse keys are absent/unreachable (disabled client, file prompts, no crash).
+- Do not touch the openai-agents `TracingProcessor` wiring; LLM-generation capture is an open decision (§6.2 gap).
 
 ## Prerequisites
 - [ ] task 1.1 deps. [ ] ⛔ B7 LangFuse keys for live tracing (fallback path works offline).
@@ -29,7 +36,7 @@ loading with local fallback, and score piping (§6.2–6.4).
 - [ ] Trace/score helpers callable and typed; no hard failure when keys absent.
 
 ## Tests
-- **Unit (`tests/test_infra/test_tracing.py`):** prompt fallback to file when LangFuse mocked-unavailable; score helper builds the right call (mock client).
+- **Unit (`tests/test_infra/test_tracing.py`):** prompt fallback to file when LangFuse mocked-unavailable; score helper builds the right `create_score` call (mock client).
 - **Quality gate:** `--repo backend`.
 
 ## How to Verify (phase gate — end of Category 3 Phase 2)
