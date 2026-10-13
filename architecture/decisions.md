@@ -16,6 +16,17 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-12: Phase-1 models ↔ §5.3 schema mapping (backend phase 2)
+
+The §5.3 DDL binds; Phase-1 models adapt to it, and phase 4 rewrites the pipeline anyway.
+
+1. **IDs are UUIDs.** `Incident.id` is generated as `str(uuid4())`, not `inc-xxxxxxxx`. `incidents.id` stores it as UUID. `EpisodicRecord.id` is `str(UUID)`, and the trace id is `UUID(id).hex` (§4.5).
+2. **`symptoms`** (no column) and the timeline live in `trajectory` JSONB as `{"symptoms": <text>, "timeline": <raw_timeline>}`. On read, `EpisodicRecord.symptoms` and `raw_timeline` come from there. The embedding is computed from the symptoms text.
+3. **`store_incident` maps the fields the model has.** `alert_id` comes from `incident.alert.alert_id`; service, severity, root_cause, resolution, mttr_seconds, created_at, embedding and trajectory map directly; `status` is the `IncidentStatus` value (TEXT, no CHECK). Columns the model can't supply (correlation_id, dd_event_id, langfuse_trace_id, reflexion_loops, root_cause_confidence, resolution_type, pr_*, eval_score, resolved_at) stay NULL/default until the phase-4 pipeline writes them.
+4. **Service fields.** `ServiceMetadata.oncall_channel`, `description` and `repo_url` come from `services.metadata` keys. `repo_url` is `https://github.com/<metadata.repo>` when only `repo` is present. `services.runbook` maps to `Runbook(id=f"{service}-runbook", service_name, failure_class=<requested or "general">, steps=<the markdown's numbered or bulleted lines; whole text as one step if none>)`. `search_services(embedding, k)` returns `list[tuple[ServiceMetadata, float]]` (similarity = 1 − cosine distance).
+5. **Protocol unchanged.** `search_similar(symptoms: str, *, top_k)` still embeds the text itself. A new `search_by_embedding(embedding, *, top_k)` takes a caller-supplied vector.
+6. **IVFFlat recall.** Every similarity query runs `SET LOCAL ivfflat.probes = <index lists>` in its transaction (incidents 10, services 5), so small or freshly built tables never miss rows.
+
 ### 2026-10-12: Backend phase 2 — memory is Postgres-only; runbooks live in `services.runbook`
 
 - **Episodic and semantic memory take the asyncpg pool, not a SQLite path.** `infra/db.py` and `sentinel_db_path` become dead code for memory; phase 9 deletes them. With no `DATABASE_URL` the app still boots (pool = None), but every memory call raises `SentinelMemoryError`, and the tools report "memory unavailable". There are no silent empty or fake results.
