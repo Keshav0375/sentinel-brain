@@ -16,6 +16,14 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-12: Backend phase 2 — memory is Postgres-only; runbooks live in `services.runbook`
+
+- **Episodic and semantic memory take the asyncpg pool, not a SQLite path.** `infra/db.py` and `sentinel_db_path` become dead code for memory; phase 9 deletes them. With no `DATABASE_URL` the app still boots (pool = None), but every memory call raises `SentinelMemoryError`, and the tools report "memory unavailable". There are no silent empty or fake results.
+- **Runbooks have no table of their own.** 001 holds one runbook per service in `services.runbook`. `get_runbook(service, failure_class)` returns it, ignoring `failure_class`, and `get_all_runbooks` lists them.
+- **Service lookups:** by name is an exact `WHERE name = $1`. Symptom search must not depend on IVFFlat recall at `probes=1` (phase-1 finding): set `ivfflat.probes` high enough for the table size, or scan exactly.
+- **`LANGFUSE_BASE_URL` is the setting name** (Langfuse v3 reads it first). `.env.example` and backend task 3.1 drop `LANGFUSE_HOST` / `langfuse_host`.
+- **Deferred as R14:** per-LLM-call token/cost capture inside openai-agents' Runner (§6.1 cost tracking).
+
 ### 2026-10-12: Langfuse v3 API in §4.5/§6
 
 Follows 2026-10-10 (pin v3). Verified against the installed `langfuse 3.15.0` source and the Langfuse
