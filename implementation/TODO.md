@@ -116,15 +116,15 @@ _Implement second — the target app + deploy pipeline that generates real Datad
 ## Category 3 — sentinel-backend  ·  `Keshav0375/Sentinel`
 _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (see arch §13)._ · [Index](tasks/backend/README.md)
 
-### Phase 1 — Data Layer Foundation  ·  branch `dev/backend-phase-1-data-layer`  ·  Gate: ⬜ **← NEXT**
+### Phase 1 — Data Layer Foundation  ·  branch `dev/backend-phase-1-data-layer`  ·  Gate: ✅ 2026-10-12
 | # | Task | File | Status |
 |---|------|------|--------|
-| 1.1 | Add Phase-2 deps (asyncpg, pgvector, alembic, langfuse, **pyjwt[crypto], azure-identity, azure-keyvault-secrets**) | [task-1](tasks/backend/phase-1-data-layer/task-1-phase2-dependencies.md) | 🟡 |
-| 1.2 | asyncpg pool — `infra/database.py` | [task-2](tasks/backend/phase-1-data-layer/task-2-asyncpg-database-pool.md) | 🟡 |
-| 1.3 | Alembic setup + `001_initial_schema` (3 tables + pgvector) | [task-3](tasks/backend/phase-1-data-layer/task-3-alembic-initial-schema.md) | 🟡 |
-| 1.4 | `002_seed_services` migration | [task-4](tasks/backend/phase-1-data-layer/task-4-seed-services-migration.md) | 🟡 |
+| 1.1 | Add Phase-2 deps (asyncpg, pgvector, alembic, langfuse, **pyjwt[crypto], azure-identity, azure-keyvault-secrets**) | [task-1](tasks/backend/phase-1-data-layer/task-1-phase2-dependencies.md) | ✅ |
+| 1.2 | asyncpg pool — `infra/database.py` | [task-2](tasks/backend/phase-1-data-layer/task-2-asyncpg-database-pool.md) | ✅ |
+| 1.3 | Alembic setup + `001_initial_schema` (3 tables + pgvector) | [task-3](tasks/backend/phase-1-data-layer/task-3-alembic-initial-schema.md) | ✅ |
+| 1.4 | `002_seed_services` migration | [task-4](tasks/backend/phase-1-data-layer/task-4-seed-services-migration.md) | ✅ |
 
-### Phase 2 — Memory & Tracing Rewrite  ·  branch `dev/backend-phase-2-memory-and-tracing`  ·  Gate: 🔒
+### Phase 2 — Memory & Tracing Rewrite  ·  branch `dev/backend-phase-2-memory-and-tracing`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 2.1 | `memory/episodic.py` (asyncpg + pgvector) | [task-1](tasks/backend/phase-2-memory-and-tracing/task-1-episodic-memory.md) | ⬜ |
