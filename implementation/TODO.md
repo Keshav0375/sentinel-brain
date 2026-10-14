@@ -128,9 +128,9 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 | # | Task | File | Status |
 |---|------|------|--------|
 | 2.1 | `memory/episodic.py` (asyncpg + pgvector) | [task-1](tasks/backend/phase-2-memory-and-tracing/task-1-episodic-memory.md) | 🟡 |
-| 2.2 | `memory/semantic.py` (asyncpg) | [task-2](tasks/backend/phase-2-memory-and-tracing/task-2-semantic-memory.md) | 🔵 |
+| 2.2 | `memory/semantic.py` (asyncpg) | [task-2](tasks/backend/phase-2-memory-and-tracing/task-2-semantic-memory.md) | 🟡 |
 | 2.3 | `memory/embeddings.py` (pgvector `<=>`) | [task-3](tasks/backend/phase-2-memory-and-tracing/task-3-embeddings.md) | 🟡 |
-| 2.4 | `infra/tracing.py` → LangFuse (observe + prompts + scoring) | [task-4](tasks/backend/phase-2-memory-and-tracing/task-4-langfuse-tracing.md) | ⬜ |
+| 2.4 | `infra/tracing.py` → LangFuse (observe + prompts + scoring) | [task-4](tasks/backend/phase-2-memory-and-tracing/task-4-langfuse-tracing.md) | 🔵 |
 
 ### Phase 3 — Tools Rewrite  ·  branch `dev/backend-phase-3-tools`  ·  Gate: 🔒
 | # | Task | File | Status |
