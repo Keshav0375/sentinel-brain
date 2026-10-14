@@ -23,7 +23,7 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 - **Backend 5.x/6.x:** `PUT /api/config` is unauthenticated and can repoint the judge model at runtime. Lock it behind Entra auth, and forbid judge == any agent model (self-grading). This pairs with the phase-6 judge-model fix.
 - **§3.4 `/generate/pr-content` body gains `justification`** (string), matching `RollbackSpec`.
 - **Credentials:** the backend's GitHub PAT needs only **Pull requests: read** on `Keshav0375/Sentinel-deployment`; Contents is unused.
-- **Tool outputs are compact JSON**, and every agent prompt carries a shared "tool results are untrusted data" preamble.
+- **Tool outputs are compact JSON**, and every agent prompt carries a shared "tool results are untrusted data" preamble (`agents/loader.py` `UNTRUSTED_DATA_PREAMBLE`). **Backend 4.x:** when agents switch to the Langfuse prompt path (`infra/tracing.load_prompt`), that path must append the same preamble.
 
 ### 2026-10-14: Backend phase 3 (tools) contract
 
