@@ -16,6 +16,41 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-14: Backend phase 3 (tools) contract
+
+**Config (3.1)**
+- Settings keep the existing `sentinel_*` names: `sentinel_db_pool_min/max`, `sentinel_log_level`, `sentinel_max_tool_calls` (default **20**, §4.6), `sentinel_embedding_model`, `sentinel_fake_llm`.
+- New fields:
+  - `dd_api_key`, `dd_app_key` (SecretStr; env `DD_API_KEY`/`DD_APP_KEY`)
+  - `dd_site` (default `us5.datadoghq.com`)
+  - `github_api_token` (SecretStr; env `GITHUB_API_TOKEN`)
+  - `langfuse_public_key`/`langfuse_secret_key` (SecretStr), `langfuse_base_url`
+- **No `sentinel_api_token`/`X-Sentinel-Token`**: inbound auth is Entra (§3.6).
+- No Teams field: the backend never notifies (§4.8).
+- **No secret is required to boot.** A missing key makes its feature return a structured failure at use (§8.2 reads keys at runtime; 2026-08-30 WIF). `groq_api_key` becomes optional; provider changes are phase 4/7.
+
+**Tool results**
+- Tools return `ToolFailure{tool, kind: "not_found"|"unavailable"|"upstream_error"|"bad_input", message}` (Pydantic). `ToolError` stays the exception class.
+
+**Tool set (3.7)**
+- The registry holds exactly six tools: `get_service_metadata`, `search_past_incidents`, `fetch_logs`, `get_deploy_details`, `prepare_rollback_spec`, `format_escalation`.
+- Removed: `request_human_approval` (and the `approve_hitl` endpoint plus `ApprovalFn` plumbing, since §3.3 says the PR is the only gate), `draft_slack_summary`, `draft_rollback_pr`, `draft_hotfix`.
+- Every importer, model and agent prompt that named them is updated. `resolution_type` 'hotfix' stays in the schema vocabulary but no tool drafts hotfixes.
+
+**Tool contracts**
+- **`get_deploy_details`** is the single LLM-visible name for the deploy tool; `list_recent_deploys` is retired. It is read-only on `deployments` (window_hours, ordered by time, `failed` rows included). GitHub enrichment is optional and read-only. The `deployments.incident_id` backfill is NOT a tool action.
+- **`search_past_incidents`** returns `SimilarIncident{id, root_cause, resolution, resolution_type, similarity, model_generated: true}`. It keeps the "model-generated, unverified" label and uses `search_similar` (which embeds the text itself).
+- **`fetch_logs`** returns a new `LogFetchResult` type; `LogAnalysis` stays the log-analyst agent's output. The evidence sources are only what really exists:
+  - the failing **Datadog Synthetics** results for the service (status, assertion failures, response-header/body snippet, latency) via the Synthetics API
+  - the **CI pipeline logs** (`deploy.completed`) via `POST https://api.${DD_SITE}/api/v2/logs/events/search`
+
+  The app itself sends no runtime logs, and log forwarding is a later option. The search POST counts as a read. 3 attempts with 1/2/4 s backoff on transient errors; never captured to Langfuse.
+- **`prepare_rollback_spec`** returns `RollbackSpec{incident_id, root_cause, evidence_summary, confidence, justification, resolution_type: "rollback", target_deploy{pr_number, commit_sha, deployed_at}}`. That is the §3.4 `/generate/pr-content` body; the workflow's `TARGET_SHA` = `target_deploy.commit_sha`. Pure, with no I/O. **`format_escalation`** → `EscalationContext{hypothesis, evidence, confidence, missing}`, also pure.
+
+**Credentials: read-only, owner-created (live check only; tests use mocks)**
+- A fine-grained GitHub PAT on `Keshav0375/Sentinel-deployment` with Contents: read and Pull requests: read. It is never the bridge's write-capable `github-pat`.
+- A Datadog application key scoped to `logs_read_data` and `synthetics_read`.
+
 ### 2026-10-14: Backend phase 2 review amendments
 
 - **`store_incident` writes `resolved_at`** when the model has it (`mttr_seconds` derives from it). The 2026-10-12 mapping's NULL list was meant only for columns the model cannot supply.
