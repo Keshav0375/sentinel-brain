@@ -46,6 +46,8 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
   - It carries model, input/output token usage, and the agent's `TextPromptClient` (prompt-version link, §6.3).
   - It exports no inputs/outputs, so no tool or log data reaches Langfuse.
   - It registers via `add_trace_processor` only.
+
+*Amended 2026-10-15:* the openai-agents **default OpenAI trace exporter is removed**. It uploaded full spans, including LLM inputs and outputs with tool and log data, to OpenAI whenever `OPENAI_API_KEY` was set. Startup now calls `set_trace_processors([...])` **once**, with exactly Sentinel's processors (SentinelTracer, DashboardEventEmitter, the Langfuse generation bridge), never omitting one of ours, and runs set `trace_include_sensitive_data=False`. This supersedes the blanket §6.2 "never `set_trace_processors`" rule, whose purpose was to protect our processors, not the vendor exporter.
   - Per-incident token totals are summed in the pipeline. The 50K-token alert's sink is still unspecified: it is logged as a structured warning `incident_token_budget_exceeded` until the architecture names one.
 
 ### 2026-10-14: Backend phase 3 review — requirements carried to later phases
