@@ -132,18 +132,18 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 | 2.3 | `memory/embeddings.py` (pgvector `<=>`) | [task-3](tasks/backend/phase-2-memory-and-tracing/task-3-embeddings.md) | ✅ |
 | 2.4 | `infra/tracing.py` → LangFuse (observe + prompts + scoring) | [task-4](tasks/backend/phase-2-memory-and-tracing/task-4-langfuse-tracing.md) | ✅ |
 
-### Phase 3 — Tools Rewrite  ·  branch `dev/backend-phase-3-tools`  ·  Gate: ⬜ **← NEXT**
+### Phase 3 — Tools Rewrite  ·  branch `dev/backend-phase-3-tools`  ·  Gate: ✅ 2026-10-14
 | # | Task | File | Status |
 |---|------|------|--------|
-| 3.1 | `config.py` extensions (DB / Datadog / Teams / LangFuse / pool) | [task-1](tasks/backend/phase-3-tools/task-1-config-extensions.md) | 🟡 |
-| 3.2 | `get_service_metadata` → PostgreSQL | [task-2](tasks/backend/phase-3-tools/task-2-service-lookup.md) | 🟡 |
-| 3.3 | `search_past_incidents` → pgvector | [task-3](tasks/backend/phase-3-tools/task-3-incident-search.md) | 🟡 |
-| 3.4 | `fetch_logs` → Datadog Logs API | [task-4](tasks/backend/phase-3-tools/task-4-log-fetcher.md) | 🟡 |
-| 3.5 | `get_deploy_details` → PostgreSQL + GitHub API | [task-5](tasks/backend/phase-3-tools/task-5-deploy-checker.md) | 🟡 |
-| 3.6 | `prepare_rollback_spec` + `format_escalation` | [task-6](tasks/backend/phase-3-tools/task-6-remediation-and-escalation.md) | 🟡 |
-| 3.7 | Remove `comms_tools.py` + `hitl.py` | [task-7](tasks/backend/phase-3-tools/task-7-remove-comms-and-hitl-tools.md) | 🟡 |
+| 3.1 | `config.py` extensions (DB / Datadog / Teams / LangFuse / pool) | [task-1](tasks/backend/phase-3-tools/task-1-config-extensions.md) | ✅ |
+| 3.2 | `get_service_metadata` → PostgreSQL | [task-2](tasks/backend/phase-3-tools/task-2-service-lookup.md) | ✅ |
+| 3.3 | `search_past_incidents` → pgvector | [task-3](tasks/backend/phase-3-tools/task-3-incident-search.md) | ✅ |
+| 3.4 | `fetch_logs` → Datadog Logs API | [task-4](tasks/backend/phase-3-tools/task-4-log-fetcher.md) | ✅ |
+| 3.5 | `get_deploy_details` → PostgreSQL + GitHub API | [task-5](tasks/backend/phase-3-tools/task-5-deploy-checker.md) | ✅ |
+| 3.6 | `prepare_rollback_spec` + `format_escalation` | [task-6](tasks/backend/phase-3-tools/task-6-remediation-and-escalation.md) | ✅ |
+| 3.7 | Remove `comms_tools.py` + `hitl.py` | [task-7](tasks/backend/phase-3-tools/task-7-remove-comms-and-hitl-tools.md) | ✅ |
 
-### Phase 4 — Agent Pipeline & Loops  ·  branch `dev/backend-phase-4-agents`  ·  Gate: 🔒
+### Phase 4 — Agent Pipeline & Loops  ·  branch `dev/backend-phase-4-agents`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 4.1 | Provider routing + fallback (`providers/`) | [task-1](tasks/backend/phase-4-agents/task-1-provider-routing.md) | ⬜ |

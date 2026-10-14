@@ -13,11 +13,11 @@
 | Field | Value |
 |-------|-------|
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
-| **Active phase** | backend 3 — Tools Rewrite |
-| **Active branch** | `dev/backend-phase-3-tools` (off `release-phase-2`) |
-| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/21 |
-| **Current task** | backend phase 3 complete — awaiting phase review (close-phase) |
-| **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
+| **Active phase** | backend 4 — Agent Pipeline & Loops |
+| **Active branch** | none yet (`dev/backend-phase-4-agents` off `release-phase-2`) |
+| **Active PR** | none |
+| **Current task** | backend 4.1 |
+| **Tasks verified** | 50 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
@@ -25,7 +25,9 @@
 
 ## Next Action
 
-**Backend phase 2 signed 2026-10-14** (PR #20 squash-merged into release-phase-2, 81cbfff). Next: backend phase 3 — Tools Rewrite. Carried follow-ups: R14; the judge model must change in phase 6; the live Langfuse check needs LANGFUSE_BASE_URL in the user's .env; the Azure alembic + grant verify; the deployment live smoke; the guard-main-source.yml head_ref injection. (Backend phase 1 signed 2026-10-12, PR #19, 3acbacd.) Deployment category CLOSED 2026-10-07.
+**Backend phase 3 signed 2026-10-14** (PR #21 squash-merged into release-phase-2, 5e257e0). Next: backend phase 4 — Agent Pipeline & Loops. Requirements carried into phase 4: tool-call counter (4.2), target-SHA cross-check, untrusted-data preamble on the Langfuse prompt path, `pending_approval` status, R14. Pending live checks: scoped Datadog app key and PR-read PAT.
+
+(Earlier: backend phase 2 signed 2026-10-14) (PR #20 squash-merged into release-phase-2, 81cbfff). Carried follow-ups: R14; the judge model must change in phase 6; the live Langfuse check needs LANGFUSE_BASE_URL in the user's .env; the Azure alembic + grant verify; the deployment live smoke; the guard-main-source.yml head_ref injection. (Backend phase 1 signed 2026-10-12, PR #19, 3acbacd.) Deployment category CLOSED 2026-10-07.
 
 Deferred, to do as the FIRST STEP of backend work, once the estate is up:
 - Live smoke: one scenario per case (pass/01, deployfail/03, runtime/01), plus the runtime/07 mtime anchor (unproven live).
@@ -67,6 +69,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-10-14 | backend | 3 — Tools Rewrite | `dev/backend-phase-3-tools` | [#21](https://github.com/Keshav0375/Sentinel/pull/21) | Keshav | Approve & merge into release-phase-2 (5e257e0). Gate VERDICT GREEN at 7550eab (env -i + TEST_DATABASE_URL); PR CI 1634 passed, 1 skipped (cross-repo INSERT drift check needs the deployment repo checked out). |
 | 2026-10-14 | backend | 2 — Memory & Tracing Rewrite | `dev/backend-phase-2-memory-and-tracing` | [#20](https://github.com/Keshav0375/Sentinel/pull/20) | Keshav | Approve & merge into release-phase-2 (81cbfff). Gate VERDICT GREEN at 112e27f (env -i + TEST_DATABASE_URL); PR CI passed, 1646 tests, 0 skipped. |
 | 2026-10-12 | backend | 1 — Data Layer Foundation | `dev/backend-phase-1-data-layer` | [#19](https://github.com/Keshav0375/Sentinel/pull/19) | Keshav | Approve & merge into release-phase-2 (3acbacd). Gate-runner GREEN at c30c129 (only TEST_DATABASE_URL set); CI run 38164156748 success (locked install, 1603 passed, 0 skipped). |
 | 2026-10-07 | deployment | 3 — Scenario Branches ✅ **CATEGORY COMPLETE** | `dev/deploy-phase-3-scenario-branches` | [#4](https://github.com/Keshav0375/Sentinel-deployment/pull/4) | Keshav | 3.1 verified on OFFLINE proof (gate GREEN); user chose "Merge & sign off now". Merged 427646324c51 (squash); no deploy triggered. **Live smoke DEFERRED** to first step of backend work (pass/01, deployfail/03, runtime/01 + runtime/07 mtime anchor). Re-run `datadog/apply.sh` after next apply (new synthetic assertions). `ci_app_deployment.yml` "old version still serving" strings (L136-137, 167, 202) need a PR merged while estate is up. Scenario branches never merged. |
