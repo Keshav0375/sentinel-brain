@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-2-memory-and-tracing` |
 | **Commit prefix** | `refactor:` |
@@ -30,14 +30,16 @@ Rewrite episodic memory to asyncpg + pgvector, keeping the existing `MemoryStore
 
 ## Tests
 - **Integration (`tests/test_memory/test_episodic.py`):** store 3 incidents, similarity search returns nearest; filter by status/service.
-- **Quality gate:** `--repo backend`.
+- **Quality gate:** `--repo backend`. VERDICT GREEN: 7 ran, 1617 tests (env -i, only TEST_DATABASE_URL); tree clean, attribution none. 35 Postgres tests; boot proven with and without DATABASE_URL.
 
 ## How to Verify (phase gate)
-1. `pytest tests/test_memory/test_episodic.py -q` green against local pgvector.
+1. `pytest tests/test_memory/test_episodic.py -q` green against local pgvector (set TEST_DATABASE_URL).
 2. Store + search returns the expected nearest incident.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Commit `fa71aa7` (refactor: episodic memory on asyncpg + pgvector) on `dev/backend-phase-2-memory-and-tracing`.
+EpisodicMemory(pool | None, embedding_client); pool None raises SentinelMemoryError on every method. Incident ids are str(uuid4()); trajectory = {symptoms, timeline}; similarity via `<=>` under SET LOCAL ivfflat.probes=10, no numpy. Added search_by_embedding (MemoryQueryResult) and list_incidents(status, service, limit). incident_search reports "memory unavailable" instead of crashing. resolved_at written when the model has it.
+Files: src/sentinel/memory/episodic.py, memory/short_term.py, tools/incident_search.py, tools/registry.py, main.py, eval/runner.py, scripts/run_scenario.py, models/incident.py, api/webhooks.py, plus tests (test_episodic, test_incident_search, test_runner, test_triage, test_registry, test_incident, test_webhooks).
 
 ## BLOCKED
 _none locally._
