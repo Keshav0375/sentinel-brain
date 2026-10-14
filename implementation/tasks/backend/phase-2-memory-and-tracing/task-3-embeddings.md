@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-2-memory-and-tracing` |
 | **Commit prefix** | `refactor:` |
@@ -32,9 +32,13 @@ Keep the local embedding model (all-MiniLM-L6-v2, 384-dim); move similarity to t
 
 ## How to Verify (phase gate)
 1. `pytest tests/test_memory/test_embeddings.py -q` green.
+2. `python3 scripts/gate.py backend` (from brain) -> VERDICT GREEN.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built (2b7ae05, `refactor: embeddings produce vectors only; one model load per process`): embeddings now produce vectors only; process-wide model cache keyed by name under a lock; encode via asyncio.to_thread (keeps contextvars/OTel). 384-dim unit vectors. EmbeddingClient API unchanged (alembic 002 and conftest depend on it). No numpy cosine remained here; episodic.py's numpy cosine is task 2.1's job.
+Files: src/sentinel/memory/embeddings.py, tests/test_memory/test_embeddings.py. Backend boot proven.
+
+**Tests / gate:** VERDICT GREEN, 7 ran (env -i, only TEST_DATABASE_URL); tree clean, attribution none. 11 tests added.
 
 ## BLOCKED
 _none (first run downloads model weights ~90 MB)._

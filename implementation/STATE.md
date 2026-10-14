@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-10-12
+> Last updated: 2026-10-14
 
 
 ## Current Position
@@ -14,7 +14,7 @@
 |-------|-------|
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 2 — Memory & Tracing Rewrite |
-| **Active branch** | none yet (`dev/backend-phase-2-memory-and-tracing` off `release-phase-2`) |
+| **Active branch** | `dev/backend-phase-2-memory-and-tracing` (off `release-phase-2`) |
 | **Active PR** | none (backend 1 PR #19 merged) |
 | **Current task** | backend 2.1 (next task of backend phase 2) |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
