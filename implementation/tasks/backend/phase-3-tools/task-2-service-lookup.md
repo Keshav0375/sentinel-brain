@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-3-tools` |
 | **Commit prefix** | `refactor:` |
@@ -26,6 +26,7 @@ typed I/O, read-only, no external state, structured error return (never raise ra
 - [ ] Pydantic v2 I/O; read-only; docstring = tool description.
 
 ## Tests
+- **Gate:** VERDICT GREEN, 7 ran (~28 tests incl. seeded DB), tree clean.
 - **Unit (`tests/test_tools/test_service_lookup.py`):** known service returns metadata; unknown returns structured error; mocked/seeded DB.
 - **Quality gate:** `--repo backend`.
 
@@ -33,7 +34,7 @@ typed I/O, read-only, no external state, structured error return (never raise ra
 1. `pytest tests/test_tools/test_service_lookup.py -q` green.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built `get_service_metadata` on Postgres: returns typed `SemanticRecord` or `ToolFailure{tool,kind,message}` (not_found/unavailable/bad_input). Commit 63fc81f. Files: models/tools.py (new: ToolFailure, ServiceLookupInput), tools/service_lookup.py, tests (test_service_lookup, test_models/test_tools, test_semantic).
 
 ## BLOCKED
 _none locally._

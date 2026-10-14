@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-3-tools` |
 | **Commit prefix** | `refactor:` |
@@ -25,6 +25,7 @@ Rewrite `search_past_incidents` to embed the symptom and query episodic memory v
 - [ ] Structured errors; typed; read-only.
 
 ## Tests
+- **Gate:** VERDICT GREEN, 7 ran (~32 tests incl. real pgvector), tree clean.
 - **Unit/integration (`tests/test_tools/test_incident_search.py`):** seed incidents, search returns nearest by symptom; k respected.
 - **Quality gate:** `--repo backend`.
 
@@ -32,7 +33,7 @@ Rewrite `search_past_incidents` to embed the symptom and query episodic memory v
 1. `pytest tests/test_tools/test_incident_search.py -q` green.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built `search_past_incidents` via memory.query: returns `SimilarIncident` list (id, service, created_at, root_cause, resolution, resolution_type, similarity, model_generated) or `ToolFailure`. Unverified label in field descriptions, docstrings, str/repr. Commit 765ec48. Files: models/tools.py, tools/incident_search.py, models/memory.py, memory/episodic.py, tests.
 
 ## BLOCKED
 _none locally._
