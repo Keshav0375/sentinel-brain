@@ -15,7 +15,7 @@
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 3 — Tools Rewrite |
 | **Active branch** | `dev/backend-phase-3-tools` (off `release-phase-2`) |
-| **Active PR** | none yet |
+| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/21 |
 | **Current task** | backend phase 3 complete — awaiting phase review (close-phase) |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
