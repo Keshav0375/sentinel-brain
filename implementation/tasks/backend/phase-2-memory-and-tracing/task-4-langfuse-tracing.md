@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-2-memory-and-tracing` |
 | **Commit prefix** | `refactor:` |
@@ -36,6 +36,7 @@ _(v3 API, amended 2026-10-12 — langfuse 3.x; see decisions.md 2026-10-12)_
 - [ ] Trace/score helpers callable and typed; no hard failure when keys absent.
 
 ## Tests
+Gate: VERDICT GREEN (7 ran, env -i, only TEST_DATABASE_URL); 13 tests in test_tracing.py.
 - **Unit (`tests/test_infra/test_tracing.py`):** prompt fallback to file when LangFuse mocked-unavailable; score helper builds the right `create_score` call (mock client).
 - **Quality gate:** `--repo backend`.
 
@@ -44,7 +45,10 @@ _(v3 API, amended 2026-10-12 — langfuse 3.x; see decisions.md 2026-10-12)_
 2. (with B7 keys) a sample `@observe` run appears as a trace in the LangFuse dashboard.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built v3 LangFuse tracing in `infra/tracing.py`: `trace_incident` context manager (root "incident-pipeline", trace id = UUID.hex, propagate_attributes), `incident_trace_id`, `load_prompt` (LangFuse-first, package-relative file fallback), `push_score` (create_score NUMERIC), shutdown in lifespan, flush in CLI/scripts. Safe with no keys or unreachable Langfuse. R14 (token/cost) out of scope.
+Commit `49e3534` refactor: LangFuse v3 tracing — observe, prompt loading, scores.
+Files: src/sentinel/infra/tracing.py, main.py, cli.py, scripts/run_eval.py, scripts/run_scenario.py, tests/conftest.py, tests/test_infra/test_tracing.py, .env.example.
+Live trace check SKIPPED: user's .env uses LANGFUSE_HOST; needs rename to LANGFUSE_BASE_URL.
 
 ## BLOCKED
 _Live tracing ⛔ B7. Fallback + unit tests writable now._
