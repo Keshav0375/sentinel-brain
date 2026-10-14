@@ -15,7 +15,7 @@
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 2 — Memory & Tracing Rewrite |
 | **Active branch** | `dev/backend-phase-2-memory-and-tracing` (off `release-phase-2`) |
-| **Active PR** | none (backend 1 PR #19 merged) |
+| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/20 |
 | **Current task** | none — backend phase 2 tasks all done-pending-review; close-phase next |
 | **Tasks verified** | 31 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 6 / 18 — infra 1-6, all merged; deployment 1 signed (counter per where.py) |
