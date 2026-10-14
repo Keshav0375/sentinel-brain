@@ -124,15 +124,15 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 | 1.3 | Alembic setup + `001_initial_schema` (3 tables + pgvector) | [task-3](tasks/backend/phase-1-data-layer/task-3-alembic-initial-schema.md) | ✅ |
 | 1.4 | `002_seed_services` migration | [task-4](tasks/backend/phase-1-data-layer/task-4-seed-services-migration.md) | ✅ |
 
-### Phase 2 — Memory & Tracing Rewrite  ·  branch `dev/backend-phase-2-memory-and-tracing`  ·  Gate: ⬜ **← NEXT**
+### Phase 2 — Memory & Tracing Rewrite  ·  branch `dev/backend-phase-2-memory-and-tracing`  ·  Gate: ✅ 2026-10-14
 | # | Task | File | Status |
 |---|------|------|--------|
-| 2.1 | `memory/episodic.py` (asyncpg + pgvector) | [task-1](tasks/backend/phase-2-memory-and-tracing/task-1-episodic-memory.md) | 🟡 |
-| 2.2 | `memory/semantic.py` (asyncpg) | [task-2](tasks/backend/phase-2-memory-and-tracing/task-2-semantic-memory.md) | 🟡 |
-| 2.3 | `memory/embeddings.py` (pgvector `<=>`) | [task-3](tasks/backend/phase-2-memory-and-tracing/task-3-embeddings.md) | 🟡 |
-| 2.4 | `infra/tracing.py` → LangFuse (observe + prompts + scoring) | [task-4](tasks/backend/phase-2-memory-and-tracing/task-4-langfuse-tracing.md) | 🟡 |
+| 2.1 | `memory/episodic.py` (asyncpg + pgvector) | [task-1](tasks/backend/phase-2-memory-and-tracing/task-1-episodic-memory.md) | ✅ |
+| 2.2 | `memory/semantic.py` (asyncpg) | [task-2](tasks/backend/phase-2-memory-and-tracing/task-2-semantic-memory.md) | ✅ |
+| 2.3 | `memory/embeddings.py` (pgvector `<=>`) | [task-3](tasks/backend/phase-2-memory-and-tracing/task-3-embeddings.md) | ✅ |
+| 2.4 | `infra/tracing.py` → LangFuse (observe + prompts + scoring) | [task-4](tasks/backend/phase-2-memory-and-tracing/task-4-langfuse-tracing.md) | ✅ |
 
-### Phase 3 — Tools Rewrite  ·  branch `dev/backend-phase-3-tools`  ·  Gate: 🔒
+### Phase 3 — Tools Rewrite  ·  branch `dev/backend-phase-3-tools`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 3.1 | `config.py` extensions (DB / Datadog / Teams / LangFuse / pool) | [task-1](tasks/backend/phase-3-tools/task-1-config-extensions.md) | ⬜ |
