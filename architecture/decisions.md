@@ -16,6 +16,38 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-15: Backend phase 4 — pipeline shape, providers, judge, status, R14
+
+- **The orchestrator is Python code, not an LLM agent with handoffs,** so every cap is enforced in code:
+  - a per-incident tool-call counter (`sentinel_max_tool_calls` = 20), counted across every `Runner.run` including fallback re-runs; exhaustion escalates with context
+  - reflexion ≤ 2 loops, when confidence < 0.7
+  - reverification FAIL ≤ 1 retry
+  - the rollback target cross-checked against a `deployments` row for the incident's service (failed rows allowed)
+- **Six LLM agents (§4.2):**
+  - `triage` (get_service_metadata, search_past_incidents)
+  - `analysis` (fetch_logs, get_deploy_details; merges the Phase-1 `log_analyst` + `deploy_correlator`)
+  - `reflexion`
+  - `resolution` (prepare_rollback_spec, format_escalation; the renamed `remediation`)
+  - `reverification`
+  - `pr_content_generator` (no tools)
+
+  The `comms` agent is deleted: GHA posts to Teams. Prompt, Langfuse prompt and file names follow the agent names.
+- **The plan step reads `signal_type`** from a phase-4 `PipelineInput{incident_id, alert, signal_type, correlation_id}`. `deploy_failure` takes the fast path to `prepare_rollback_spec` on the failed deploy's SHA, still confidence-gated and reverified. `runtime_error` runs the full loop.
+- **Providers: Anthropic and OpenAI only** (§4.7). Groq, Azure and Gemini settings, resolver prefixes and deps are removed.
+  - A fixed per-role model map (§4.7 table) is selected by `sentinel_primary_provider` (`anthropic` | `openai`, default `anthropic`).
+  - The `PUT /api/config` model-repointing ability is removed.
+  - Use `agent.clone(model=…)`; `Agent.with_model` does not exist in openai-agents 0.6.4.
+  - A missing primary-provider credential falls back to the other provider. If neither is available, the incident escalates.
+  - The fallback catches the `openai.APIError` hierarchy (litellm's RateLimit/Timeout/APIError) plus asyncio/builtin timeouts.
+  - `SENTINEL_FAKE_LLM=1` gives a deterministic, no-network model for every role.
+- **Judge = the non-primary provider:** `openai/gpt-4o` while agents run on Anthropic, `anthropic/claude-sonnet-4-6` when primary is OpenAI. Code enforces judge ≠ every agent model. This supersedes the §4.7 Judge row and resolves the self-grading follow-up.
+- **Terminal incident statuses are `rollback_proposed` | `escalated`.** `pending_approval` is removed from `IncidentStatus` and `IncidentSummary`. `resolved` is reserved for a later "revert deploy succeeded" signal.
+- **R14 (closed): a custom add-only openai-agents `TracingProcessor` bridges each LLM generation span to a Langfuse `generation` observation.**
+  - It carries model, input/output token usage, and the agent's `TextPromptClient` (prompt-version link, §6.3).
+  - It exports no inputs/outputs, so no tool or log data reaches Langfuse.
+  - It registers via `add_trace_processor` only.
+  - Per-incident token totals are summed in the pipeline. The 50K-token alert's sink is still unspecified: it is logged as a structured warning `incident_token_budget_exceeded` until the architecture names one.
+
 ### 2026-10-14: Backend phase 3 review — requirements carried to later phases
 
 - **Backend 4.2 (orchestrator):** a REAL tool-call counter. `sentinel_max_tool_calls` = 20 must be enforced per incident; exhaustion escalates. Today only the SDK's `max_turns` (20/25) bounds it, and one turn can issue several tool calls.

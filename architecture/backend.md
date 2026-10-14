@@ -634,7 +634,7 @@ Not all tasks need the same model. Classification tasks need speed; reasoning ta
 | **Reflexion** | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` | Confidence scoring is a simple eval task |
 | **Resolution** | `anthropic/claude-sonnet-4-6` | `openai/gpt-4o` | Preparing rollback spec — reasoning-heavy |
 | **Reverification** | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` | Binary pass/fail check |
-| **Judge** | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` | Structured scoring with rubric |
+| **Judge** | the NON-primary provider: `openai/gpt-4o` (when primary = anthropic) | `anthropic/claude-sonnet-4-6` (when primary = openai) | Structured scoring with rubric; must differ from every agent model (no self-grading — decision 2026-10-15) |
 | **PR Content Generator** | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` | Constrained text generation |
 
 **Rationale:** Haiku for tasks where the prompt constrains the output space tightly (classify, score, pass/fail, templated generation). Sonnet for tasks where the model needs to reason across evidence, synthesize, and generate novel content.
@@ -644,10 +644,10 @@ Not all tasks need the same model. Classification tasks need speed; reasoning ta
 ```python
 async def call_with_fallback(agent, input, primary, fallback):
     try:
-        return await Runner.run(agent.with_model(primary), input)
+        return await Runner.run(agent.clone(model=primary), input)
     except (RateLimitError, TimeoutError, APIError):
         structlog.get_logger().warning("primary_provider_failed", provider=primary, falling_back_to=fallback)
-        return await Runner.run(agent.with_model(fallback), input)
+        return await Runner.run(agent.clone(model=fallback), input)
 ```
 
 **Env config:**
