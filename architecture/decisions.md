@@ -16,6 +16,16 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-14: Backend phase 2 review amendments
+
+- **`store_incident` writes `resolved_at`** when the model has it (`mttr_seconds` derives from it). The 2026-10-12 mapping's NULL list was meant only for columns the model cannot supply.
+- **The trace root opens via `get_client().start_as_current_observation(name="incident-pipeline", trace_context={"trace_id": UUID.hex})`,** exposed as `trace_incident(...)`. It is equivalent to the §4.5 `@observe` + `langfuse_trace_id=`: same trace id, name and propagated attributes.
+- **`configure_langfuse()` runs at import.** A blank `LANGFUSE_*` key counts as missing (it is removed from the env) and the SDK's keyless warning is muted. This implements "degrade gracefully".
+- **The re-exported `observe` defaults to `capture_input=False, capture_output=False`.** v3 would otherwise ship every observed function's arguments and returns (raw logs, full prompts) to Langfuse. Callers opt in per function.
+- **Memory provenance.** `incidents.trajectory.provenance = {root_cause_by, resolution_by, model_generated: true, stored_at}`. The episodic embedding uses observed symptoms only, never earlier agent hypotheses. `search_past_incidents` labels recalled root causes and resolutions "model-generated, unverified".
+- **A NULL `services.tier` reads as `standard`** (logged). Only an invalid non-NULL value raises.
+- **Follow-up for backend phase 6 (eval):** `sentinel_judge_model` defaults to the triage model (`groq/llama-3.1-8b-instant`). That is self-grading. §5 specifies `anthropic/claude-haiku-4-5`, which is blocked on B4/WIF.
+
 ### 2026-10-12: Phase-1 models ↔ §5.3 schema mapping (backend phase 2)
 
 The §5.3 DDL binds; Phase-1 models adapt to it, and phase 4 rewrites the pipeline anyway.
