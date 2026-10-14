@@ -16,7 +16,7 @@ Extend `Settings` (pydantic-settings) with all Phase-2 config keys.
 **Files modified:** `src/sentinel/config.py`
 - LLM: `sentinel_primary_provider`, `anthropic_api_key`, `openai_api_key`.
 - DB: `database_url`, `db_pool_min`, `db_pool_max`.
-- LangFuse: `langfuse_public_key`, `langfuse_secret_key`, `langfuse_host`.
+- LangFuse: `langfuse_public_key`, `langfuse_secret_key`, `langfuse_base_url` (env `LANGFUSE_BASE_URL`; decision 2026-10-12).
 - Datadog: `dd_api_key`, `dd_app_key`, `dd_site`.
 - GitHub: `github_api_token`.
 - API auth: `sentinel_api_token`.
