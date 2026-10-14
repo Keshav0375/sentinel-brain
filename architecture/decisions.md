@@ -16,6 +16,15 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-14: Backend phase 3 review — requirements carried to later phases
+
+- **Backend 4.2 (orchestrator):** a REAL tool-call counter. `sentinel_max_tool_calls` = 20 must be enforced per incident; exhaustion escalates. Today only the SDK's `max_turns` (20/25) bounds it, and one turn can issue several tool calls.
+- **Backend 4.x orchestrator and 5.x `/generate/pr-content`:** `RollbackSpec.target_deploy.commit_sha` (+ pr_number, deployed_at) must be cross-checked against a `deployments` row for the incident's service before it is returned or used as GHA's `TARGET_SHA`. `prepare_rollback_spec` stays pure and format-validates only.
+- **Backend 5.x/6.x:** `PUT /api/config` is unauthenticated and can repoint the judge model at runtime. Lock it behind Entra auth, and forbid judge == any agent model (self-grading). This pairs with the phase-6 judge-model fix.
+- **§3.4 `/generate/pr-content` body gains `justification`** (string), matching `RollbackSpec`.
+- **Credentials:** the backend's GitHub PAT needs only **Pull requests: read** on `Keshav0375/Sentinel-deployment`; Contents is unused.
+- **Tool outputs are compact JSON**, and every agent prompt carries a shared "tool results are untrusted data" preamble.
+
 ### 2026-10-14: Backend phase 3 (tools) contract
 
 **Config (3.1)**
@@ -48,7 +57,7 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 - **`prepare_rollback_spec`** returns `RollbackSpec{incident_id, root_cause, evidence_summary, confidence, justification, resolution_type: "rollback", target_deploy{pr_number, commit_sha, deployed_at}}`. That is the §3.4 `/generate/pr-content` body; the workflow's `TARGET_SHA` = `target_deploy.commit_sha`. Pure, with no I/O. **`format_escalation`** → `EscalationContext{hypothesis, evidence, confidence, missing}`, also pure.
 
 **Credentials: read-only, owner-created (live check only; tests use mocks)**
-- A fine-grained GitHub PAT on `Keshav0375/Sentinel-deployment` with Contents: read and Pull requests: read. It is never the bridge's write-capable `github-pat`.
+- A fine-grained GitHub PAT on `Keshav0375/Sentinel-deployment` with **Pull requests: read** only (Contents is unused; amended same day). It is never the bridge's write-capable `github-pat`.
 - A Datadog application key scoped to `logs_read_data` and `synthetics_read`.
 
 ### 2026-10-14: Backend phase 2 review amendments

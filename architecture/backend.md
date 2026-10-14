@@ -336,9 +336,11 @@ Authorization: Bearer {entra-jwt}
   "root_cause": "Deploy pr-5-a3f9c2 changed /health to return 503 when any dependency is degraded",
   "evidence_summary": "Verify stage failed 3/3 health checks post-deploy; Datadog logs show 503s starting at deploy time; no other deploys in the window",
   "confidence": 0.85,
-  "target_deploy": { "pr_number": 5, "commit_sha": "a3f9c2", "deployed_at": "2026-07-01T12:00:00Z" },
+  "justification": "Only deploy in the window; failure began at its deploy time; reverting restores the last succeeded version",
+  "target_deploy": { "pr_number": 5, "commit_sha": "a3f9c2e", "deployed_at": "2026-07-01T12:00:00Z" },
   "resolution_type": "rollback"
 }
+(`justification` added and `commit_sha` made a 7-char short SHA, matching `RollbackSpec`: decision 2026-10-14. The endpoint must cross-check `target_deploy` against a `deployments` row for the service.)
 
 Response 200:
 {
