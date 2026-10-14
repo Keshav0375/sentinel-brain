@@ -39,7 +39,7 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 **Tool contracts**
 - **`get_deploy_details`** is the single LLM-visible name for the deploy tool; `list_recent_deploys` is retired. It is read-only on `deployments` (window_hours, ordered by time, `failed` rows included). GitHub enrichment is optional and read-only. The `deployments.incident_id` backfill is NOT a tool action.
-- **`search_past_incidents`** returns `SimilarIncident{id, root_cause, resolution, resolution_type, similarity, model_generated: true}`. It keeps the "model-generated, unverified" label and uses `search_similar` (which embeds the text itself).
+- **`search_past_incidents`** returns `SimilarIncident{id, service, created_at, root_cause, resolution, resolution_type, similarity, model_generated: true}` (`created_at` and `service` added 2026-10-14 so triage can apply its "similar and within 2 h" duplicate rule). It keeps the "model-generated, unverified" label and uses `EpisodicMemory.query(symptom_text, top_k)` (embeds the text itself and returns scores).
 - **`fetch_logs`** returns a new `LogFetchResult` type; `LogAnalysis` stays the log-analyst agent's output. The evidence sources are only what really exists:
   - the failing **Datadog Synthetics** results for the service (status, assertion failures, response-header/body snippet, latency) via the Synthetics API
   - the **CI pipeline logs** (`deploy.completed`) via `POST https://api.${DD_SITE}/api/v2/logs/events/search`
