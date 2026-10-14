@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-3-tools` |
 | **Commit prefix** | `refactor:` |
@@ -37,7 +37,11 @@ HITL is the GitHub PR, not a tool. Update the tool registry + any imports.
 2. `grep -r "comms_tools\|hitl\|request_human_approval" src/` → no hits.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Removed `comms_tools.py` and `hitl.py`. Commit `87b4a11` (refactor: remove comms_tools, hitl and all approval plumbing).
+- Removed ApprovalFn and approve_hitl (POST /approve -> 404), dashboard approval UI, HitlGateRegistry and HITL event types, ApprovalRequest/Result, ApprovalStatus/RiskLevel, eval auto-approve.
+- Registry holds exactly six tools; remediation agent has only prepare_rollback_spec + format_escalation; comms agent has zero tools. Prompts, remediation_safety rubric and README reworded.
+- Gate: VERDICT GREEN (7 ran). Grep for removed names in src/ and tests/ returns 0 hits.
+- Left for phase 4: the "pending_approval" status vocabulary.
 
 ## BLOCKED
 _none locally._

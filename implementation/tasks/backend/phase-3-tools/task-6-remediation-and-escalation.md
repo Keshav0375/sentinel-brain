@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-3-tools` |
 | **Commit prefix** | `refactor:` |
@@ -36,7 +36,11 @@ backend never calls GitHub; GHA creates the PR (§3.3 "backend reasons, GHA exec
 2. safety-reviewer reports no external-state access.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built `prepare_rollback_spec` and `format_escalation`; removed `draft_rollback_pr`/`draft_hotfix`. Commit `fc89e7f` (refactor: prepare_rollback_spec and format_escalation replace the draft tools).
+- RollbackSpec is the section 3.4 /generate/pr-content body field-for-field (TARGET_SHA = target_deploy.commit_sha); EscalationContext{hypothesis, evidence, confidence, missing}.
+- Both pure (socket/httpx/asyncpg patched to raise, plus AST import check). Validation: sha 7-40 hex lowercased, pr>=1, tz-aware deployed_at, confidence 0..1. No confidence gate (orchestrator rule, phase 4).
+- Tests: 44. Gate: VERDICT GREEN (7 ran, env -i + TEST_DATABASE_URL). Tree clean, attribution none.
+- Verify: `pytest tests/test_tools/test_remediation_tools.py -q`
 
 ## BLOCKED
 _none locally._
