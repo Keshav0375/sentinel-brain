@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-3-tools` |
 | **Commit prefix** | `feat:` |
@@ -40,7 +40,10 @@ Extend `Settings` (pydantic-settings) with all Phase-2 config keys.
 2. `python -c "from sentinel.config import get_settings; print(get_settings().max_tool_calls)"` → 20.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Commit `0800159` — feat: config extensions — optional SecretStr credentials, Datadog/GitHub/LangFuse settings.
+Files: .env.example, config.py, providers/resolver.py, providers/__init__.py, main.py, eval/runner.py, tests (test_config, test_resolver, test_main, test_runner, conftest).
+Per decision 2026-10-14 (phase 3 tools contract): sentinel_* names kept; max_tool_calls 20; dd/github/langfuse creds are SecretStr|None; dd_site us5; no sentinel_api_token; no secret required at boot (provider keys checked in resolve_model, missing key escalates the incident); added sentinel_fake_llm (unused yet). Fixed python-dotenv inline-comment bug in .env.example. App boots with no credentials (subprocess test).
+Gate: VERDICT GREEN, 7 ran (orchestrator, env -i + TEST_DATABASE_URL only). 20 tests. Tree clean, attribution none.
 
 ## BLOCKED
 _none locally._
