@@ -148,8 +148,8 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 |---|------|------|--------|
 | 4.1 | Provider routing + fallback (`providers/`) | [task-1](tasks/backend/phase-4-agents/task-1-provider-routing.md) | 🟡 |
 | 4.2 | Orchestrator: plan-execute + reflexion + reverification + budget | [task-2](tasks/backend/phase-4-agents/task-2-orchestrator-loops.md) | ⬜ |
-| 4.3 | `reflexion.txt` + `reverification.txt` prompts | [task-3](tasks/backend/phase-4-agents/task-3-reflexion-reverification-prompts.md) | 🔵 |
-| 4.4 | `pr_content_generator` agent + prompt | [task-4](tasks/backend/phase-4-agents/task-4-pr-content-generator.md) | ⬜ |
+| 4.3 | `reflexion.txt` + `reverification.txt` prompts | [task-3](tasks/backend/phase-4-agents/task-3-reflexion-reverification-prompts.md) | 🟡 |
+| 4.4 | `pr_content_generator` agent + prompt | [task-4](tasks/backend/phase-4-agents/task-4-pr-content-generator.md) | 🔵 |
 
 ### Phase 5 — API & App  ·  branch `dev/backend-phase-5-api`  ·  Gate: 🔒
 | # | Task | File | Status |

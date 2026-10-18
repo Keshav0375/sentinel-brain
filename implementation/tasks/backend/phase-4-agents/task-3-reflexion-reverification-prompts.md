@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-4-agents` |
 | **Commit prefix** | `feat:` |
@@ -29,12 +29,17 @@ Add the two new agentic-loop prompts as files (loaded at runtime; LangFuse-first
 - **Unit:** prompt loader returns each file; a parse test confirms the documented output tokens are described.
 - **Quality gate:** `--repo backend`.
 
+## Tests result
+Gate: VERDICT GREEN, 7 ran (orchestrator: env -i + TEST_DATABASE_URL). ~85 tests. Tree clean, attribution none.
+
 ## How to Verify (phase gate)
 1. `load_prompt("reflexion")` / `("reverification")` return the file contents.
 2. Orchestrator tests (4.2) consume them successfully.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built `reflexion.txt` (~731 tok) and `reverification.txt` (<800 tok). Commit d324296 `feat: reflexion + reverification prompts, output contracts, preamble on the LangFuse path`.
+ReflexionResult JSON contract: next_tool_call restricted to analysis tools; SuspectDeploy when a specific deploy is identified. Reverification is a strict one-line token: PASS | FAIL: r | ESCALATE: r; parser sends anything else to ESCALATE.
+`infra/tracing.load_prompt` appends UNTRUSTED_DATA_PREAMBLE on both branches (returns a TextPromptClient copy, keeps §6.3/R14 prompt link; single source in agents.loader). Fake-LLM turns for both.
 
 ## BLOCKED
 _none._
