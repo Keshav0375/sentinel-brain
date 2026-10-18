@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-4-agents` |
 | **Commit prefix** | `feat:` |
@@ -28,13 +28,14 @@ consumer is `ci_incident_response.yml`). No tools — pure constrained generatio
 ## Tests
 - **Unit (`tests/test_agents/test_pr_content_generator.py`, fake LLM):** output has a `revert:`-prefixed title with PR# + incident id, all four description sections, confidence stated.
 - **Quality gate:** `--repo backend`.
+- **Result:** 38 tests (7 ran in gate); gate VERDICT GREEN (orchestrator, env -i + TEST_DATABASE_URL); tree clean, attribution none.
 
 ## How to Verify (phase gate — end of Category 3 Phase 4)
 1. `pytest tests/test_agents/test_pr_content_generator.py -q` green (fake).
 2. (with B4) a real Haiku call returns a well-formed revert PR body.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built `pr_content_generator` agent + prompt (commit 98751f8, Sentinel, feat: pr_content_generator agent + prompt — §3.4 revert PR title and description). No tools; router haiku (fb gpt-4o-mini) via call_with_fallback; Langfuse prompt loader linked via use_agent_prompts; span `pr-content-generation`, no IO. RollbackSpec -> PRContent{title, description, model_used, tokens_used}. Title (revert:, PR #, incident id, <72) and description (4 sections, confidence, 100-200 words) rules enforced in code with deterministic fallbacks. Plain-text reply. Not yet wired to an endpoint (phase 5).
 
 ## BLOCKED
 _Live call ⛔ B4. Agent + prompt + fake tests writable now._
