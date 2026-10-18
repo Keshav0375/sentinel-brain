@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-4-agents` |
 | **Commit prefix** | `feat:` |
@@ -33,11 +33,13 @@ automatic fallback on rate-limit/timeout/API error (§4.7).
 - **Quality gate:** `--repo backend`.
 
 ## How to Verify (phase gate)
+Gate: `python3 scripts/gate.py backend` VERDICT GREEN (~80 tests; boot with no keys proven).
 1. `pytest tests/test_providers/ -q` green (fake + fallback).
 2. (with B4/B5) a real Haiku call returns a completion.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built the provider router (role map by `sentinel_primary_provider`, Anthropic/OpenAI only; judge on the non-primary provider with a guard; `call_with_fallback` returns `model_used`), `SENTINEL_FAKE_LLM` deterministic Model, R14 token bridge (generation spans to Langfuse, per-incident totals, 50K warning), and `set_trace_processors` with only our processors (`trace_include_sensitive_data=False`). `PUT /api/config` removed. Interim: agents keep Phase-1 shape until 4.2.
+Commits (Sentinel): db70a9f, a0f4458, c37f70d, 75e113d. Per decision 2026-10-15 + amendment 52a5f7f.
 
 ## BLOCKED
 _Live calls ⛔ B4/B5. Router + fake-mode tests writable now._
