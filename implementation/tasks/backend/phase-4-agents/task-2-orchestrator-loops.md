@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-4-agents` |
 | **Commit prefix** | `refactor:` |
@@ -40,7 +40,10 @@ loops and a hard tool-call budget (§4.1–4.6).
 2. safety-reviewer confirms budget + no-execute invariants.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built the Python orchestrator: plan by signal_type (deploy_failure fast path), reflexion (<=2 loops), confidence>=0.7 + specific-deploy gate, RollbackSpec cross-check vs deployments, reverify FAIL <=1 retry, per-incident 20-call budget (incl. parallel/fallback) -> escalate. Six agents (triage, analysis, reflexion, resolution, reverification, pr_content_generator). PipelineResult{rollback_proposed|escalated, tool_calls_used, tokens_used, models_used}; persistence via store_incident(IncidentOutcome), persist=False for eval/run_scenario.
+Commits: 3e4e239 (orchestrator), a3a1dd8 (store pipeline outcome).
+Tests/gate: VERDICT GREEN, 7 ran (orchestrator: env -i + TEST_DATABASE_URL); fake LLM + real Postgres; boot with no keys proven.
+Verify: run the orchestrator tests with env -i and TEST_DATABASE_URL set; `poetry run sentinel serve` boots with no keys.
 
 ## BLOCKED
 _none locally (fake LLM). Real-model runs ⛔ B4/B5 (not required for this task)._
