@@ -16,6 +16,37 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-19: Backend phase 5 (API & App) contract
+
+**Auth (§3.6, amended)**
+- Entra bearer only. The audience comes from `SENTINEL_API_AUDIENCE`, default `api://<identity_tenant_id>/sentinel-backend-<deployment>-<env>`, which is infra's naming (modules/naming). New tenants reject the bare `api://sentinel-backend`, so it is dropped.
+- `AZURE_TENANT_ID` is the **identity tenant** where the app registration lives. Only the **v2** issuer `https://login.microsoftonline.com/<tid>/v2.0` is accepted, and the app registration must set `accessTokenAcceptedVersion = 2`.
+- RS256 via `PyJWKClient` on `…/<tid>/discovery/v2.0/keys`.
+- A bad, expired, wrong-aud or wrong-iss token → 401. A missing `Incident.Write` role → **403**.
+
+**Open routes:** only `/health` and `/ready`. Everything else is behind the bearer, including the Phase-1 dashboard pages' APIs, SSE events, scenarios, eval-report, `GET /api/config` and trajectories. `SENTINEL_DEV_OPEN_DASHBOARD=1` (default off, never set in the pod) opens the dashboard routes for local use only.
+
+**Webhook (§3.1)**
+- `POST /webhooks/incident` replaces `/webhooks/alert`.
+- `IncidentPayload` requires `signal_type`, `correlation_id` and `title`. All other §3.1 fields are optional: severity defaults to `"unknown"` (`incidents.severity` is NOT NULL), and tags may be an object or a Datadog comma string.
+- The Phase-1 `AlertPayload` is replaced as `PipelineInput`'s alert by a model built from `IncidentPayload`; there is no metric/threshold.
+- Dedupe on `correlation_id`: a duplicate → 202 with the ORIGINAL `incident_id` and `status: "duplicate"`. Lookup is an in-memory TTL map (24 h) plus the DB.
+- `context.pr_details.sha`, when present, is passed to the orchestrator. On the `deploy_failure` fast path the drafted target must match it, or the incident escalates.
+
+**Queries (§3.2):** response shapes are the §5.3 `incidents` columns (no embedding). In-flight incidents are served from short-term memory with `status: "in_progress"`. `/incidents/{id}/deploy` returns the `deployments` row whose `incident_id` = id. **The pipeline sets `deployments.incident_id` on the verified target row when it ends `rollback_proposed`.** That is a write to Sentinel's own DB, not to an external system.
+
+**Generate (§3.4):** the service comes from the stored incident. An unknown incident → 404; a `target_deploy` with no matching `deployments` row → **409**. It returns text only.
+
+**Probes (§3.5):**
+- `/health` → exactly `{"status": "ok"}`.
+- `/ready` → 200 `{"status": "ready"}` when the app is wired and the DB pool pings (or no DB is configured in fake/dev mode); otherwise 503 `{"status": "not_ready"}`. No LLM-provider check: keys may legitimately be absent until phase 7.
+
+**Runtime config (§8.2)**
+- LLM keys come from the **environment** (WIF in phase 7, 2026-08-30).
+- Key Vault is optional (`KEY_VAULT_URL` unset → env only). It supplies `datadog-api-key`→`dd_api_key`, `datadog-app-key`→`dd_app_key`, `langfuse-public-key`/`-secret-key`/`-base-url` via `DefaultAzureCredential`. The backend's PR-read PAT stays env-only for now (a vault entry is phase 7).
+- DB: `DATABASE_URL` wins when set (local/CI). Otherwise `PGHOST`/`PGDATABASE`/`PGUSER` with an Entra token (`https://ossrdbms-aad.database.windows.net/.default`) supplied by the pool's password callable, fetched per new connection (azure-identity caches and refreshes).
+- New deps: `pyjwt[crypto]`, `azure-identity`, `azure-keyvault-secrets`.
+
 ### 2026-10-18: Judge model distinct from every agent model (supersedes the 2026-10-15 judge rule)
 
 **Why the old rule failed.** The 2026-10-15 rule (judge = the non-primary provider's `gpt-4o`) self-grades. `openai/gpt-4o` is also the §4.7 **fallback** model for orchestrator, analysis and resolution, so any 429, timeout or missing Anthropic key has gpt-4o score gpt-4o.
