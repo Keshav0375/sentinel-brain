@@ -15,7 +15,7 @@
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 4 — Agent Pipeline & Loops |
 | **Active branch** | `dev/backend-phase-4-agents` (off `release-phase-2`) |
-| **Active PR** | none |
+| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/22 |
 | **Current task** | backend phase 4 review (4.1-4.4 all done-pending-review) |
 | **Tasks verified** | 50 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 11 / 18 — infra 1-6, deployment 1-3, backend 1-3 (backend 1-3 merged into release-phase-2) |
