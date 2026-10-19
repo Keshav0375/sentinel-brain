@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-5-api` |
 | **Commit prefix** | `feat:` |
@@ -54,7 +54,8 @@ config    = AZURE_TENANT_ID, SENTINEL_API_AUDIENCE  (non-secret)
 2. With a real `api://sentinel-backend` token (from the gha SP) → 200; a token lacking the role → 403.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built 2026-10-18, commit 5db1a20 (from c128792): Entra bearer auth (require_incident_write); v2 JWKS of identity tenant (SENTINEL_API_TENANT_ID), audience SENTINEL_API_AUDIENCE; 401/403; pyjwt[crypto] added.
+Tests: 37 added. Integrated gate (backend, env -i + TEST_DATABASE_URL): VERDICT GREEN (7 ran). Live boot: /health ok, /ready 200.
 
 ## BLOCKED
 _Live-token verification needs infra 3.5 (backend app reg). Unit tests (mock JWKS) writable + runnable now._

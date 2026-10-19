@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-5-api` |
 | **Commit prefix** | `feat:` |
@@ -35,7 +35,8 @@ Read endpoints over incident history.
 2. `curl .../incidents?limit=5` (with token) returns the seeded rows.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built 2026-10-18, commit 71cb06e (cherry-picked from 5667f33): incident query endpoints over episodic memory: list, single, trajectory, linked deploy; shapes = §5.3 columns; in-flight from STM; 404/503; auth mounted by 5.5.
+Tests: 31 added. Integrated gate (backend, env -i + TEST_DATABASE_URL): VERDICT GREEN (7 ran). Live boot: /health ok, /ready 200.
 
 ## BLOCKED
 _none locally._

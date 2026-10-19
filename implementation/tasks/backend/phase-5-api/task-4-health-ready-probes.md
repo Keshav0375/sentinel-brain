@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-5-api` |
 | **Commit prefix** | `feat:` |
@@ -33,7 +33,8 @@ Liveness + readiness. Open (no token) so K8s + backend-up can probe.
 2. `curl .../health` → ok; `curl .../ready` → ready with DB up.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built 2026-10-18, commit 7827e0c: /health returns {"status":"ok"}; /ready pings the DB pool (no DB configured -> ready; configured but down -> 503).
+Tests: 17 added. Integrated gate (backend, env -i + TEST_DATABASE_URL): VERDICT GREEN (7 ran). Live boot: /health ok, /ready 200.
 
 ## BLOCKED
 _none locally._

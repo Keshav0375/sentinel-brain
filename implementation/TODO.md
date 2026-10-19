@@ -154,12 +154,12 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 ### Phase 5 — API & App  ·  branch `dev/backend-phase-5-api`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
-| 5.1 | `POST /webhooks/incident` receiver (+ **`signal_type` two-case branch**) | [task-1](tasks/backend/phase-5-api/task-1-webhook-receiver.md) | ⬜ |
-| 5.2 | `GET /incidents*` query endpoints | [task-2](tasks/backend/phase-5-api/task-2-incident-query-endpoints.md) | 🔵 |
-| 5.3 | `POST /generate/pr-content` endpoint | [task-3](tasks/backend/phase-5-api/task-3-generate-pr-content-endpoint.md) | 🔵 |
-| 5.4 | `/health` + `/ready` probes (open, no auth) | [task-4](tasks/backend/phase-5-api/task-4-health-ready-probes.md) | 🔵 |
+| 5.1 | `POST /webhooks/incident` receiver (+ **`signal_type` two-case branch**) | [task-1](tasks/backend/phase-5-api/task-1-webhook-receiver.md) | 🔵 |
+| 5.2 | `GET /incidents*` query endpoints | [task-2](tasks/backend/phase-5-api/task-2-incident-query-endpoints.md) | 🟡 |
+| 5.3 | `POST /generate/pr-content` endpoint | [task-3](tasks/backend/phase-5-api/task-3-generate-pr-content-endpoint.md) | 🟡 |
+| 5.4 | `/health` + `/ready` probes (open, no auth) | [task-4](tasks/backend/phase-5-api/task-4-health-ready-probes.md) | 🟡 |
 | 5.5 | `main.py` lifespan + concurrency + **workload-identity KV/DB wiring** | [task-5](tasks/backend/phase-5-api/task-5-app-lifespan-and-concurrency.md) | ⬜ |
-| 5.6 | **`api/auth.py`** — Entra bearer validation (JWKS: aud/iss/exp/`Incident.Write`); apply to non-health routes | [task-6](tasks/backend/phase-5-api/task-6-entra-bearer-auth.md) | 🔵 |
+| 5.6 | **`api/auth.py`** — Entra bearer validation (JWKS: aud/iss/exp/`Incident.Write`); apply to non-health routes | [task-6](tasks/backend/phase-5-api/task-6-entra-bearer-auth.md) | 🟡 |
 
 ### Phase 6 — Eval  ·  branch `dev/backend-phase-6-eval`  ·  Gate: 🔒
 | # | Task | File | Status |

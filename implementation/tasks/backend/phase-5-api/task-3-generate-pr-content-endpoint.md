@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-5-api` |
 | **Commit prefix** | `feat:` |
@@ -32,7 +32,8 @@ The single endpoint that serves rollback PR content (demo PRs do NOT use it).
 2. (with B4) live call returns a realistic revert PR body.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built 2026-10-18, commit a9477f2 (from ee94c2d): POST /generate/pr-content; service from the stored incident; 404 unknown, 409 no matching deploy, 503 DB/unavailable, 502 after fallback; text only, never a PR.
+Tests: 16 added. Integrated gate (backend, env -i + TEST_DATABASE_URL): VERDICT GREEN (7 ran). Live boot: /health ok, /ready 200.
 
 ## BLOCKED
 _Live call ⛔ B4. Endpoint + fake tests writable now._

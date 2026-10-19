@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-10-19
+> Last updated: 2026-10-18
 
 
 ## Current Position
@@ -14,9 +14,9 @@
 |-------|-------|
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 5 — API & App |
-| **Active branch** | `dev/backend-phase-5-api` (off `release-phase-2`; not yet created) |
+| **Active branch** | `dev/backend-phase-5-api` (off `release-phase-2`) |
 | **Active PR** | none yet (backend 4: #22 merged) |
-| **Current task** | backend 5.2 / 5.3 / 5.4 / 5.6 (wave 1) |
+| **Current task** | backend 5.1 (webhook receiver); wave 1 (5.2 / 5.3 / 5.4 / 5.6) done-pending-review |
 | **Tasks verified** | 54 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 12 / 18 — infra 1-6, deployment 1-3, backend 1-4 (backend 1-4 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
@@ -32,7 +32,7 @@
 
 (Earlier: backend phase 3 signed 2026-10-14, PR #21, 5e257e0. Requirements then: tool-call counter, target-SHA cross-check, untrusted-data preamble on the Langfuse prompt path, `pending_approval` status, R14. Pending live checks: scoped Datadog app key and PR-read PAT.)
 
-(Earlier: backend phase 2 signed 2026-10-14) (PR #20 squash-merged into release-phase-2, 81cbfff). Carried follow-ups: R14; the judge model must change in phase 6; the live Langfuse check needs LANGFUSE_BASE_URL in the user's .env; the Azure alembic + grant verify; the deployment live smoke; the guard-main-source.yml head_ref injection. (Backend phase 1 signed 2026-10-12, PR #19, 3acbacd.) Deployment category CLOSED 2026-10-07.
+(Earlier: backend phase 2 signed 2026-10-14) (PR #20 squash-merged into release-phase-2, 81cbfff). Carried follow-ups: R14; isolate per-builder test DBs (test_database.py::test_module_pool_acquire_and_close_leaks_nothing flaked once under parallel builds on the shared test DB); the judge model must change in phase 6; the live Langfuse check needs LANGFUSE_BASE_URL in the user's .env; the Azure alembic + grant verify; the deployment live smoke; the guard-main-source.yml head_ref injection. (Backend phase 1 signed 2026-10-12, PR #19, 3acbacd.) Deployment category CLOSED 2026-10-07.
 
 Deferred, to do as the FIRST STEP of backend work, once the estate is up:
 - Live smoke: one scenario per case (pass/01, deployfail/03, runtime/01), plus the runtime/07 mtime anchor (unproven live).
