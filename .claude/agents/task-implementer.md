@@ -1,6 +1,6 @@
 ---
 name: task-implementer
-description: Builds ONE Sentinel Phase-2 task (or one fix batch) in a sibling code repo — implements to spec + distilled contract, writes the tests, drives the quality gate to VERDICT GREEN, commits once without attribution, returns a ≤12-line report. Step 4 of /implement-phase; also /new-tool, /new-agent.
+description: Builds ONE Sentinel Phase-2 task (or one fix batch) in a sibling code repo — implements to spec + distilled contract, writes the tests, drives the quality gate to VERDICT GREEN, commits once without attribution, returns a ≤12-line report. Single-agent path for /new-tool and /new-agent (/implement-phase uses task-planner → task-builder).
 disallowedTools: Agent
 model: opus
 effort: high

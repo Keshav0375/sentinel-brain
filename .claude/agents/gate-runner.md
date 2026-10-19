@@ -1,6 +1,6 @@
 ---
 name: gate-runner
-description: Cheap independent verifier. Runs the Sentinel quality gate for one category and checks the phase branch is commit-clean and attribution-free, then returns a ≤10-line verdict. Never edits. Use after every task-implementer DONE, and for /check.
+description: Cheap independent verifier. Runs the Sentinel quality gate for one category and checks the phase branch is commit-clean and attribution-free, then returns a ≤10-line verdict. Never edits. Used by /check (/implement-phase gates with scripts/gate.py directly).
 tools: Bash
 model: haiku
 maxTurns: 6

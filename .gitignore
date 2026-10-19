@@ -223,3 +223,5 @@ archive/notes/session-reports/
 # Personal, per-machine Claude preferences — never committed
 CLAUDE.local.md
 brag-output/
+# Planner output (task-planner) — per-run scratch, never committed
+.plans/

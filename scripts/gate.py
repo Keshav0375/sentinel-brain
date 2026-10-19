@@ -18,6 +18,12 @@ directly from brain has two traps, and this wrapper closes both:
     python3 scripts/gate.py deployment         # full gate — must be green before commit
     python3 scripts/gate.py backend --fast     # skip slow/network checks while iterating
     python3 scripts/gate.py infra --json
+    python3 scripts/gate.py backend --path ../.wt/Sentinel-5.2   # gate a wave worktree
+
+--path gates another checkout of the category's repo — a `git worktree` a parallel
+builder works in. Tools still come from the canonical repo's `.venv` when the worktree
+has none, and for backend the worktree's `src/` is put first on PYTHONPATH so the
+editable install (which points at ../Sentinel/src) cannot shadow the code under test.
 
 The gate's own exit code is 0 even for INCONCLUSIVE ("nothing was verified"), so this
 wrapper ends with one machine-readable verdict line and its own exit code:
@@ -71,15 +77,15 @@ def _git(repo: Path, *args: str) -> str:
     ).stdout.strip()
 
 
-def gate_source(cat: str, tmp: Path) -> tuple[Path, str]:
+def gate_source(cat: str, tmp: Path, checkout: Path = SENTINEL) -> tuple[Path, str]:
     """-> (path to quality_gate.py, human label of where it came from)."""
     if cat == "backend":
-        branch = _git(SENTINEL, "rev-parse", "--abbrev-ref", "HEAD")
-        sha = _git(SENTINEL, "rev-parse", "--short", "HEAD")
+        branch = _git(checkout, "rev-parse", "--abbrev-ref", "HEAD")
+        sha = _git(checkout, "rev-parse", "--short", "HEAD")
         if branch == "main":
             print("WARN    ../Sentinel is on `main` — backend work belongs on dev/* or "
                   "release-phase-2; this gate copy is stale")
-        return SENTINEL / GATE_PATH, f"working tree {branch}@{sha}"
+        return checkout / GATE_PATH, f"working tree {branch}@{sha}"
 
     note = ""
     try:
@@ -92,16 +98,18 @@ def gate_source(cat: str, tmp: Path) -> tuple[Path, str]:
     return out, f"{GATE_REF}@{sha}{note}"
 
 
-def tool_path(repo: Path, tmp: Path) -> tuple[str, str]:
-    """-> (PATH value, label). Repo venv first, then a `python` -> python3 shim."""
+def tool_path(repo: Path, tmp: Path, fallback: Path | None = None) -> tuple[str, str]:
+    """-> (PATH value, label). Repo venv (else `fallback`'s) first, then a python shim."""
     shim = tmp / "shim"
     shim.mkdir()
     (shim / "python").symlink_to(sys.executable)
     venv = repo / ".venv" / "bin"
+    if not venv.is_dir() and fallback is not None:
+        venv = fallback / ".venv" / "bin"
     parts = [str(shim), os.environ.get("PATH", "")]
     if venv.is_dir():
         parts.insert(0, str(venv))
-        return os.pathsep.join(parts), f"{venv.relative_to(repo.parent)}"
+        return os.pathsep.join(parts), os.path.relpath(venv, repo.parent)
     return os.pathsep.join(parts), "system PATH (no .venv)"
 
 
@@ -109,18 +117,26 @@ def main() -> int:
     args = sys.argv[1:]
     if not args or args[0] not in REPO:
         print(__doc__)
-        print(f"usage: python3 scripts/gate.py <{'|'.join(REPO)}> [--fast] [--json]")
+        print(f"usage: python3 scripts/gate.py <{'|'.join(REPO)}> [--fast] [--json] [--path DIR]")
         return 2
     cat, passthrough = args[0], args[1:]
-    repo = (ROOT / REPO[cat]).resolve()
+    canonical = (ROOT / REPO[cat]).resolve()
+    repo = canonical
+    if "--path" in passthrough:
+        i = passthrough.index("--path")
+        if i + 1 >= len(passthrough):
+            print("HALT    --path needs a directory")
+            return 2
+        repo = Path(passthrough[i + 1]).expanduser().resolve()
+        passthrough = passthrough[:i] + passthrough[i + 2:]
     if not repo.is_dir():
         print(f"HALT    {repo} does not exist")
         return 2
 
     with tempfile.TemporaryDirectory(prefix="sentinel-gate-") as t:
         tmp = Path(t)
-        src, src_label = gate_source(cat, tmp)
-        path, tools_label = tool_path(repo, tmp)
+        src, src_label = gate_source(cat, tmp, repo if cat == "backend" else SENTINEL)
+        path, tools_label = tool_path(repo, tmp, canonical)
         print(f"GATE    {cat} · {repo.name} · source {src_label} · tools {tools_label}")
         if "(no .venv)" in tools_label and cat in ("backend", "deployment"):
             print(f"NOTE    no {repo.name}/.venv — ruff/pytest will be SKIPPED unless on PATH. "
@@ -128,6 +144,9 @@ def main() -> int:
         sys.stdout.flush()
         env = {**os.environ, "PATH": path}
         env.pop("VIRTUAL_ENV", None)  # never let the caller's venv shadow the repo's
+        if cat == "backend" and repo != canonical:  # worktree code beats the editable install
+            env["PYTHONPATH"] = os.pathsep.join(
+                [str(repo / "src"), str(repo), env.get("PYTHONPATH", "")]).rstrip(os.pathsep)
         cmd = [sys.executable, str(src), "--repo", cat, "--path", str(repo), *passthrough]
         proc = subprocess.run(cmd, env=env, cwd=repo, capture_output=True, text=True)
         sys.stdout.write(proc.stdout)

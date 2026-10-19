@@ -1,25 +1,33 @@
 ---
 name: implement-phase
-description: Sentinel Phase-2 build orchestrator — builds ONE whole phase end-to-end (locate → context → architecture → per-task build/verify/record → review → PR → human sign-off) by handing each step to a specialist subagent. Trigger /implement-phase [<cat>-<M> | status | resume].
+description: Sentinel Phase-2 build orchestrator — builds ONE whole phase end-to-end (locate → context → architecture → dependency waves of parallel plan/build/integrate → review → PR → human sign-off) by handing each step to a specialist subagent. Trigger /implement-phase [<cat>-<M> | status | resume].
 argument-hint: "[<cat>-<M> | status | resume]"
 disable-model-invocation: true
 ---
 
 # /implement-phase
 
-You are the **orchestrator**. You sequence, decide, talk to the user, and integrate short reports.
-**You do not write code, run the gate, or edit the tracker yourself** — specialists do, each in a
-fresh context that is discarded afterwards. Your context is re-sent on every turn for the whole
-phase, so it holds only: the where.py block, the context brief, the contract, and ≤12-line reports.
+You are the **orchestrator** — the root of the agent graph. You sequence, decide, talk to the user,
+and integrate short reports. **You do not write code or edit the tracker yourself** — specialists
+do, each in a fresh context that is discarded afterwards. Deterministic steps (gate, status flips,
+git integration) are plain commands you run, never agents. Your context is re-sent on every turn
+for the whole phase, so it holds only: the where.py block, the brief, the contract, and short reports.
+
+**Shape: a DAG in waves.** where.py's `WAVES` line layers the phase's open tasks by their
+`Depends on` rows. Every agent call of one wave goes out in **ONE message** (that is what makes them
+parallel); you wait, integrate, then send the next wave. Subagents cannot spawn subagents — the
+graph's fan-out is always yours. **Opus decides, Sonnet types:** every judgement (contract, plan,
+review) is Opus; every mechanical step (building to a plan, bookkeeping) is Sonnet.
 
 | Step | Who | Model | Returns |
 |------|-----|-------|---------|
 | 0 locate | `python3 scripts/where.py` | — | ~175-token phase block |
 | 1 context | `phase-context-builder` | sonnet | ≤250-word brief |
 | 2 contract | `architecture-warden` · distill | opus | verbatim contract table |
-| 4a build | `task_status.py … in-progress` → `task-implementer` (one per task) | opus | DONE / HALT block |
-| 4b verify | `gate-runner` | haiku | verdict block |
-| 4c record | `tracker-clerk` · record-task | sonnet | ≤6 lines |
+| 4a plan | `task-planner` × wave (parallel) | opus | PLANNED / HALT (plan in `.plans/`) |
+| 4b build | `task-builder` × wave (parallel, one worktree each) | sonnet | DONE / GAP / HALT |
+| 4c integrate | cherry-pick + `scripts/gate.py` + boot | — (you, Bash) | VERDICT line |
+| 4d record | `tracker-clerk` · record-task (whole wave, background) | sonnet | ≤6 lines |
 | 5 review | `architecture-warden` · review, `code-reviewer`, `safety-reviewer` | opus | finding lines |
 | 6 close | `tracker-clerk` · close-phase / reopen / sign-off | sonnet | PR url + checklist |
 | board | `scripts/board_sync.py` (run by the clerk + `task_status.py`) | — | issues move with the tracker |
@@ -59,36 +67,63 @@ implementer as NOTES.
   ```
   ▶ <cat> · phase <M> (<name>) — <N> tasks
     repo <path> · branch <exact branch from where.py> · PR into <integration>
+    waves 1: 5.2 5.3 5.4 5.6 | 2: 5.1 | 3: 5.5
   ```
 - Branch from a fresh integration branch (the branch name is **exactly** what where.py printed —
   it comes from TODO.md; never re-derive it):
   `git -C <repo> checkout <integration> && git -C <repo> pull --ff-only && git -C <repo> checkout -b <branch>`
   (or `checkout <branch>` when resuming). Integration branch missing → stop and ask.
+- The code repo's tree must be clean — wave worktrees start from the committed HEAD, so uncommitted
+  work is invisible to them. Dirty → stop and ask. Stale `../.wt/*` worktrees from an aborted run →
+  `git -C <repo> worktree list`; remove them before wave 1.
 - Brain must be clean and pulled (`git status --porcelain`, `git pull --ff-only`). Tracker commits
   go straight to brain `main`.
 
-## Step 4 — Per task: build → verify → record
-For each task in order:
+## Step 4 — Waves: plan → build → integrate → record
+Take the waves from Step 0's `WAVES` line (`CYCLE` → those tasks are already one per wave; tell the
+user once that their Depends-on rows loop). Paths: `WT=../.wt/<RepoName>-<id>` (outside every
+repo), `PLAN=.plans/<cat>-<id>.md` (brain, gitignored). For each wave, in order:
 
-**4a. Build** — first `python3 scripts/task_status.py <cat> <M.K> in-progress` (tracker 🔵 + board
-"In progress", one command, no agent). Then dispatch `task-implementer` (foreground) with `TASK`
-(file path), `REPO`, `BRANCH`, `CONTRACT` (only the rows relevant to this task, verbatim), `ISSUE`
-(the task's number from the brief's ISSUES line), `NOTES` (user answers so far).
-- `HALT` → show its `ASK` to the user via `AskUserQuestion`; then `SendMessage` the **same**
-  implementer the answer (its context is intact). If the user says stop → dispatch
-  `tracker-clerk` record-task with the HALT and end the run.
-- Never re-read the task file or the architecture yourself.
+**4a. Plan (Opus, parallel).** `python3 scripts/task_status.py <cat> <M.K> in-progress` for every
+task of the wave (one Bash call). `REF=$(git -C <repo> rev-parse HEAD)`. Then ONE message with one
+`task-planner` per task: `TASK`, `REPO`, `REF`, `CONTRACT` (only this task's rows, verbatim),
+`PLAN_FILE`, `NOTES`, `WAVE` (the other ids). A wave of one still gets a planner.
+- `HALT` → `AskUserQuestion` (batch every HALT of the wave into one question set), then
+  `SendMessage` the **same** planner the answer. User says stop → `tracker-clerk` record-task with
+  the HALT, end the run.
+- Never re-read the task file, the plan, or the architecture yourself.
 
-**4b. Verify** — dispatch `gate-runner`: "category `<cat>`, repo `<repo>`, expected sha `<sha>`".
-- Must be `VERDICT GREEN`, `TREE clean`, `attribution none`, `MATCH ok`.
-- Anything else → `SendMessage` the implementer the gate-runner block to fix; re-verify. Two
-  failed rounds on the same check → stop and ask the user.
+**4b. Build (Sonnet, parallel).**
+- Wave of one → build in place: `WORKDIR=<repo>`, `BRANCH=<phase branch>`, `PARALLEL no`.
+- Wave of N → per task `git -C <repo> worktree add <WT> -b wt/<cat>-<M>-<id> <REF>` (one Bash
+  call for all), then `WORKDIR=<WT>`, `BRANCH=wt/<cat>-<M>-<id>`, `PARALLEL yes`.
+ONE message with one `task-builder` per task: `PLAN`, `TASK`, `CAT`, `WORKDIR`, `BRANCH`, `ISSUE`
+(from the brief's ISSUES line), `PARALLEL`.
+- `GAP` → `SendMessage` the same **planner** the GAP; it amends the plan (`AMENDED …`); then
+  `SendMessage` the same **builder** "plan amended, continue". Two GAPs on one task → ask the user.
+- `HALT` → as 4a.
+- Builders that finish early wait; never start the next wave until every builder of this one is DONE.
 
-**4c. Record** — dispatch `tracker-clerk` "mode: record-task" with the task path and the DONE block,
-`run_in_background: true`; continue to the next task. Before the *next* clerk dispatch, make sure
-the previous one finished (one writer on brain at a time).
+**4c. Integrate (you, Bash — no agent).**
+1. Wave of N: on the phase branch in `<repo>`, `git cherry-pick <sha>` in task-id order. A conflict
+   → `git cherry-pick --abort`, then one `task-builder` (`WORKDIR=<repo>`, `PARALLEL no`, `PLAN` =
+   the conflicting task's plan, NOTES = "re-apply on top of <shas already picked>"). Then
+   `git -C <repo> worktree remove <WT>` + `git -C <repo> branch -D wt/<cat>-<M>-<id>` for each.
+2. Gate the integrated branch, full: `python3 scripts/gate.py <cat> 2>&1 | tail -4` (backend:
+   with `TEST_DATABASE_URL` set when the Postgres container is up — the gate's NOTE says how).
+   Then `git -C <repo> status --porcelain` (must be empty) and
+   `git -C <repo> log --format='%h %b' <REF>..HEAD | grep -iE 'co-authored|generated with'` (must
+   be empty). Backend: boot check `poetry run sentinel serve` from `<repo>` (background, see the
+   startup line, stop it).
+3. Not green → one `task-builder` in `<repo>` with `FIX` = the failing lines + the task id(s) they
+   point at (add a `task-planner` first only if the cause needs a decision). Re-run 2. Two failed
+   rounds on the same check → stop and ask the user.
 
-Print one line per task: `✓ <id> <title> · <sha> · gate GREEN (<N> ran)`.
+**4d. Record (Sonnet, background).** One `tracker-clerk` "mode: record-task" with every DONE block
+of the wave, `run_in_background: true`; go straight on to the next wave's 4a. Before the *next*
+clerk dispatch, make sure the previous one finished (one writer on brain at a time).
+
+Print one line per wave: `✓ wave <n> · <id> <sha>, <id> <sha> · gate GREEN (<N> ran)`.
 
 ## Step 5 — Review the phase (ONE message, reviewers in parallel)
 Record `git -C <repo> rev-parse HEAD` first. Dispatch:
@@ -107,8 +142,9 @@ Relay as **one merged block** — verdicts on line 2, every 🚨 then ⚠️ ded
 ```
 Clean → two lines (`— clean` + verdicts).
 
-Fix loop: dispatch **one** `task-implementer` with `FIX` = all 🚨 + the ⚠️ worth fixing (note the
-rest consciously), then `gate-runner`, then re-dispatch **only the reviewers that raised a 🚨** as
+Fix loop: one `task-planner` with `FIX` = all 🚨 + the ⚠️ worth fixing (note the rest consciously)
+→ one `task-builder` in `<repo>` with that plan → Step 4c.2 gate, then re-dispatch **only the
+reviewers that raised a 🚨** as
 "re-review since `<sha>`". Print only the delta (cleared / still open). A reviewer surfacing a gap
 the spec missed → one line to the user; never expand scope silently. "why N" → `SendMessage` the
 reviewer that raised it.
@@ -123,7 +159,7 @@ reviewer that raised it.
    - **Approve & merge** → `tracker-clerk` "mode: sign-off" with the PR number and the user's answer.
      State what's next in one line.
    - **Changes needed** → `tracker-clerk` "mode: reopen" (tasks back to In progress on the board),
-     then a `task-implementer` FIX batch (same branch, same PR), Step 4b–5 for the delta, and
+     then a planner → builder FIX batch (same branch, same PR), Step 4c.2–5 for the delta, and
      `record-task` again per task.
    - **Hold** → leave the PR open.
 

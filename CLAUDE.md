@@ -25,14 +25,14 @@ are true relative paths.
 ## Where things are — use the readers, not `Read`
 
 ```bash
-python3 scripts/where.py            # active phase: repo, branch, gate, tasks, gating blockers (~175 tok)
+python3 scripts/where.py            # active phase: repo, branch, gate, tasks, WAVES, gating blockers
 python3 scripts/where.py infra-4    # a named phase — exit 1 = do not enter
 python3 scripts/where.py --all      # every phase + every open blocker / R-item
 python3 scripts/arch.py --map       # concern -> file + §
 python3 scripts/arch.py infra --list        # TOC + token cost per §
 python3 scripts/arch.py infra 3.2 3.3       # just those sections (~3K tok, not 21K)
 python3 scripts/arch.py decisions R6        # one decision entry
-python3 scripts/gate.py <infra|deployment|backend> [--fast]   # the quality gate, done right
+python3 scripts/gate.py <infra|deployment|backend> [--fast] [--path WT]   # the quality gate, done right
 python3 scripts/task_status.py <cat> <M.K> <status>           # flip a task + re-sync the board
 python3 scripts/board_sync.py [--issues <cat>-<M>]           # mirror tracker → board / look up issue #s
 ```
@@ -57,14 +57,18 @@ it ends with one `VERDICT` line and exits non-zero unless the gate is fully gree
 
 Order **infra → deployment → backend**. One phase = one branch + one PR, merged only on the user's
 end-of-phase sign-off. `/implement-phase` (spec: `.claude/skills/implement-phase/SKILL.md`)
-orchestrates; specialists do the work in throwaway contexts:
+orchestrates as a DAG: `where.py` prints the phase's `WAVES` (from each task's `Depends on` row);
+each wave is planned in parallel (Opus), built in parallel in `../.wt/` worktrees (Sonnet), then
+cherry-picked onto the phase branch and gated once. Specialists work in throwaway contexts:
 
 | Agent | Model | Job |
 |-------|-------|-----|
 | `phase-context-builder` | sonnet | brief: prior work consumed, tasks, deps, blockers, drift |
 | `architecture-warden` | opus | distill the verbatim contract · review conformance |
-| `task-implementer` | opus | build one task → tests → gate GREEN → one commit |
-| `gate-runner` | haiku | independent gate + clean-tree + no-attribution check |
+| `task-planner` | opus | every decision for one task → an exact plan in `.plans/` |
+| `task-builder` | sonnet | build to the plan (wave worktree) → tests → gate → one commit |
+| `task-implementer` | opus | single-agent build for `/new-tool` · `/new-agent` |
+| `gate-runner` | haiku | `/check` only — the phase loop runs `scripts/gate.py` itself |
 | `tracker-clerk` | sonnet | task reports, TODO/STATE, phase report, PR, sign-off merge |
 | `code-reviewer` · `safety-reviewer` | opus | correctness · agentic-safety invariants |
 

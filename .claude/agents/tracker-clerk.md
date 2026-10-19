@@ -26,7 +26,10 @@ task-file Status in one go) — use it instead of hand-editing those two cells.
 ---
 
 ## mode: record-task
-Input: task file path, the implementer's DONE block (sha, files, tests, gate verdict, verify cmds).
+Input: one or more task file paths, each with the builder's DONE block (sha, files, tests, gate
+verdict, verify cmds) — a whole wave arrives at once. Do steps 1–2 for every task, then ONE commit
+(`docs: <cat> <id>, <id> done-pending-review`). The integrated gate verdict, when given, is the one
+to record (a parallel builder's own verdict may be PARTIAL on pytest-db only).
 1. `python3 scripts/task_status.py <cat> <M.K> done-pending-review --no-sync`. In the task file fill `## Report` (what was built, commit
    sha, files), `## Tests` / gate verdict line, `## How to Verify` (the VERIFY commands) — only the
    sections the template has; keep each to a few lines.

@@ -11,6 +11,14 @@ open against it, and where the repo is. This prints exactly that, in ~350 tokens
     python3 scripts/where.py --json    # same, machine-readable
     python3 scripts/where.py --all     # every phase + every open blocker (/progress)
 
+WAVES is the phase's open tasks as a dependency graph, in layers: every task in a wave
+depends only on tasks in earlier waves (or already built ones), so /implement-phase can
+build a whole wave in parallel. Edges come from each task file's `Depends on` row —
+`[[task-N-slug]]` links that name a task file of the SAME phase; cross-phase links are
+already ordered by the phase sequence and are ignored. A task file without a `Depends on`
+row depends on every earlier task (safe: sequential). A cycle is never guessed through:
+its tasks run one per wave in id order and a CYCLE line names them.
+
 Everything else — prior-phase summaries, task specs, deps — comes from
 `phase-context-builder`. Do not Read STATE.md or TODO.md in the orchestrator.
 
@@ -98,7 +106,11 @@ def parse_todo() -> list[dict]:
         if current is not None and re.match(r"^\|\s*\d+\.\d+\s*\|", raw):
             c = _cells(raw)
             if len(c) >= 4:
-                current["tasks"].append({"id": c[0], "title": c[1], "status": c[3]})
+                link = re.search(r"\]\(([^)]+\.md)\)", c[2])
+                current["tasks"].append({
+                    "id": c[0], "title": c[1], "status": c[3],
+                    "file": str(TODO.parent / link.group(1)) if link else None,
+                })
     return phases
 
 
@@ -136,6 +148,47 @@ def parse_state() -> dict:
         "blockers": open_rows("Blockers"),
         "reconciliations": open_rows("Open Reconciliations"),
     }
+
+
+def task_deps(tasks: list[dict]) -> dict[str, set[str]]:
+    """-> {task id: ids of SAME-phase tasks it depends on}, from each file's `Depends on` row."""
+    by_slug = {Path(t["file"]).stem: t["id"] for t in tasks if t.get("file")}
+    deps: dict[str, set[str]] = {}
+    for i, t in enumerate(tasks):
+        path = Path(t["file"]) if t.get("file") else None
+        row = None
+        if path and path.is_file():
+            row = re.search(r"^\|\s*\*\*Depends on\*\*\s*\|(.*)\|\s*$",
+                            path.read_text(encoding="utf-8"), re.M)
+        if row is None:  # no declared deps -> after everything before it
+            deps[t["id"]] = {x["id"] for x in tasks[:i]}
+            continue
+        deps[t["id"]] = {by_slug[s] for s in re.findall(r"\[\[([\w-]+)\]\]", row.group(1))
+                         if s in by_slug and by_slug[s] != t["id"]}
+    return deps
+
+
+def waves(tasks: list[dict]) -> tuple[list[list[str]], list[str]]:
+    """-> (layers of open task ids, ids caught in a dependency cycle).
+
+    Tasks already built (pending review or verified) satisfy their dependents and are
+    left out of the layers.
+    """
+    built = {t["id"] for t in tasks if t["status"] in DONE | {"\U0001f7e1"}}
+    todo = [t["id"] for t in tasks if t["id"] not in built]
+    deps = task_deps(tasks)
+    layers: list[list[str]] = []
+    have = set(built)
+    while todo:
+        ready = [i for i in todo if deps.get(i, set()) <= have]
+        if not ready:  # cycle: never guess an order -> one at a time, id order
+            cyc = list(todo)
+            layers.extend([i] for i in cyc)
+            return layers, cyc
+        layers.append(ready)
+        have |= set(ready)
+        todo = [i for i in todo if i not in have]
+    return layers, []
 
 
 def _key(p: dict) -> tuple[int, int]:
@@ -228,6 +281,7 @@ def main() -> int:
     pat = re.compile(rf"(?:{cat}\s+)?\b{num}\.\d\b", re.I)
     mine_b = [b for b in state["blockers"] if pat.search(b["raw"])]
     mine_r = [r for r in state["reconciliations"] if pat.search(r["raw"])]
+    layers, cycle = waves(target["tasks"])
 
     if a.json:
         print(json.dumps({
@@ -236,7 +290,9 @@ def main() -> int:
             "integration": INTEGRATION[cat], "gate_unlocked": gate_ok,
             "predecessor": f"{prev['category']}-{prev['phase']}" if prev else None,
             "predecessor_gate": prev["gate"] if prev else None,
-            "verified": verified, "total": total, "tasks": target["tasks"],
+            "verified": verified, "total": total,
+            "tasks": [{k: v for k, v in t.items() if k != "file"} for t in target["tasks"]],
+            "waves": layers, "cycle": cycle,
             "blockers": [b["label"] for b in mine_b],
             "reconciliations": [r["label"] for r in mine_r],
             "refusal": refusal,
@@ -253,6 +309,10 @@ def main() -> int:
     print("TASKS")
     for t in target["tasks"]:
         print(f"  {ascii_status(t['status']):<8}{t['id']}  {flatten(t['title'])[:88]}")
+    if layers:
+        print("WAVES   " + " | ".join(f"{n}: {' '.join(w)}" for n, w in enumerate(layers, 1)))
+    if cycle:
+        print(f"CYCLE   {' '.join(cycle)} - Depends-on rows loop; built one at a time in id order")
     print("BLOCKERS" if mine_b else "BLOCKERS: none")
     for b in mine_b:
         print(f"  !! {flatten(b['label'])[:140]}")
