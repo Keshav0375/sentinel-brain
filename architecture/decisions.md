@@ -16,6 +16,18 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-18: Judge model distinct from every agent model (supersedes the 2026-10-15 judge rule)
+
+**Why the old rule failed.** The 2026-10-15 rule (judge = the non-primary provider's `gpt-4o`) self-grades. `openai/gpt-4o` is also the §4.7 **fallback** model for orchestrator, analysis and resolution, so any 429, timeout or missing Anthropic key has gpt-4o score gpt-4o.
+
+**Decision.**
+- The judge uses a model **no agent role uses, primary or fallback**: `openai/gpt-4.1` when primary = anthropic, `anthropic/claude-opus-4-1` when primary = openai.
+- A static check asserts the judge ∉ every role's (primary, fallback).
+- A **runtime guard** marks any eval run whose `models_used` contains the judge model as `judge_conflict`: its score is invalid and not counted.
+- The judge still has no fallback.
+
+§4.7's Judge row is amended accordingly.
+
 ### 2026-10-15: Backend phase 4 — pipeline shape, providers, judge, status, R14
 
 - **The orchestrator is Python code, not an LLM agent with handoffs,** so every cap is enforced in code:

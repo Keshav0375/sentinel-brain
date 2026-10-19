@@ -634,7 +634,7 @@ Not all tasks need the same model. Classification tasks need speed; reasoning ta
 | **Reflexion** | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` | Confidence scoring is a simple eval task |
 | **Resolution** | `anthropic/claude-sonnet-4-6` | `openai/gpt-4o` | Preparing rollback spec — reasoning-heavy |
 | **Reverification** | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` | Binary pass/fail check |
-| **Judge** | the NON-primary provider: `openai/gpt-4o` (when primary = anthropic) | `anthropic/claude-sonnet-4-6` (when primary = openai) | Structured scoring with rubric; must differ from every agent model (no self-grading — decision 2026-10-15) |
+| **Judge** | a model NO agent uses: `openai/gpt-4.1` (when primary = anthropic) | `anthropic/claude-opus-4-1` (when primary = openai) | Structured scoring with rubric; judge ∉ any role's primary/fallback, and runs whose `models_used` contains it are marked `judge_conflict` (decision 2026-10-18) |
 | **PR Content Generator** | `anthropic/claude-haiku-4-5` | `openai/gpt-4o-mini` | Constrained text generation |
 
 **Rationale:** Haiku for tasks where the prompt constrains the output space tightly (classify, score, pass/fail, templated generation). Sonnet for tasks where the model needs to reason across evidence, synthesize, and generate novel content.
