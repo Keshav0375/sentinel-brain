@@ -20,7 +20,7 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 **Auth (§3.6, amended)**
 - Entra bearer only. The audience comes from `SENTINEL_API_AUDIENCE`, default `api://<identity_tenant_id>/sentinel-backend-<deployment>-<env>`, which is infra's naming (modules/naming). New tenants reject the bare `api://sentinel-backend`, so it is dropped.
-- `AZURE_TENANT_ID` is the **identity tenant** where the app registration lives. Only the **v2** issuer `https://login.microsoftonline.com/<tid>/v2.0` is accepted, and the app registration must set `accessTokenAcceptedVersion = 2`.
+- **`SENTINEL_API_TENANT_ID`** (Settings `sentinel_api_tenant_id`, R4's name; *amended same day*) is the **identity tenant** where the app registration lives. `AZURE_TENANT_ID` keeps its meaning: the resource (school) tenant of the pod's workload identity, which azure-identity uses. Only the **v2** issuer `https://login.microsoftonline.com/<tid>/v2.0` is accepted, and the app registration must set `accessTokenAcceptedVersion = 2`.
 - RS256 via `PyJWKClient` on `…/<tid>/discovery/v2.0/keys`.
 - A bad, expired, wrong-aud or wrong-iss token → 401. A missing `Incident.Write` role → **403**.
 
