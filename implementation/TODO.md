@@ -143,15 +143,15 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 | 3.6 | `prepare_rollback_spec` + `format_escalation` | [task-6](tasks/backend/phase-3-tools/task-6-remediation-and-escalation.md) | ✅ |
 | 3.7 | Remove `comms_tools.py` + `hitl.py` | [task-7](tasks/backend/phase-3-tools/task-7-remove-comms-and-hitl-tools.md) | ✅ |
 
-### Phase 4 — Agent Pipeline & Loops  ·  branch `dev/backend-phase-4-agents`  ·  Gate: ⬜ **← NEXT**
+### Phase 4 — Agent Pipeline & Loops  ·  branch `dev/backend-phase-4-agents`  ·  Gate: ✅ 2026-10-19
 | # | Task | File | Status |
 |---|------|------|--------|
-| 4.1 | Provider routing + fallback (`providers/`) | [task-1](tasks/backend/phase-4-agents/task-1-provider-routing.md) | 🟡 |
-| 4.2 | Orchestrator: plan-execute + reflexion + reverification + budget | [task-2](tasks/backend/phase-4-agents/task-2-orchestrator-loops.md) | 🟡 |
-| 4.3 | `reflexion.txt` + `reverification.txt` prompts | [task-3](tasks/backend/phase-4-agents/task-3-reflexion-reverification-prompts.md) | 🟡 |
-| 4.4 | `pr_content_generator` agent + prompt | [task-4](tasks/backend/phase-4-agents/task-4-pr-content-generator.md) | 🟡 |
+| 4.1 | Provider routing + fallback (`providers/`) | [task-1](tasks/backend/phase-4-agents/task-1-provider-routing.md) | ✅ |
+| 4.2 | Orchestrator: plan-execute + reflexion + reverification + budget | [task-2](tasks/backend/phase-4-agents/task-2-orchestrator-loops.md) | ✅ |
+| 4.3 | `reflexion.txt` + `reverification.txt` prompts | [task-3](tasks/backend/phase-4-agents/task-3-reflexion-reverification-prompts.md) | ✅ |
+| 4.4 | `pr_content_generator` agent + prompt | [task-4](tasks/backend/phase-4-agents/task-4-pr-content-generator.md) | ✅ |
 
-### Phase 5 — API & App  ·  branch `dev/backend-phase-5-api`  ·  Gate: 🔒
+### Phase 5 — API & App  ·  branch `dev/backend-phase-5-api`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 5.1 | `POST /webhooks/incident` receiver (+ **`signal_type` two-case branch**) | [task-1](tasks/backend/phase-5-api/task-1-webhook-receiver.md) | ⬜ |
