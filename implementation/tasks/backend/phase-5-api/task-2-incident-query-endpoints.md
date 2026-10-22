@@ -38,5 +38,7 @@ Read endpoints over incident history.
 Built 2026-10-18, commit 71cb06e (cherry-picked from 5667f33): incident query endpoints over episodic memory: list, single, trajectory, linked deploy; shapes = §5.3 columns; in-flight from STM; 404/503; auth mounted by 5.5.
 Tests: 31 added. Integrated gate (backend, env -i + TEST_DATABASE_URL): VERDICT GREEN (7 ran). Live boot: /health ok, /ready 200.
 
+Review fixes 2026-10-21 (d0f7ae9..d27a8f3, status stays done-pending-review): e37fea5 GET /incidents limit capped at 200. Gate on d27a8f3: VERDICT GREEN (full run, 7 ran, 0 skipped, TEST_DATABASE_URL set); boot OK (/health 200, /ready 200, protected 401, clean exit).
+
 ## BLOCKED
 _none locally._

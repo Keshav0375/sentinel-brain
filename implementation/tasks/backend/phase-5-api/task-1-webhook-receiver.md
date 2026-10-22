@@ -63,6 +63,8 @@ Built `POST /webhooks/incident` (backend commit ac630a0, plus 360496a `fix(deps)
 - Duplicate correlation_id -> 202 with the original incident_id, status `duplicate`.
 - One task per incident with its own STM; fast path pinned to `context.pr_details.sha` (7-char prefix rule); on rollback_proposed `deployments.incident_id` is backfilled.
 
+Review fixes 2026-10-21 (d0f7ae9..d27a8f3, status stays done-pending-review): d9ead3f IncidentTasks (concurrency cap 429, drain, 503, task error logging); 31a79b0 body cap 413 + bounded alert context; 05a1bda per-incident pipeline timeout; d27a8f3 503 on shutdown during the dedupe lookup, nothing recorded. Gate on d27a8f3: VERDICT GREEN (full run, 7 ran, 0 skipped, TEST_DATABASE_URL set); boot OK (/health 200, /ready 200, protected 401, clean exit).
+
 ## Tests
 Gate: VERDICT GREEN (7 ran; orchestrator, env -i + TEST_DATABASE_URL, at 360496a). Tree clean, no attribution.
 

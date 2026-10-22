@@ -57,5 +57,7 @@ config    = AZURE_TENANT_ID, SENTINEL_API_AUDIENCE  (non-secret)
 Built 2026-10-18, commit 5db1a20 (from c128792): Entra bearer auth (require_incident_write); v2 JWKS of identity tenant (SENTINEL_API_TENANT_ID), audience SENTINEL_API_AUDIENCE; 401/403; pyjwt[crypto] added.
 Tests: 37 added. Integrated gate (backend, env -i + TEST_DATABASE_URL): VERDICT GREEN (7 ran). Live boot: /health ok, /ready 200.
 
+Review fixes 2026-10-21 (d0f7ae9..d27a8f3, status stays done-pending-review): ab3adea SENTINEL_API_AUDIENCE is a comma-separated list; v2 tokens carry the client-id GUID. Gate on d27a8f3: VERDICT GREEN (full run, 7 ran, 0 skipped, TEST_DATABASE_URL set); boot OK (/health 200, /ready 200, protected 401, clean exit).
+
 ## BLOCKED
 _Live-token verification needs infra 3.5 (backend app reg). Unit tests (mock JWKS) writable + runnable now._

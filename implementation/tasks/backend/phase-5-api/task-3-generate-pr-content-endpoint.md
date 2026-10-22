@@ -35,5 +35,7 @@ The single endpoint that serves rollback PR content (demo PRs do NOT use it).
 Built 2026-10-18, commit a9477f2 (from ee94c2d): POST /generate/pr-content; service from the stored incident; 404 unknown, 409 no matching deploy, 503 DB/unavailable, 502 after fallback; text only, never a PR.
 Tests: 16 added. Integrated gate (backend, env -i + TEST_DATABASE_URL): VERDICT GREEN (7 ran). Live boot: /health ok, /ready 200.
 
+Review fixes 2026-10-21 (d0f7ae9..d27a8f3, status stays done-pending-review): 17edf2b agents SDK errors (AgentsException) map to 502. Gate on d27a8f3: VERDICT GREEN (full run, 7 ran, 0 skipped, TEST_DATABASE_URL set); boot OK (/health 200, /ready 200, protected 401, clean exit).
+
 ## BLOCKED
 _Live call ⛔ B4. Endpoint + fake tests writable now._

@@ -52,6 +52,8 @@ Built in `d0f7ae9` (`feat: app lifespan: Entra bearer on every non-probe route, 
 - Lifespan no longer seeds SQLite; scenario CLI/scripts/eval still use it until 9.1. New azure deps: azure-identity 1.26.0, azure-keyvault-secrets 4.11.3, msal 1.39.0.
 - Live boot: /health 200, /ready 200; /incidents, POST /webhooks/incident, POST /generate/pr-content, /api/config, / all 401 without token.
 
+Review fixes 2026-10-21 (d0f7ae9..d27a8f3, status stays done-pending-review): ebca7f8 test_database counts only its own tagged pool; d9ead3f IncidentTasks (shared with 5.1); 09ab874 Key Vault doc (secrets read once at startup, restart to rotate); 354d722 Langfuse shutdown bounded by a 5s daemon thread. Gate on d27a8f3: VERDICT GREEN (full run, 7 ran, 0 skipped, TEST_DATABASE_URL set); boot OK (/health 200, /ready 200, protected 401, clean exit).
+
 ## Tests
 50 tests, 7 ran in the integrated gate (env -i + TEST_DATABASE_URL). Gate: VERDICT GREEN. pip-audit clean.
 

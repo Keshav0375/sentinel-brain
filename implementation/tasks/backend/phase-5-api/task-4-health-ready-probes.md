@@ -36,5 +36,7 @@ Liveness + readiness. Open (no token) so K8s + backend-up can probe.
 Built 2026-10-18, commit 7827e0c: /health returns {"status":"ok"}; /ready pings the DB pool (no DB configured -> ready; configured but down -> 503).
 Tests: 17 added. Integrated gate (backend, env -i + TEST_DATABASE_URL): VERDICT GREEN (7 ran). Live boot: /health ok, /ready 200.
 
+Review fixes 2026-10-21 (d0f7ae9..d27a8f3, status stays done-pending-review): 070a30b /ready reads database_configured from the wired Settings. Gate on d27a8f3: VERDICT GREEN (full run, 7 ran, 0 skipped, TEST_DATABASE_URL set); boot OK (/health 200, /ready 200, protected 401, clean exit).
+
 ## BLOCKED
 _none locally._
