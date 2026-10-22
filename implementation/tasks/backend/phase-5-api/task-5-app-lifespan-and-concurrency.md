@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-5-api` |
 | **Commit prefix** | `feat:` |
@@ -45,7 +45,20 @@ router registration, and structlog config.
 2. `pytest tests/test_api/ -q` green.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built in `d0f7ae9` (`feat: app lifespan: Entra bearer on every non-probe route, optional Key Vault secrets, PG* Entra-token pool`), `src/sentinel/main.py`.
+- Entra bearer on every non-probe route; `/health`, `/ready`, `/docs`, openapi stay open (§3.6).
+- Optional Key Vault (`KEY_VAULT_URL`) loads Datadog + Langfuse secrets before Langfuse init; LLM keys never read from the vault.
+- PG* path uses an Entra-token password callable; `DATABASE_URL` wins. `SENTINEL_DEV_OPEN_DASHBOARD` opens only dashboard pages + read APIs.
+- Lifespan no longer seeds SQLite; scenario CLI/scripts/eval still use it until 9.1. New azure deps: azure-identity 1.26.0, azure-keyvault-secrets 4.11.3, msal 1.39.0.
+- Live boot: /health 200, /ready 200; /incidents, POST /webhooks/incident, POST /generate/pr-content, /api/config, / all 401 without token.
+
+## Tests
+50 tests, 7 ran in the integrated gate (env -i + TEST_DATABASE_URL). Gate: VERDICT GREEN. pip-audit clean.
+
+## How to Verify
+1. `cd ../Sentinel && poetry run sentinel serve` boots; `curl :8000/health` and `/ready` return 200.
+2. `curl -i :8000/incidents` returns 401 without a token.
+3. `pytest tests/test_api/ -q` green.
 
 ## BLOCKED
 _none locally._

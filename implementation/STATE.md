@@ -16,7 +16,7 @@
 | **Active phase** | backend 5 — API & App |
 | **Active branch** | `dev/backend-phase-5-api` (off `release-phase-2`) |
 | **Active PR** | none yet (backend 4: #22 merged) |
-| **Current task** | backend 5.5 (app lifespan and concurrency); 5.1 / 5.2 / 5.3 / 5.4 / 5.6 done-pending-review |
+| **Current task** | none — all of backend 5.1–5.6 done-pending-review; next is close-phase |
 | **Tasks verified** | 54 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 12 / 18 — infra 1-6, deployment 1-3, backend 1-4 (backend 1-4 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
