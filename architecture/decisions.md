@@ -24,6 +24,11 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 - RS256 via `PyJWKClient` on `…/<tid>/discovery/v2.0/keys`.
 - A bad, expired, wrong-aud or wrong-iss token → 401. A missing `Incident.Write` role → **403**.
 
+*Amended after review:*
+- **Entra v2 access tokens always carry `aud` = the API app's client-id GUID**, not the `api://` identifier URI.
+- `SENTINEL_API_AUDIENCE` is therefore a comma-separated list of accepted audiences: the app's client ID (required for v2) and optionally its identifier URI. It is **required config with no default**; the backend cannot derive the deployment/env name. Phase 7 sets it from the infra app registration's outputs.
+- Unset means every protected route returns 401 and the startup log says `auth_not_configured`, which fails safe.
+
 **Open routes:** only `/health` and `/ready`. Everything else is behind the bearer, including the Phase-1 dashboard pages' APIs, SSE events, scenarios, eval-report, `GET /api/config` and trajectories. `SENTINEL_DEV_OPEN_DASHBOARD=1` (default off, never set in the pod) opens the dashboard routes for local use only.
 
 **Webhook (§3.1)**
