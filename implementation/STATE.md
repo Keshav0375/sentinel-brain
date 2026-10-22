@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-10-18
+> Last updated: 2026-10-21
 
 
 ## Current Position
@@ -16,7 +16,7 @@
 | **Active phase** | backend 5 — API & App |
 | **Active branch** | `dev/backend-phase-5-api` (off `release-phase-2`) |
 | **Active PR** | none yet (backend 4: #22 merged) |
-| **Current task** | backend 5.1 (webhook receiver); wave 1 (5.2 / 5.3 / 5.4 / 5.6) done-pending-review |
+| **Current task** | backend 5.5 (app lifespan and concurrency); 5.1 / 5.2 / 5.3 / 5.4 / 5.6 done-pending-review |
 | **Tasks verified** | 54 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 12 / 18 — infra 1-6, deployment 1-3, backend 1-4 (backend 1-4 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
@@ -53,6 +53,8 @@ on the next occasion the platform is up.
   `az identity federated-credential delete --name plan-pull-request --identity-name gha-plan --resource-group rg-sentinel-bootstrap --yes`
 
 **Estate status (2026-10-05):** the estate was destroyed (destroy all, verify green: only `rg-sentinel-bootstrap` + `NetworkWatcherRG` remain). Live deploy-2 checks need a re-apply plus `grant-db-access.sh`.
+Phase-8 follow-up: whatever fills `context.pr_details.sha` (ci_incident_response.yml) must send the MERGE commit sha that `deployments.commit_sha` holds, not the PR head sha, or every fast path escalates.
+
 Infra follow-ups: `seed-vault.sh` needs a retry for RBAC propagation (apply's seed step failed 96s after the role grant); `push-deploy-config.sh` defaults `DD_SITE` to US1 but the org is US5.
 
 **Standing gaps, not blockers:**

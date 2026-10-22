@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-5-api` |
 | **Commit prefix** | `feat:` |
@@ -57,7 +57,18 @@ isolated asyncio task per incident, returns 202 immediately.
    → 202 then a stored incident. Repeat without the header → 401.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built `POST /webhooks/incident` (backend commit ac630a0, plus 360496a `fix(deps): certifi 2026.10.19` for unrelated advisory PYSEC-2026-4320). 25 files, ~41 tests.
+- Replaces the Phase-1 `/webhooks/alert`, AlertDeduplicator and AlertAck.
+- `IncidentPayload` requires signal_type/correlation_id/title; tags as object or comma string; severity/alert_id/service default "unknown".
+- Duplicate correlation_id -> 202 with the original incident_id, status `duplicate`.
+- One task per incident with its own STM; fast path pinned to `context.pr_details.sha` (7-char prefix rule); on rollback_proposed `deployments.incident_id` is backfilled.
+
+## Tests
+Gate: VERDICT GREEN (7 ran; orchestrator, env -i + TEST_DATABASE_URL, at 360496a). Tree clean, no attribution.
+
+## How to Verify
+1. `pytest tests/test_api/test_webhooks.py -q` green.
+2. `TOKEN=$(az account get-access-token --resource api://sentinel-backend --query accessToken -o tsv)`; `curl -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d @sample.json "$BACKEND_URL/webhooks/incident"` -> 202 then a stored incident; without the header -> 401.
 
 ## BLOCKED
 _none locally (fake LLM + local pgvector)._
