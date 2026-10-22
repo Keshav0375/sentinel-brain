@@ -15,7 +15,7 @@
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 5 — API & App |
 | **Active branch** | `dev/backend-phase-5-api` (off `release-phase-2`) |
-| **Active PR** | none yet (backend 4: #22 merged) |
+| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/23 (backend 5) |
 | **Current task** | none — all of backend 5.1–5.6 done-pending-review; next is close-phase |
 | **Tasks verified** | 54 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 12 / 18 — infra 1-6, deployment 1-3, backend 1-4 (backend 1-4 merged into release-phase-2) |
@@ -25,7 +25,9 @@
 
 ## Next Action
 
-**Backend phase 4 signed 2026-10-19** (PR #22 squash-merged into release-phase-2, 677e659). Next: backend phase 5 — API & App. Carry into phase 5:
+**Backend phase 5 PR #23 open, awaiting sign-off.** Carry forward: (a) worst-case shutdown 37s (drain 20 + 2 + trace flush 5 + close_pool 10) exceeds k8s 30s grace; phase 7 needs terminationGracePeriodSeconds >=45 or a shorter drain; (b) OTel TracerProvider atexit shutdown can add up to 30s, bounded but untested; (c) Key Vault read once at startup, restart to rotate; (d) real-LLM run needs real keys in Sentinel/.env; (e) user .env fixes: DATABASE_URL, LANGFUSE_BASE_URL, DD_SITE us5.
+
+(Previous:) **Backend phase 4 signed 2026-10-19** (PR #22 squash-merged into release-phase-2, 677e659). Next: backend phase 5 — API & App. Carry into phase 5:
 - webhook auth: `signal_type` is caller-chosen today; the fast path should compare to `context.pr_details.sha`; the `/generate/pr-content` endpoint must cross-check `target_deploy`
 - the live LLM run needs real `ANTHROPIC_API_KEY` + `OPENAI_API_KEY` (phase 4 verified on the fake LLM only; the developer `.env` has placeholder keys)
 - older carry-overs below
