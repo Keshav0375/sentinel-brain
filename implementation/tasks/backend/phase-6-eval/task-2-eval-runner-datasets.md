@@ -37,5 +37,7 @@ which are deleted in Phase 9) — run new prompt versions against historical tra
 ## Report   ·   _filled on completion_
 Built commit 063c3d8 on dev/backend-phase-6-eval: "refactor: eval runner scores finished scenario runs from a LangFuse dataset against branches.yaml (#81)". Dataset `sentinel-scenario-runs` (item schema in runner docstring); scores go to a dataset-run trace; runner is read-only (dec 2026-10-22). Files: eval/runner.py, eval/report.py, models/eval_result.py, scripts/run_eval.py, README.md, pyproject.toml/poetry.lock (pyyaml>=6.0.0), tests/test_eval/fixtures/branches.yaml (vendored), tests.
 
+Review fix batch cf56e67 (decisions brain 1ffd083, a85666d): runner persists incidents.eval_score via new eval/score_store.py (best effort; `--no-store` skips); push_item moved off the event loop; pyyaml spec style. Gate on cf56e67: VERDICT GREEN, full run, 7 ran, 0 skipped; boot OK (/health, /ready 200, protected routes 401).
+
 ## BLOCKED
 _Resolved: B7 closed 2026-09-13; no longer blocking._

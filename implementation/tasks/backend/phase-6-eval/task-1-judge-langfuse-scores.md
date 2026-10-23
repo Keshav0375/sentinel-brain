@@ -38,8 +38,11 @@ LangFuse and stored on the incident row (`eval_score` JSONB).
 Built in Sentinel commit faf7412 on dev/backend-phase-6-eval: "refactor: eval judge scores 0-1, pushes one LangFuse score per dimension, stores incidents.eval_score". Both outcomes judged; conflict stored but not pushed; eval_score shape `{judge_model, judge_conflict, scores, reasoning}`. Judge not wired into live pipeline (6.2 runner is the scorer; dec 2026-10-22, brain 1ffd083).
 Files: models/eval_result.py; eval/{rubric,judge,report,runner}.py; memory/episodic.py (new store_eval_score); dashboard/eval.html; scripts/run_eval.py; tests.
 
+Review fix batch cf56e67 ("fix: eval judge anchors on branches.yaml, flags judge failures, runner stores incidents.eval_score"; decisions brain 1ffd083, a85666d): rubric re-anchored on the branches.yaml fields; `judge_failed` flag (stored in eval_score, never pushed to LangFuse or aggregated); untrusted-data preamble plus `<trajectory>`/`<ground_truth>` tags; no-secrets instruction for reasoning.
+
 ## Tests
 ~30 new tests plus existing rescaled /5: 0-1 validators, eval_score shape, both outcomes, conflict not pushed, R14 values-only, store_eval_score on real pgvector. Gate: VERDICT GREEN (full run, 7 ran, 0 skipped). Boot OK: /health 200, /ready 200, protected routes 401.
+Re-gated on cf56e67: VERDICT GREEN, full run, 7 ran, 0 skipped; boot OK.
 
 ## BLOCKED
 _Resolved: B7 closed 2026-09-13; no longer blocking._
