@@ -16,7 +16,7 @@
 | **Active phase** | backend 6 — Eval |
 | **Active branch** | `dev/backend-phase-6-eval` (off `release-phase-2`) |
 | **Active PR** | none yet (backend 5: #23 merged) |
-| **Current task** | backend 6.2 |
+| **Current task** | backend 6.3 |
 | **Tasks verified** | 60 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 13 / 18 — infra 1-6, deployment 1-3, backend 1-5 (backend 1-5 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |

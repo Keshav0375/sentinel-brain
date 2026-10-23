@@ -165,7 +165,7 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 | # | Task | File | Status |
 |---|------|------|--------|
 | 6.1 | `eval/judge.py` → LangFuse scores | [task-1](tasks/backend/phase-6-eval/task-1-judge-langfuse-scores.md) | 🟡 |
-| 6.2 | `eval/runner.py` → deploy **30 scenario branches**, score vs `branches.yaml` ground truth → LangFuse | [task-2](tasks/backend/phase-6-eval/task-2-eval-runner-datasets.md) | 🔵 |
+| 6.2 | `eval/runner.py` → deploy **30 scenario branches**, score vs `branches.yaml` ground truth → LangFuse | [task-2](tasks/backend/phase-6-eval/task-2-eval-runner-datasets.md) | 🟡 |
 
 ### Phase 7 — Container & K8s  ·  branch `dev/backend-phase-7-container-and-k8s`  ·  Gate: 🔒
 | # | Task | File | Status |
