@@ -25,6 +25,16 @@ User answers to the phase 6 distill conflicts (binding):
 - **`incidents.eval_score` JSONB** = `{judge_model, judge_conflict, scores: {dimension: value}, reasoning: {dimension: text}}`, written by a new `EpisodicMemory` method.
 - The judge model is per §4.7 / 2026-10-18 (not Haiku); the spec's "Haiku" wording is stale.
 
+*Amended after review (2026-10-22):*
+- The LangFuse dataset is named **`sentinel-scenario-runs`**, and its item schema is documented in `src/sentinel/eval/runner.py`.
+- The judge rubric anchors on `branches.yaml` ground truth:
+  - triage = `expected_signal_type` (+ `expected_failed_stage`)
+  - root cause = `fault` / `expected_culprit`
+  - remediation = `expected_resolution` + `expected_culprit`
+- A judge failure is flagged (`judge_failed`) and, like `judge_conflict`, never pushed or aggregated.
+- The runner persists `incidents.eval_score` for items that carry an incident id.
+- The judge prompt treats the trajectory as untrusted data, and the reasoning must never quote secrets or raw log values.
+
 ### 2026-10-19: Backend phase 5 (API & App) contract
 
 **Auth (§3.6, amended)**
