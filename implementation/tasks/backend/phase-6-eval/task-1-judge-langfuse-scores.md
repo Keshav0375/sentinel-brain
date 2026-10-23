@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-6-eval` |
 | **Commit prefix** | `refactor:` |
@@ -31,11 +31,15 @@ LangFuse and stored on the incident row (`eval_score` JSONB).
 - **Quality gate:** `--repo backend`.
 
 ## How to Verify (phase gate)
-1. `pytest tests/test_eval/test_judge.py -q` green.
+1. `pytest tests/test_eval/test_judge.py -q` green (from ../Sentinel).
 2. (with B7) scores appear on the LangFuse trace.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report
+Built in Sentinel commit faf7412 on dev/backend-phase-6-eval: "refactor: eval judge scores 0-1, pushes one LangFuse score per dimension, stores incidents.eval_score". Both outcomes judged; conflict stored but not pushed; eval_score shape `{judge_model, judge_conflict, scores, reasoning}`. Judge not wired into live pipeline (6.2 runner is the scorer; dec 2026-10-22, brain 1ffd083).
+Files: models/eval_result.py; eval/{rubric,judge,report,runner}.py; memory/episodic.py (new store_eval_score); dashboard/eval.html; scripts/run_eval.py; tests.
+
+## Tests
+~30 new tests plus existing rescaled /5: 0-1 validators, eval_score shape, both outcomes, conflict not pushed, R14 values-only, store_eval_score on real pgvector. Gate: VERDICT GREEN (full run, 7 ran, 0 skipped). Boot OK: /health 200, /ready 200, protected routes 401.
 
 ## BLOCKED
 _Live score push ⛔ B7. Judge + fake tests writable now._
