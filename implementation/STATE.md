@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-10-22
+> Last updated: 2026-10-23
 
 
 ## Current Position
@@ -15,7 +15,7 @@
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 6 — Eval |
 | **Active branch** | `dev/backend-phase-6-eval` (off `release-phase-2`) |
-| **Active PR** | none yet (backend 5: #23 merged) |
+| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/24 (backend 6) |
 | **Current task** | backend 6.3 |
 | **Tasks verified** | 60 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 13 / 18 — infra 1-6, deployment 1-3, backend 1-5 (backend 1-5 merged into release-phase-2) |
@@ -25,7 +25,9 @@
 
 ## Next Action
 
-**Backend phase 5 signed 2026-10-23** (PR #23 merged into release-phase-2, 0ea054a). Next: backend phase 6 — Eval. Carry forward: (a) worst-case shutdown 37s (drain 20 + 2 + trace flush 5 + close_pool 10) exceeds k8s 30s grace; phase 7 needs terminationGracePeriodSeconds >=45 or a shorter drain; (b) OTel TracerProvider atexit shutdown can add up to 30s, bounded but untested; (c) Key Vault read once at startup, restart to rotate; (d) real-LLM run needs real keys in Sentinel/.env; (e) user .env fixes: DATABASE_URL, LANGFUSE_BASE_URL, DD_SITE us5.
+**Backend phase 6 PR #24 open 2026-10-23** (awaiting sign-off). Carry forward: (a) live eval needs real scenario runs: estate up, human merging scenario branch PRs, real LLM keys in Sentinel/.env (B4/B5); (b) score_store uses DATABASE_URL only, not Entra PG*, so off-cluster runner needs DATABASE_URL; (c) keep vendored tests/test_eval/fixtures/branches.yaml in sync with Sentinel-deployment/scenarios/branches.yaml; (d) eval_score JSONB gains `judge_failed`; plus phase 5 carries below (37s shutdown vs 30s grace: phase 7 needs terminationGracePeriodSeconds >=45).
+
+(Previous:) **Backend phase 5 signed 2026-10-23** (PR #23 merged into release-phase-2, 0ea054a). Next: backend phase 6 — Eval. Carry forward: (a) worst-case shutdown 37s (drain 20 + 2 + trace flush 5 + close_pool 10) exceeds k8s 30s grace; phase 7 needs terminationGracePeriodSeconds >=45 or a shorter drain; (b) OTel TracerProvider atexit shutdown can add up to 30s, bounded but untested; (c) Key Vault read once at startup, restart to rotate; (d) real-LLM run needs real keys in Sentinel/.env; (e) user .env fixes: DATABASE_URL, LANGFUSE_BASE_URL, DD_SITE us5.
 
 (Previous:) **Backend phase 4 signed 2026-10-19** (PR #22 squash-merged into release-phase-2, 677e659). Next: backend phase 5 — API & App. Carry into phase 5:
 - webhook auth: `signal_type` is caller-chosen today; the fast path should compare to `context.pr_details.sha`; the `/generate/pr-content` endpoint must cross-check `target_deploy`
