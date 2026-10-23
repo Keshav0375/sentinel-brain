@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-10-21
+> Last updated: 2026-10-23
 
 
 ## Current Position
@@ -13,19 +13,19 @@
 | Field | Value |
 |-------|-------|
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
-| **Active phase** | backend 5 — API & App |
-| **Active branch** | `dev/backend-phase-5-api` (off `release-phase-2`) |
-| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/23 (backend 5) |
-| **Current task** | none — all of backend 5.1–5.6 done-pending-review; next is close-phase |
-| **Tasks verified** | 54 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
-| **Phases merged** | 12 / 18 — infra 1-6, deployment 1-3, backend 1-4 (backend 1-4 merged into release-phase-2) |
+| **Active phase** | backend 6 — Eval |
+| **Active branch** | `dev/backend-phase-6-eval` (off `release-phase-2`; not yet created) |
+| **Active PR** | none yet (backend 5: #23 merged) |
+| **Current task** | backend 6.1 |
+| **Tasks verified** | 60 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
+| **Phases merged** | 13 / 18 — infra 1-6, deployment 1-3, backend 1-5 (backend 1-5 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
 
-**Backend phase 5 PR #23 open, awaiting sign-off.** Carry forward: (a) worst-case shutdown 37s (drain 20 + 2 + trace flush 5 + close_pool 10) exceeds k8s 30s grace; phase 7 needs terminationGracePeriodSeconds >=45 or a shorter drain; (b) OTel TracerProvider atexit shutdown can add up to 30s, bounded but untested; (c) Key Vault read once at startup, restart to rotate; (d) real-LLM run needs real keys in Sentinel/.env; (e) user .env fixes: DATABASE_URL, LANGFUSE_BASE_URL, DD_SITE us5.
+**Backend phase 5 signed 2026-10-23** (PR #23 merged into release-phase-2, 0ea054a). Next: backend phase 6 — Eval. Carry forward: (a) worst-case shutdown 37s (drain 20 + 2 + trace flush 5 + close_pool 10) exceeds k8s 30s grace; phase 7 needs terminationGracePeriodSeconds >=45 or a shorter drain; (b) OTel TracerProvider atexit shutdown can add up to 30s, bounded but untested; (c) Key Vault read once at startup, restart to rotate; (d) real-LLM run needs real keys in Sentinel/.env; (e) user .env fixes: DATABASE_URL, LANGFUSE_BASE_URL, DD_SITE us5.
 
 (Previous:) **Backend phase 4 signed 2026-10-19** (PR #22 squash-merged into release-phase-2, 677e659). Next: backend phase 5 — API & App. Carry into phase 5:
 - webhook auth: `signal_type` is caller-chosen today; the fast path should compare to `context.pr_details.sha`; the `/generate/pr-content` endpoint must cross-check `target_deploy`
@@ -78,6 +78,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-10-23 | backend | 5 — API & App | `dev/backend-phase-5-api` | [#23](https://github.com/Keshav0375/Sentinel/pull/23) | Keshav | Merged by the user into release-phase-2 (0ea054a). Gate GREEN on d27a8f3 (7 ran, 0 skipped). Carried: 37s worst-case shutdown vs k8s 30s grace; OTel atexit up to 30s untested; KV read once. |
 | 2026-10-19 | backend | 4 — Agent Pipeline & Loops | `dev/backend-phase-4-agents` | [#22](https://github.com/Keshav0375/Sentinel/pull/22) | Keshav | Approve & merge into release-phase-2 (677e659). Gate VERDICT GREEN at fac21a9 (env -i + TEST_DATABASE_URL); PR CI 1925 passed, 1 skipped. Verified on the fake LLM only; no real-LLM run yet (developer .env has placeholder keys); local smoke commands not executed. |
 | 2026-10-14 | backend | 3 — Tools Rewrite | `dev/backend-phase-3-tools` | [#21](https://github.com/Keshav0375/Sentinel/pull/21) | Keshav | Approve & merge into release-phase-2 (5e257e0). Gate VERDICT GREEN at 7550eab (env -i + TEST_DATABASE_URL); PR CI 1634 passed, 1 skipped (cross-repo INSERT drift check needs the deployment repo checked out). |
 | 2026-10-14 | backend | 2 — Memory & Tracing Rewrite | `dev/backend-phase-2-memory-and-tracing` | [#20](https://github.com/Keshav0375/Sentinel/pull/20) | Keshav | Approve & merge into release-phase-2 (81cbfff). Gate VERDICT GREEN at 112e27f (env -i + TEST_DATABASE_URL); PR CI passed, 1646 tests, 0 skipped. |
