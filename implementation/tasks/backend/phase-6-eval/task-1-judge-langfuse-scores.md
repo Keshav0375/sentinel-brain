@@ -15,7 +15,7 @@ Judge scores trajectory quality on both rollback and escalation paths; scores pu
 LangFuse and stored on the incident row (`eval_score` JSONB).
 
 **Files modified:** `src/sentinel/eval/judge.py`
-- Judge agent (Haiku, **different family/model discipline** from graded agents — safety invariant) scores per-dimension (triage_accuracy, root_cause_correctness, etc.).
+- Judge agent (model per §4.7 / dec 2026-10-18, **different family/model discipline** from graded agents — safety invariant) scores per-dimension (triage_accuracy, root_cause_correctness, etc.).
 - `push_score(trace_id, name, value)` per dimension (§6.4); return structured `JudgeResult`.
 - Evaluates reasoning quality, not outcome (§3): good escalation can score well.
 

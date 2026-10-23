@@ -71,7 +71,7 @@ image pull before the pipeline starts. For live demos, set the repo variable
 │  │  ├── GET  /incidents           (query history)           │     │
 │  │  ├── GET  /incidents/{id}      (single)                  │     │
 │  │  ├── POST /generate/pr-content (PR title+desc)           │     │
-│  │  ├── GET  /eval/results        (eval dashboard)          │     │
+│  │  ├── GET  /api/eval-report     (eval dashboard)          │     │
 │  │  ├── GET  /health              (liveness)                │     │
 │  │  └── GET  /ready               (readiness)               │     │
 │  │                                                          │     │
@@ -1713,7 +1713,7 @@ Phase 1 has synthetic data generators, local SQLite, and scripts that won't exis
 | `src/sentinel/tools/hitl.py` | Remove entirely — HITL gate is the GitHub PR review, not a tool. |
 | `src/sentinel/agents/orchestrator.py` | Linear chain → plan-execute with reflexion loops. |
 | `src/sentinel/eval/judge.py` | Local JSON report → LangFuse scores. |
-| `src/sentinel/eval/runner.py` | Iterates synthetic scenarios from `data/` → **deploys the 30 sentinel-deployment scenario branches** and scores agent output against each branch's ground-truth label in `scenarios/branches.yaml` (case, expected `signal_type`, expected resolution). The branches ARE the eval dataset; results push to LangFuse. |
+| `src/sentinel/eval/runner.py` | **Read-only scorer** (dec 2026-10-22): reads finished scenario trajectories from a LangFuse dataset (items labelled by `branch`), scores them against `scenarios/branches.yaml` ground truth (fired / classified / correlated / revert target, 0–1) plus judge dimensions, and pushes the results to LangFuse and the eval report. A human runs the scenarios (merge → GHA), never the backend. |
 | `src/sentinel/config.py` | Add: DB connection string, Datadog API config, Teams webhook URL, LangFuse keys, asyncpg pool settings. |
 | `Dockerfile` | Remove `COPY data/ ./data/`. No synthetic data in container. |
 

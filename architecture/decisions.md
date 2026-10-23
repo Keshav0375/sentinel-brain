@@ -16,6 +16,15 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-22: Backend phase 6 (Eval) contract
+
+User answers to the phase 6 distill conflicts (binding):
+- **The runner is a read-only scorer (HITL).** Backend code never merges, deploys or reverts scenario branches. A human runs scenarios by merging a branch's PR; GHA deploys; Sentinel drafts the revert PR. `src/sentinel/eval/runner.py` reads the finished trajectories from a LangFuse dataset. Each dataset item carries its `branch` label, which the runner joins to `scenarios/branches.yaml`. It scores four ground-truth checks (fired, classified `signal_type`, correlated culprit, revert-PR target), each pass = 1 / fail = 0, and also the judge's reasoning dimensions. The offline fixture is a vendored copy of `branches.yaml` under `tests/`. The runner does not depend on `data/` or `sentinel.generator`. §13.2 (runner row) is amended to match.
+- **Score scale 0–1.** Every judge dimension and ground-truth check is a NUMERIC LangFuse score in [0,1]. The existing 0–5 models change.
+- **Eval route stays `GET /api/eval-report`** (phase 5, behind the bearer). §1.1's `/eval/results` is amended. The runner writes the report that route reads.
+- **`incidents.eval_score` JSONB** = `{judge_model, judge_conflict, scores: {dimension: value}, reasoning: {dimension: text}}`, written by a new `EpisodicMemory` method.
+- The judge model is per §4.7 / 2026-10-18 (not Haiku); the spec's "Haiku" wording is stale.
+
 ### 2026-10-19: Backend phase 5 (API & App) contract
 
 **Auth (§3.6, amended)**
