@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-7-container-and-k8s` |
 | **Commit prefix** | `feat:` |
@@ -32,11 +32,15 @@ per run (dynamic URL, §8.5).
 - **Quality gate:** `--repo backend` (+ manifest lint).
 
 ## How to Verify (phase gate)
+0. Gate: VERDICT GREEN (full run); backend boot OK; yamllint --strict clean; 25 tests in tests/test_infra/test_k8s_manifests.py.
 1. `kubectl apply --dry-run=client -f azure/k8s/` → valid.
 2. (with AKS) apply → `kubectl get pods` Ready; `kubectl get svc` shows an external IP serving `/health`.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built in 830bf34 "feat: azure/k8s manifests (deployment, service, configmap, networkpolicy)" on dev/backend-phase-7-container-and-k8s.
+Files: azure/k8s/{deployment,service,configmap,networkpolicy}.yaml, azure/k8s/placeholders.txt (envsubst var list + recipe), tests/test_infra/test_k8s_manifests.py (25 tests).
+No serviceaccount.yaml (infra owns SA sentinel-backend); no namespace in manifests, so pass -n sentinel-dev. Deployment: Recreate, 1 replica, WI label, grace 45s, /ready 10s + /health 15s probes, 250m/512Mi req, 1/2Gi limits, non-root, drop ALL. ConfigMap non-secret only; NetworkPolicy allows TCP 8000. kubectl dry-run=client (orbstack) passed.
+Unverified live: startup time vs liveness budget (no startupProbe); B1 estate down. Decisions: dd95eef.
 
 ## BLOCKED
 _Live apply ⛔ B1. Manifests + dry-run validate now._
