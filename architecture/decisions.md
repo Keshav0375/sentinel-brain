@@ -48,6 +48,13 @@ User answers to the phase 7 distill conflicts (binding; they supersede the hardc
   - the API app registration with the `Incident.Write` role
   - root outputs: ACR login server, KV URI, backend UAMI client ID, API app client ID
 
+*Amended after review (2026-10-24):*
+- Callers log in. A workflow runs `azure/login` (OIDC) before using the actions, so the actions take no client-id or tenant input. Only `get-backend-token` takes `audience` and an optional `tenant`.
+- `get-kv-secrets` takes the **KV URI** (the infra root output) and derives the vault name from it.
+- `backend-up` applies the manifests bundled with the SHA-pinned action (`github.action_path`), never the caller's workspace, and validates every rendered value (no quotes or newlines, plus per-field patterns).
+- The pod sets `automountServiceAccountToken: false` (workload identity injects its own projected token) and `readOnlyRootFilesystem: true`, with emptyDir mounts for `/app/reports` and `/tmp`.
+- The image base is pinned by `@sha256` digest, and the embedding model by `revision=`.
+
 **The Dockerfile installs from poetry.lock.**
 - Multi-stage: the builder installs main deps from `poetry.lock`, with torch from the CPU wheel index.
 - The runtime is `python:3.12-slim` with the venv plus `src/`, `alembic/`, `alembic.ini`. There is no `data/` and no requirements.txt.
