@@ -41,6 +41,7 @@ Built in 830bf34 "feat: azure/k8s manifests (deployment, service, configmap, net
 Files: azure/k8s/{deployment,service,configmap,networkpolicy}.yaml, azure/k8s/placeholders.txt (envsubst var list + recipe), tests/test_infra/test_k8s_manifests.py (25 tests).
 No serviceaccount.yaml (infra owns SA sentinel-backend); no namespace in manifests, so pass -n sentinel-dev. Deployment: Recreate, 1 replica, WI label, grace 45s, /ready 10s + /health 15s probes, 250m/512Mi req, 1/2Gi limits, non-root, drop ALL. ConfigMap non-secret only; NetworkPolicy allows TCP 8000. kubectl dry-run=client (orbstack) passed.
 Unverified live: startup time vs liveness budget (no startupProbe); B1 estate down. Decisions: dd95eef.
+Review fixes 1729dbf (2026-10-24): automountServiceAccountToken false; readOnlyRootFilesystem true with emptyDir mounts for /app/reports and /tmp. Unverified live: automountServiceAccountToken=false combined with workload identity. Gate VERDICT GREEN on 1729dbf (full run, 7 ran, 0 skipped); boot OK. Decisions: dd95eef, b384323.
 
 ## BLOCKED
 _Live apply ⛔ B1. Manifests + dry-run validate now._

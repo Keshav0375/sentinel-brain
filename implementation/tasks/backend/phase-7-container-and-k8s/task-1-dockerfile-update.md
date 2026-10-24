@@ -45,6 +45,7 @@ Built 2026-10-24. Commits 3f4980c "refactor: lock-based arm64 image; LLM keys re
 - all-MiniLM-L6-v2 baked into /opt/hf, HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1. uvicorn --timeout-graceful-shutdown 5 (5+37=42 s < 45 s grace).
 - KV loader reads anthropic-api-key and openai-api-key into Settings (no env mirroring).
 - Tooling: PR #25 (d0e58f4) bumped setuptools/filelock + dated filelock CVE ignore (expires 2026-11-24). Decisions: dd95eef.
+Review fixes 1729dbf (2026-10-24): base image pinned to python:3.12-slim@sha256:6c6ae362...e90f (arm64); model pinned to revision 1110a243fdf4706b3f48f1d95db1a4f5529b4d41 (embeddings.py PINNED_REVISIONS). `docker run --read-only --tmpfs /tmp --tmpfs /app/reports --network none` returns /health 200. Gate VERDICT GREEN on 1729dbf (full run, 7 ran, 0 skipped); boot OK. Decisions: dd95eef, b384323.
 
 ## BLOCKED
 _none locally (Docker). Note: full boot needs DB env or FAKE_LLM._

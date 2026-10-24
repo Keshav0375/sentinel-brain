@@ -57,6 +57,7 @@ Live use needs the CI identity infra ticket (decision dd95eef) before phase 8.
 
 ## Tests
 Gate: VERDICT GREEN (full run); backend boot OK. actionlint probe, shellcheck, yamllint clean; stubbed dry-runs cover every action (actionlint test skips on CI runner lacking it).
+Review fixes 1729dbf (2026-10-24): backend-up applies manifests bundled with the pinned action (GITHUB_ACTION_PATH), validates every rendered value, waits on the cluster provisioningState, retries the LB poll on transient errors. backend-down deletes the service by name. get-kv-secrets takes the KV URI. notify-teams neutralises markdown links. Callers log in first (azure/login), as amended. Gate VERDICT GREEN on 1729dbf (full run, 7 ran, 0 skipped); boot OK. Decisions: dd95eef, b384323.
 
 ## BLOCKED
 _Live runs ⛔ B1. YAML + lint now._
