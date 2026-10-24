@@ -38,7 +38,7 @@ User answers (binding; they supersede backend §9.1–§9.3 triggers, `secrets.G
 - `ci_backend_scale.yml` joins `concurrency: {group: sentinel-backend, cancel-in-progress: false}`.
 - 8.3's name is `[sentinel] incident — response pipeline`.
 - Builds and the PR-gate `docker run` use native arm64 runners (`ubuntu-24.04-arm`).
-- Path filters add `poetry.lock`, `.github/workflows/**` and `.github/actions/**`.
+- Path filters add `poetry.lock`, `alembic/**`, `alembic.ini`, `scripts/**`, `.github/workflows/**` and `.github/actions/**` (all of which change the image or the pipeline).
 - Non-deploy runs (8.3, 8.4) resolve `stable` to its `sha-<7>` tag via its ACR digest. ACR cleanup keeps the 3 newest `sha-` tags plus the ones behind `stable` and the running Deployment.
 - Dispatch mapping:
   - `client_payload.{signal_type, correlation_id, event}` → `IncidentPayload`
