@@ -16,6 +16,50 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-24: Backend phase 7 (Container & K8s) contract
+
+User answers to the phase 7 distill conflicts (binding; they supersede the hardcoded names and the stale text in backend §7.1, §8.1, §8.2, §8.5, §9.2 and §13.5):
+
+**Names come from infra.**
+- Infra Terraform owns namespace `sentinel-dev` (`<deployment>-<env>`) and ServiceAccount `sentinel-backend`, with its WI client-id annotation. The backend ships no `serviceaccount.yaml`.
+- The Deployment sets `serviceAccountName: sentinel-backend` and the pod label `azure.workload.identity/use: "true"`.
+- Manifests carry `${VAR}` placeholders (ACR login server, image tag, KV URI, PG host/db/user, API tenant/audience). `backend-up` fills them from Terraform outputs and inputs.
+- Every kubectl call is namespaced. No resource name is hardcoded: §8's `sentinelacr0375`, `sentinel-aks`, `sentinel-rg`, `sentinel-kv-0375`, `sentinel-pg-0375`, `PGDATABASE=sentinel`, `PGUSER=sentinel-backend-wi` and the bare `api://sentinel-backend` are void.
+
+**Pod config is a ConfigMap only.**
+- `sentinel-config` holds non-secret values only: `SENTINEL_API_TENANT_ID`, `SENTINEL_API_AUDIENCE`, `DD_SITE=us5.datadoghq.com`, `KEY_VAULT_URL`, `PGHOST`/`PGDATABASE`/`PGUSER`, `SENTINEL_PRIMARY_PROVIDER`.
+- There is no K8s Secret; the task's `sentinel-secrets` is void.
+- `terminationGracePeriodSeconds: 45` (the worst-case shutdown is 37 s).
+
+**Scale-to-zero leaves the shared cluster running.**
+- `backend-down` (skipped when `vars.SENTINEL_KEEP_WARM == 'true'`) deletes the Service, which releases the LB IP, and scales the deployment to 0. It never stops the shared cluster.
+- `backend-up` runs `az aks start` only when the cluster is stopped.
+- Stopping the cluster is a separate, manual operation.
+
+**LLM credentials live in Key Vault.**
+- Secrets `anthropic-api-key` and `openai-api-key` are added to KV (seed-vault.sh) and read once at startup via workload identity, like the DD and Langfuse secrets.
+- This replaces the 2026-08-30 LLM WIF deferral.
+- No `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` env var is set in the pod.
+
+**The CI identity is an infra ticket.**
+- Phase 7 actions take client ID, tenant and audience as inputs and are validated offline (actionlint plus dry-run).
+- A tracked infra task, due before backend phase 8, adds:
+  - a `gha-backend` identity with a FIC for `repo:Keshav0375/Sentinel` environment `sentinel-dev`, plus AKS / KV / AcrPush grants
+  - the API app registration with the `Incident.Write` role
+  - root outputs: ACR login server, KV URI, backend UAMI client ID, API app client ID
+
+**The Dockerfile installs from poetry.lock.**
+- Multi-stage: the builder installs main deps from `poetry.lock`, with torch from the CPU wheel index.
+- The runtime is `python:3.12-slim` with the venv plus `src/`, `alembic/`, `alembic.ini`. There is no `data/` and no requirements.txt.
+- Build target `linux/arm64`.
+- CMD is uvicorn with `--timeout-graceful-shutdown`.
+
+**Orchestrator rulings.**
+- Action I/O names follow §9: `get-db-token` → `pg-token`, `get-backend-token` → `bearer`, `psql-exec(sql, pg-token)`.
+- There are seven actions, used cross-repo pinned by commit SHA, never `@main`.
+- A NetworkPolicy allows TCP 8000 ingress to `app: sentinel-backend` from the world (LB) under Cilium.
+- Action inputs reach `run:` only through `env:`, and SQL values travel only as `psql -v` vars.
+
 ### 2026-10-22: Backend phase 6 (Eval) contract
 
 User answers to the phase 6 distill conflicts (binding):
