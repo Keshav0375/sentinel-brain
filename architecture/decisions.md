@@ -16,6 +16,52 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-24: Backend phase 8 (CI/CD Workflows) contract
+
+User answers (binding; they supersede backend §9.1–§9.3 triggers, `secrets.GH_PAT`, the stale names and the `sentinel-gha` PG user):
+
+**`release-phase-2` is the live branch for the rest of Phase 2.**
+- `release-phase-2` becomes the **default branch** of `Keshav0375/Sentinel` until the final merge. The user switches it in GitHub settings, then back to `main` at the final merge. This is needed because `repository_dispatch`, `schedule` and `workflow_dispatch` run from the default branch.
+- `ci_validation.yml` gates `pull_request` into `[main, release-phase-2]`. It uses `pull_request` (never `pull_request_target`), `permissions: contents: read`, and no `environment`, `id-token`, `azure/login` or secrets.
+- `ci_backend_deployment.yml` deploys on `push` to `[main, release-phase-2]`.
+- The GitHub environment `sentinel-dev` on Sentinel allows deployments only from `main` and `release-phase-2`.
+
+**Revert-PR credential: a fine-grained PAT.**
+- `REVERT_PR_PAT`, scoped to `Keshav0375/Sentinel-deployment` only (Contents RW, Pull requests RW, 90-day expiry), stored as a **`sentinel-dev` environment secret**.
+- It pushes only `revert-<sha>` and opens the PR. Sentinel-deployment `main` requires a PR, so no workflow can merge, approve or enable auto-merge.
+
+**Rollback spec: a new backend endpoint.**
+- `GET /incidents/{id}/rollback-spec` (bearer auth, `Incident.Write`) returns the `RollbackSpec` the pipeline drafted (404 when there is none, e.g. escalated).
+- The workflow passes it unchanged to `POST /generate/pr-content`. The backend still only drafts.
+
+**Orchestrator rulings.**
+- `ci_backend_scale.yml` joins `concurrency: {group: sentinel-backend, cancel-in-progress: false}`.
+- 8.3's name is `[sentinel] incident — response pipeline`.
+- Builds and the PR-gate `docker run` use native arm64 runners (`ubuntu-24.04-arm`).
+- Path filters add `poetry.lock`, `.github/workflows/**` and `.github/actions/**`.
+- Non-deploy runs (8.3, 8.4) resolve `stable` to its `sha-<7>` tag via its ACR digest. ACR cleanup keeps the 3 newest `sha-` tags plus the ones behind `stable` and the running Deployment.
+- Dispatch mapping:
+  - `client_payload.{signal_type, correlation_id, event}` → `IncidentPayload`
+  - `title` ← `event.title`; tags ← `event.tags`
+  - a non-UUID `correlation_id` → `uuid5(NAMESPACE_URL, "sentinel:" + id)`, deterministic, so dedupe holds
+  - `pr_details.sha` = the **merge commit** sha
+- `git revert -m 1` for merge commits.
+- `guard-main-source.yml`'s `${{ github.head_ref }}` script injection is fixed (passed via `env:`) as part of 8.1.
+- Every job that runs `azure/login` declares `environment: sentinel-dev`.
+
+**Names the infra CI-identity ticket must create** (GitHub environment `sentinel-dev` vars on `Keshav0375/Sentinel`, unless noted):
+- Resource-tenant login: `AZURE_CLIENT_ID` (gha-backend UAMI), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
+- Identity-tenant login: `AZURE_IDENTITY_TENANT_ID`, `AZURE_GHA_CLIENT_ID`. The latter is a client app holding `Incident.Write` on the API app.
+- API: `SENTINEL_API_TENANT_ID`, `SENTINEL_API_AUDIENCE` (the API app client-id GUID).
+- Infra outputs: `AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`, `ACR_NAME`, `ACR_LOGIN_SERVER`, `KEY_VAULT_URI`, `PG_HOST`, `PG_DATABASE`, `PG_USER_BACKEND` (the pod's PG principal), `PG_USER_GHA` (the gha-backend PG principal).
+- Repo var `SENTINEL_KEEP_WARM`. Environment secret `REVERT_PR_PAT` (user-created).
+- Grants:
+  - gha-backend gets AcrPush (plus tag delete for cleanup) on ACR
+  - Key Vault Secrets User on the deployment KV
+  - AKS: start/read plus namespace-scoped RBAC write on `sentinel-dev`, and the cluster-user credential for kubelogin
+  - a Postgres principal with `SELECT` on `services` and `UPDATE(pr_number, pr_url)` on `incidents` only
+- Plus the earlier items: the API app registration (`Incident.Write`, v2 tokens) and seed-vault.sh adding `anthropic-api-key` and `openai-api-key`.
+
 ### 2026-10-24: Backend phase 7 (Container & K8s) contract
 
 User answers to the phase 7 distill conflicts (binding; they supersede the hardcoded names and the stale text in backend §7.1, §8.1, §8.2, §8.5, §9.2 and §13.5):
