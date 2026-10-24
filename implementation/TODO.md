@@ -161,13 +161,13 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 | 5.5 | `main.py` lifespan + concurrency + **workload-identity KV/DB wiring** | [task-5](tasks/backend/phase-5-api/task-5-app-lifespan-and-concurrency.md) | ✅ |
 | 5.6 | **`api/auth.py`** — Entra bearer validation (JWKS: aud/iss/exp/`Incident.Write`); apply to non-health routes | [task-6](tasks/backend/phase-5-api/task-6-entra-bearer-auth.md) | ✅ |
 
-### Phase 6 — Eval  ·  branch `dev/backend-phase-6-eval`  ·  Gate: ⬜ **← NEXT**
+### Phase 6 — Eval  ·  branch `dev/backend-phase-6-eval`  ·  Gate: ✅ 2026-10-24
 | # | Task | File | Status |
 |---|------|------|--------|
-| 6.1 | `eval/judge.py` → LangFuse scores | [task-1](tasks/backend/phase-6-eval/task-1-judge-langfuse-scores.md) | 🟡 |
-| 6.2 | `eval/runner.py` → deploy **30 scenario branches**, score vs `branches.yaml` ground truth → LangFuse | [task-2](tasks/backend/phase-6-eval/task-2-eval-runner-datasets.md) | 🟡 |
+| 6.1 | `eval/judge.py` → LangFuse scores | [task-1](tasks/backend/phase-6-eval/task-1-judge-langfuse-scores.md) | ✅ |
+| 6.2 | `eval/runner.py` → deploy **30 scenario branches**, score vs `branches.yaml` ground truth → LangFuse | [task-2](tasks/backend/phase-6-eval/task-2-eval-runner-datasets.md) | ✅ |
 
-### Phase 7 — Container & K8s  ·  branch `dev/backend-phase-7-container-and-k8s`  ·  Gate: 🔒
+### Phase 7 — Container & K8s  ·  branch `dev/backend-phase-7-container-and-k8s`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 7.1 | Dockerfile update (drop `data/`, torch-cpu) | [task-1](tasks/backend/phase-7-container-and-k8s/task-1-dockerfile-update.md) | ⬜ |

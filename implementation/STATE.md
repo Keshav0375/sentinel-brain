@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-10-23
+> Last updated: 2026-10-24
 
 
 ## Current Position
@@ -13,19 +13,19 @@
 | Field | Value |
 |-------|-------|
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
-| **Active phase** | backend 6 — Eval |
-| **Active branch** | `dev/backend-phase-6-eval` (off `release-phase-2`) |
-| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/24 (backend 6) |
-| **Current task** | backend 6.3 |
-| **Tasks verified** | 60 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
-| **Phases merged** | 13 / 18 — infra 1-6, deployment 1-3, backend 1-5 (backend 1-5 merged into release-phase-2) |
+| **Active phase** | backend 7 — Container & K8s |
+| **Active branch** | `dev/backend-phase-7-container-and-k8s` (off `release-phase-2`) |
+| **Active PR** | none yet (backend 6: #24 merged) |
+| **Current task** | backend 7.1 |
+| **Tasks verified** | 62 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
+| **Phases merged** | 14 / 18 — infra 1-6, deployment 1-3, backend 1-6 (backend 1-6 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
 
-**Backend phase 6 PR #24 open 2026-10-23** (awaiting sign-off). Carry forward: (a) live eval needs real scenario runs: estate up, human merging scenario branch PRs, real LLM keys in Sentinel/.env (B4/B5); (b) score_store uses DATABASE_URL only, not Entra PG*, so off-cluster runner needs DATABASE_URL; (c) keep vendored tests/test_eval/fixtures/branches.yaml in sync with Sentinel-deployment/scenarios/branches.yaml; (d) eval_score JSONB gains `judge_failed`; plus phase 5 carries below (37s shutdown vs 30s grace: phase 7 needs terminationGracePeriodSeconds >=45).
+**Backend phase 6 signed 2026-10-24** (PR #24 merged, d2564d3). Next: backend phase 7 — Container & K8s. Carry forward: (a) live eval needs real scenario runs: estate up, human merging scenario branch PRs, real LLM keys in Sentinel/.env (B4/B5); (b) score_store uses DATABASE_URL only, not Entra PG*, so off-cluster runner needs DATABASE_URL; (c) keep vendored tests/test_eval/fixtures/branches.yaml in sync with Sentinel-deployment/scenarios/branches.yaml; (d) eval_score JSONB gains `judge_failed`; plus phase 5 carries below (37s shutdown vs 30s grace: phase 7 needs terminationGracePeriodSeconds >=45).
 
 (Previous:) **Backend phase 5 signed 2026-10-23** (PR #23 merged into release-phase-2, 0ea054a). Next: backend phase 6 — Eval. Carry forward: (a) worst-case shutdown 37s (drain 20 + 2 + trace flush 5 + close_pool 10) exceeds k8s 30s grace; phase 7 needs terminationGracePeriodSeconds >=45 or a shorter drain; (b) OTel TracerProvider atexit shutdown can add up to 30s, bounded but untested; (c) Key Vault read once at startup, restart to rotate; (d) real-LLM run needs real keys in Sentinel/.env; (e) user .env fixes: DATABASE_URL, LANGFUSE_BASE_URL, DD_SITE us5.
 
@@ -80,6 +80,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-10-24 | backend | 6 — Eval | `dev/backend-phase-6-eval` | [#24](https://github.com/Keshav0375/Sentinel/pull/24) | Keshav | Approve & merge into release-phase-2 (d2564d3). Gate GREEN on cf56e67 (7 ran, 0 skipped). Carried: live eval needs real scenario runs + LLM keys; score_store uses DATABASE_URL only; keep vendored branches.yaml in sync; eval_score gains judge_failed. |
 | 2026-10-23 | backend | 5 — API & App | `dev/backend-phase-5-api` | [#23](https://github.com/Keshav0375/Sentinel/pull/23) | Keshav | Merged by the user into release-phase-2 (0ea054a). Gate GREEN on d27a8f3 (7 ran, 0 skipped). Carried: 37s worst-case shutdown vs k8s 30s grace; OTel atexit up to 30s untested; KV read once. |
 | 2026-10-19 | backend | 4 — Agent Pipeline & Loops | `dev/backend-phase-4-agents` | [#22](https://github.com/Keshav0375/Sentinel/pull/22) | Keshav | Approve & merge into release-phase-2 (677e659). Gate VERDICT GREEN at fac21a9 (env -i + TEST_DATABASE_URL); PR CI 1925 passed, 1 skipped. Verified on the fake LLM only; no real-LLM run yet (developer .env has placeholder keys); local smoke commands not executed. |
 | 2026-10-14 | backend | 3 — Tools Rewrite | `dev/backend-phase-3-tools` | [#21](https://github.com/Keshav0375/Sentinel/pull/21) | Keshav | Approve & merge into release-phase-2 (5e257e0). Gate VERDICT GREEN at 7550eab (env -i + TEST_DATABASE_URL); PR CI 1634 passed, 1 skipped (cross-repo INSERT drift check needs the deployment repo checked out). |
