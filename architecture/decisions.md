@@ -48,6 +48,7 @@ User answers (binding; they supersede backend §9.1–§9.3 triggers, `secrets.G
 - `git revert -m 1` for merge commits.
 - `guard-main-source.yml`'s `${{ github.head_ref }}` script injection is fixed (passed via `env:`) as part of 8.1.
 - Every job that runs `azure/login` declares `environment: sentinel-dev`.
+- Known limitation: the workflow-level `sentinel-backend` concurrency group holds only ONE pending run, so a third alert arriving while one runs and one waits cancels the waiting run. Scenarios are run one at a time by a human, so this is accepted. Revisit with a queue if alerts ever burst.
 
 **Names the infra CI-identity ticket must create** (GitHub environment `sentinel-dev` vars on `Keshav0375/Sentinel`, unless noted):
 - Resource-tenant login: `AZURE_CLIENT_ID` (gha-backend UAMI), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
@@ -59,7 +60,7 @@ User answers (binding; they supersede backend §9.1–§9.3 triggers, `secrets.G
   - gha-backend gets AcrPush (plus tag delete for cleanup) on ACR
   - Key Vault Secrets User on the deployment KV
   - AKS: start/read plus namespace-scoped RBAC write on `sentinel-dev`, and the cluster-user credential for kubelogin
-  - a Postgres principal with `SELECT` on `services` and `UPDATE(pr_number, pr_url)` on `incidents` only
+  - a Postgres principal with `SELECT` on `services` and `SELECT(id)` + `UPDATE(pr_number, pr_url)` on `incidents` only (the `WHERE id = … RETURNING id` needs the column SELECT)
 - Plus the earlier items: the API app registration (`Incident.Write`, v2 tokens) and seed-vault.sh adding `anthropic-api-key` and `openai-api-key`.
 
 ### 2026-10-24: Backend phase 7 (Container & K8s) contract
