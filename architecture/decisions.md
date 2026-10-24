@@ -48,12 +48,17 @@ User answers (binding; they supersede backend §9.1–§9.3 triggers, `secrets.G
 - `git revert -m 1` for merge commits.
 - `guard-main-source.yml`'s `${{ github.head_ref }}` script injection is fixed (passed via `env:`) as part of 8.1.
 - Every job that runs `azure/login` declares `environment: sentinel-dev`.
+- *Amended after review:*
+  - Every third-party action in every workflow is pinned by commit SHA.
+  - The `stable` → `sha-<7>` lookup lives in ONE composite action, `.github/actions/resolve-stable-tag`.
+  - Checkouts that use `REVERT_PR_PAT` set `persist-credentials: false`.
+  - Once a revert PR exists, the run reports it even if a later step (the DB record) fails.
 - Known limitation: the workflow-level `sentinel-backend` concurrency group holds only ONE pending run, so a third alert arriving while one runs and one waits cancels the waiting run. Scenarios are run one at a time by a human, so this is accepted. Revisit with a queue if alerts ever burst.
 
 **Names the infra CI-identity ticket must create** (GitHub environment `sentinel-dev` vars on `Keshav0375/Sentinel`, unless noted):
 - Resource-tenant login: `AZURE_CLIENT_ID` (gha-backend UAMI), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
 - Identity-tenant login: `AZURE_IDENTITY_TENANT_ID`, `AZURE_GHA_CLIENT_ID`. The latter is a client app holding `Incident.Write` on the API app.
-- API: `SENTINEL_API_TENANT_ID`, `SENTINEL_API_AUDIENCE` (the API app client-id GUID).
+- API: `SENTINEL_API_TENANT_ID`, `SENTINEL_API_AUDIENCE`. *Amended after review:* this is the same comma list the pod uses (client-id GUID first, optionally the identifier URI). `get-backend-token` takes the list and requests a token for the **first** entry, which must be a GUID. Every caller passes `vars.SENTINEL_API_AUDIENCE` and `tenant: vars.AZURE_IDENTITY_TENANT_ID`.
 - Infra outputs: `AKS_RESOURCE_GROUP`, `AKS_CLUSTER_NAME`, `ACR_NAME`, `ACR_LOGIN_SERVER`, `KEY_VAULT_URI`, `PG_HOST`, `PG_DATABASE`, `PG_USER_BACKEND` (the pod's PG principal), `PG_USER_GHA` (the gha-backend PG principal).
 - Repo var `SENTINEL_KEEP_WARM`. Environment secret `REVERT_PR_PAT` (user-created).
 - Grants:
