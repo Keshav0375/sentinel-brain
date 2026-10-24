@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `done-pending-review` |
+| **Status** | `verified` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-7-container-and-k8s` |
 | **Commit prefix** | `feat:` |

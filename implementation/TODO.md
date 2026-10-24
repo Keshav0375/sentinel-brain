@@ -167,14 +167,14 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 | 6.1 | `eval/judge.py` → LangFuse scores | [task-1](tasks/backend/phase-6-eval/task-1-judge-langfuse-scores.md) | ✅ |
 | 6.2 | `eval/runner.py` → deploy **30 scenario branches**, score vs `branches.yaml` ground truth → LangFuse | [task-2](tasks/backend/phase-6-eval/task-2-eval-runner-datasets.md) | ✅ |
 
-### Phase 7 — Container & K8s  ·  branch `dev/backend-phase-7-container-and-k8s`  ·  Gate: ⬜ **← NEXT**
+### Phase 7 — Container & K8s  ·  branch `dev/backend-phase-7-container-and-k8s`  ·  Gate: ✅ 2026-10-24
 | # | Task | File | Status |
 |---|------|------|--------|
-| 7.1 | Dockerfile update (drop `data/`, torch-cpu) | [task-1](tasks/backend/phase-7-container-and-k8s/task-1-dockerfile-update.md) | 🟡 |
-| 7.2 | `azure/k8s/` deployment + **serviceaccount (workload identity)** + service manifests (ConfigMap, not Secret) | [task-2](tasks/backend/phase-7-container-and-k8s/task-2-k8s-manifests.md) | 🟡 |
-| 7.3 | Composite actions (backend-up/down, kv-secrets, **get-db-token, get-backend-token**, teams, psql) | [task-3](tasks/backend/phase-7-container-and-k8s/task-3-composite-actions.md) | 🟡 |
+| 7.1 | Dockerfile update (drop `data/`, torch-cpu) | [task-1](tasks/backend/phase-7-container-and-k8s/task-1-dockerfile-update.md) | ✅ |
+| 7.2 | `azure/k8s/` deployment + **serviceaccount (workload identity)** + service manifests (ConfigMap, not Secret) | [task-2](tasks/backend/phase-7-container-and-k8s/task-2-k8s-manifests.md) | ✅ |
+| 7.3 | Composite actions (backend-up/down, kv-secrets, **get-db-token, get-backend-token**, teams, psql) | [task-3](tasks/backend/phase-7-container-and-k8s/task-3-composite-actions.md) | ✅ |
 
-### Phase 8 — CI/CD Workflows  ·  branch `dev/backend-phase-8-cicd`  ·  Gate: 🔒
+### Phase 8 — CI/CD Workflows  ·  branch `dev/backend-phase-8-cicd`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
 | 8.1 | `ci_validation.yml` (fast PR gate) | [task-1](tasks/backend/phase-8-cicd/task-1-ci-validation.md) | ⬜ |
