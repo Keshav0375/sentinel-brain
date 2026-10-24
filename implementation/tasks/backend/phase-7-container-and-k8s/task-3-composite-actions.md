@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-7-container-and-k8s` |
 | **Commit prefix** | `feat:` |
@@ -43,11 +43,20 @@ workflows that use them.
 - **Quality gate:** `--repo backend`.
 
 ## How to Verify (phase gate — end of Category 3 Phase 7)
+VERIFY: `pytest tests/test_infra/test_composite_actions.py`; `python3 scripts/gate.py backend`.
 1. actionlint clean on all five.
 2. (with AKS) `ci_backend_scale up` uses backend-up → reachable `/health`; `down` → node pool 0.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built seven composite actions (backend-up/down, get-kv-secrets, get-db-token, get-backend-token, notify-teams, psql-exec) plus `.github/actions/README.md` (pin by commit SHA, never @main). Commit 91f923b on dev/backend-phase-7-container-and-k8s.
+Files: `.github/actions/*/action.yml`, `tests/test_infra/test_composite_actions.py` (54 tests, 0 skipped).
+I/O per §9: pg-token, bearer, psql-exec(sql, pg-token), backend-url. Inputs reach run only via env:; all tokens masked; psql -v carries values.
+backend-down honours keep-warm, deletes Service, scales to 0, never `az aks stop`. backend-up starts AKS only if stopped.
+get-kv-secrets: six fixed outputs; github-pat and LLM keys excluded on purpose.
+Live use needs the CI identity infra ticket (decision dd95eef) before phase 8.
+
+## Tests
+Gate: VERDICT GREEN (full run); backend boot OK. actionlint probe, shellcheck, yamllint clean; stubbed dry-runs cover every action (actionlint test skips on CI runner lacking it).
 
 ## BLOCKED
 _Live runs ⛔ B1. YAML + lint now._
