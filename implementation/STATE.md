@@ -15,7 +15,7 @@
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 7 — Container & K8s |
 | **Active branch** | `dev/backend-phase-7-container-and-k8s` (off `release-phase-2`) |
-| **Active PR** | none yet (backend 6: #24 merged) |
+| **Active PR** | https://github.com/Keshav0375/Sentinel/pull/26 |
 | **Current task** | backend phase 7 PR open, awaiting sign-off (7.1-7.3 done-pending-review) |
 | **Tasks verified** | 62 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 14 / 18 — infra 1-6, deployment 1-3, backend 1-6 (backend 1-6 merged into release-phase-2) |
@@ -24,6 +24,8 @@
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
+
+**Backend phase 7 PR #26 open.** Carry forward: (a) 🚨 BEFORE phase 8, infra ticket: gha-backend identity + FIC (repo:Keshav0375/Sentinel, env sentinel-dev) + AKS/KV/AcrPush grants; API app registration with Incident.Write; root outputs (ACR login server, KV URI, backend UAMI client ID, API app client ID); seed-vault.sh adds anthropic-api-key and openai-api-key. (b) nothing verified live (B1): AKS apply, LB IP, backend-up/down, startup vs liveness (no startupProbe). (c) actionlint missing on CI runner, test skips. (d) filelock ignore expires 2026-11-24, not auto-enforced. (e) automountServiceAccountToken=false + workload identity unverified live.
 
 **Follow-up (dated): by 2026-11-24 re-check filelock.** pip-audit ignores filelock CVE-2026-112940/-112913/-112907 (decision 2026-10-24); drop the ignores in `Sentinel/scripts/quality_gate.py` once litellm allows filelock ≥4.2.1.
 
