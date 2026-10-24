@@ -25,6 +25,8 @@
 
 ## Next Action
 
+**Follow-up (dated): by 2026-11-24 re-check filelock.** pip-audit ignores filelock CVE-2026-112940/-112913/-112907 (decision 2026-10-24); drop the ignores in `Sentinel/scripts/quality_gate.py` once litellm allows filelock ≥4.2.1.
+
 **Backend phase 6 signed 2026-10-24** (PR #24 merged, d2564d3). Next: backend phase 7 — Container & K8s. Carry forward: (a) live eval needs real scenario runs: estate up, human merging scenario branch PRs, real LLM keys in Sentinel/.env (B4/B5); (b) score_store uses DATABASE_URL only, not Entra PG*, so off-cluster runner needs DATABASE_URL; (c) keep vendored tests/test_eval/fixtures/branches.yaml in sync with Sentinel-deployment/scenarios/branches.yaml; (d) eval_score JSONB gains `judge_failed`; plus phase 5 carries below (37s shutdown vs 30s grace: phase 7 needs terminationGracePeriodSeconds >=45).
 
 (Previous:) **Backend phase 5 signed 2026-10-23** (PR #23 merged into release-phase-2, 0ea054a). Next: backend phase 6 — Eval. Carry forward: (a) worst-case shutdown 37s (drain 20 + 2 + trace flush 5 + close_pool 10) exceeds k8s 30s grace; phase 7 needs terminationGracePeriodSeconds >=45 or a shorter drain; (b) OTel TracerProvider atexit shutdown can add up to 30s, bounded but untested; (c) Key Vault read once at startup, restart to rotate; (d) real-LLM run needs real keys in Sentinel/.env; (e) user .env fixes: DATABASE_URL, LANGFUSE_BASE_URL, DD_SITE us5.

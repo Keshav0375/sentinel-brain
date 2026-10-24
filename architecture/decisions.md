@@ -54,6 +54,12 @@ User answers to the phase 7 distill conflicts (binding; they supersede the hardc
 - Build target `linux/arm64`.
 - CMD is uvicorn with `--timeout-graceful-shutdown`.
 
+**pip-audit exception (user ruling, 2026-10-24).**
+- filelock CVE-2026-112940, CVE-2026-112913 and CVE-2026-112907 are fixed only in filelock 4.2.1, but litellm (≤1.106.2) caps filelock `<4.0`.
+- The gate passes `--ignore-vuln` for exactly those three IDs (`scripts/quality_gate.py`, landed via `fix/pip-audit-filelock-ignore` → `release-phase-2`).
+- Re-check by **2026-11-24**. Drop the ignores as soon as litellm lifts the cap.
+- setuptools was bumped to 84.2.1 (GHSA-xmj3-9gf7-h52w fixed), and filelock to 3.32.7.
+
 **Orchestrator rulings.**
 - Action I/O names follow §9: `get-db-token` → `pg-token`, `get-backend-token` → `bearer`, `psql-exec(sql, pg-token)`.
 - There are seven actions, used cross-repo pinned by commit SHA, never `@main`.

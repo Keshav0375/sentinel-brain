@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `in-progress` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-7-container-and-k8s` |
 | **Commit prefix** | `refactor:` |
