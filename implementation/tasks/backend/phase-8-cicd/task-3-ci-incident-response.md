@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-8-cicd` |
 | **Commit prefix** | `feat:` |
@@ -35,7 +35,7 @@ scale-to-zero, serialized. Backend reasons, GHA executes (§9.3).
 2. (full stack) a demo failure → dispatch → this workflow → revert PR on sentinel-deployment + Teams message; incident row has pr_number/pr_url.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built incident response workflow and `GET /incidents/{id}/rollback-spec` (serves persisted trajectory.pipeline_result spec; no migration). `scripts/incident_dispatch.py` (stdlib). REVERT_PR_PAT only in create-rollback-pr; `git revert -m 1`; no merge/approve/auto-merge. Commit 4e5db70. Files: src/sentinel/api/incidents.py, scripts/incident_dispatch.py, workflow, tests (~82: 10 API, 49 script, 24 workflow). Gate: VERDICT GREEN on e0e8335 (full run, 7 ran, 0 skipped); boot OK (/health, /ready 200; protected routes 401). Not verified live (B1 + infra CI-identity ticket).
 
 ## BLOCKED
 _Live end-to-end ⛔ B1 + B4–B9 + upstream infra/deployment phases. YAML + lint now._

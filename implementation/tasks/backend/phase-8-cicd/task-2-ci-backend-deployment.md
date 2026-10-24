@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-8-cicd` |
 | **Commit prefix** | `feat:` |
@@ -35,7 +35,7 @@ In the `sentinel-backend` concurrency group.
 2. (with cloud) a merge deploys + validates + scales down; a deliberately broken merge triggers `rollout undo` + Teams alert.
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built `ci_backend_deployment.yml`: build, deploy, live smoke, promote or rollback, scale down. sha tags only; `stable` via imagetools; ACR cleanup keeps 3 + stable + running; undo + Teams on red; keep-warm teardown. Smoke checks only that the eval_score key exists (live pipeline doesn't score, per 6.1). Commit 5c187a3. Files: workflow, tests/test_infra/test_workflow_deployment.py (30 tests). Gate: VERDICT GREEN on e0e8335 (full run, 7 ran, 0 skipped); boot OK (/health, /ready 200; protected routes 401). Not verified live (B1 + infra CI-identity ticket).
 
 ## BLOCKED
 _Live deploy ⛔ B1 + infra 4.1. YAML + lint now._

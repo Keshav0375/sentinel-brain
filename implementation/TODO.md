@@ -177,10 +177,10 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 ### Phase 8 — CI/CD Workflows  ·  branch `dev/backend-phase-8-cicd`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
-| 8.1 | `ci_validation.yml` (fast PR gate) | [task-1](tasks/backend/phase-8-cicd/task-1-ci-validation.md) | 🔵 |
-| 8.2 | `ci_backend_deployment.yml` (post-merge deploy) | [task-2](tasks/backend/phase-8-cicd/task-2-ci-backend-deployment.md) | 🔵 |
-| 8.3 | `ci_incident_response.yml` (real pipeline) | [task-3](tasks/backend/phase-8-cicd/task-3-ci-incident-response.md) | 🔵 |
-| 8.4 | `ci_backend_scale.yml` (scale toggle + nightly) | [task-4](tasks/backend/phase-8-cicd/task-4-ci-backend-scale.md) | 🔵 |
+| 8.1 | `ci_validation.yml` (fast PR gate) | [task-1](tasks/backend/phase-8-cicd/task-1-ci-validation.md) | 🟡 |
+| 8.2 | `ci_backend_deployment.yml` (post-merge deploy) | [task-2](tasks/backend/phase-8-cicd/task-2-ci-backend-deployment.md) | 🟡 |
+| 8.3 | `ci_incident_response.yml` (real pipeline) | [task-3](tasks/backend/phase-8-cicd/task-3-ci-incident-response.md) | 🟡 |
+| 8.4 | `ci_backend_scale.yml` (scale toggle + nightly) | [task-4](tasks/backend/phase-8-cicd/task-4-ci-backend-scale.md) | 🟡 |
 
 ### Phase 9 — Cleanup & End-to-End  ·  branch `dev/backend-phase-9-cleanup`  ·  Gate: 🔒
 | # | Task | File | Status |

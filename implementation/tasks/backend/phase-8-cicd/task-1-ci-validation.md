@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-8-cicd` |
 | **Commit prefix** | `feat:` |
@@ -36,7 +36,7 @@ job.
 2. A test PR runs the gate to green (quality + build + tests, no cloud).
 
 ## Report   ·   _filled on completion_
-_not yet implemented_
+Built `ci_validation.yml` PR gate (PRs into main and release-phase-2; read-only, no cloud, arm64 runner; one job: build, migrate, run, probe, pytest; always-teardown). `guard-main-source.yml` head_ref injection fixed via env (one documented shellcheck SC2254 disable). Commit 69efed0. Files: .github/workflows/ci_validation.yml, guard-main-source.yml, tests/test_infra/test_ci_validation_workflow.py (16 tests). Gate: VERDICT GREEN on e0e8335 (full run, 7 ran, 0 skipped); boot OK (/health, /ready 200; protected routes 401). Not verified live (B1 + infra CI-identity ticket).
 
 ## BLOCKED
 _none for authoring; live PR run needs the repo on GitHub (present)._

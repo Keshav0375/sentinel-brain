@@ -14,9 +14,9 @@
 |-------|-------|
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 8 — CI/CD Workflows |
-| **Active branch** | `dev/backend-phase-8-cicd` (off `release-phase-2`; not created yet) |
+| **Active branch** | `dev/backend-phase-8-cicd` (off `release-phase-2`) |
 | **Active PR** | none yet (backend 7: #26 merged) |
-| **Current task** | backend 8.1 — gated on the CI-identity infra ticket |
+| **Current task** | backend phase 8 tasks 8.1-8.4 done-pending-review; next: close-phase |
 | **Tasks verified** | 65 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 15 / 18 — infra 1-6, deployment 1-3, backend 1-7 (backend 1-7 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
