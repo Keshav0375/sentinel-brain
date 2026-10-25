@@ -35,5 +35,7 @@ Manual up/down toggle + nightly auto-down safety net for scale-to-zero (§8.5 ru
 ## Report   ·   _filled on completion_
 Built `ci_backend_scale` workflow: manual up/down toggle plus nightly scale-to-zero cron; cron always scales down, never stops the cluster. Commit e0e8335. Files: workflow, tests/test_infra/test_workflow_scale.py (21 tests). Gate: VERDICT GREEN on e0e8335 (full run, 7 ran, 0 skipped); boot OK (/health, /ready 200; protected routes 401). Not verified live (B1 + infra CI-identity ticket).
 
+Review fixes 0402b8e, 7b82bfe (2026-10-24): Uses the shared .github/actions/resolve-stable-tag for the stable lookup. All actions pinned by SHA (tests/test_infra/test_workflow_hardening.py). Gate: VERDICT GREEN on 7b82bfe (full run, 7 ran, 0 skipped); boot OK (/health, /ready 200; protected routes incl. rollback-spec 401). Decisions: 29edfa7, 8b72023, 61178fa, e1cdbf0. Status stays done-pending-review.
+
 ## BLOCKED
 _Live scaling ⛔ B1. YAML + lint now._

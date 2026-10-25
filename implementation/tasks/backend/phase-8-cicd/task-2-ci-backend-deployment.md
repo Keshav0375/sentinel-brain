@@ -37,5 +37,7 @@ In the `sentinel-backend` concurrency group.
 ## Report   ·   _filled on completion_
 Built `ci_backend_deployment.yml`: build, deploy, live smoke, promote or rollback, scale down. sha tags only; `stable` via imagetools; ACR cleanup keeps 3 + stable + running; undo + Teams on red; keep-warm teardown. Smoke checks only that the eval_score key exists (live pipeline doesn't score, per 6.1). Commit 5c187a3. Files: workflow, tests/test_infra/test_workflow_deployment.py (30 tests). Gate: VERDICT GREEN on e0e8335 (full run, 7 ran, 0 skipped); boot OK (/health, /ready 200; protected routes 401). Not verified live (B1 + infra CI-identity ticket).
 
+Review fixes 0402b8e, 7b82bfe (2026-10-24): Smoke test uses the GUID-first audience list; backend-up requires the audience GUID first (7b82bfe); summary falls back on a blank outcome; shared .github/actions/resolve-stable-tag. All actions pinned by SHA (tests/test_infra/test_workflow_hardening.py). Gate: VERDICT GREEN on 7b82bfe (full run, 7 ran, 0 skipped); boot OK (/health, /ready 200; protected routes incl. rollback-spec 401). Decisions: 29edfa7, 8b72023, 61178fa, e1cdbf0. Status stays done-pending-review.
+
 ## BLOCKED
 _Live deploy ⛔ B1 + infra 4.1. YAML + lint now._

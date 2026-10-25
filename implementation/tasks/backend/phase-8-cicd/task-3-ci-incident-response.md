@@ -37,5 +37,7 @@ scale-to-zero, serialized. Backend reasons, GHA executes (§9.3).
 ## Report   ·   _filled on completion_
 Built incident response workflow and `GET /incidents/{id}/rollback-spec` (serves persisted trajectory.pipeline_result spec; no migration). `scripts/incident_dispatch.py` (stdlib). REVERT_PR_PAT only in create-rollback-pr; `git revert -m 1`; no merge/approve/auto-merge. Commit 4e5db70. Files: src/sentinel/api/incidents.py, scripts/incident_dispatch.py, workflow, tests (~82: 10 API, 49 script, 24 workflow). Gate: VERDICT GREEN on e0e8335 (full run, 7 ran, 0 skipped); boot OK (/health, /ready 200; protected routes 401). Not verified live (B1 + infra CI-identity ticket).
 
+Review fixes 0402b8e, 7b82bfe (2026-10-24): record-rollback-pr is a separate job gated on the PR URL; summary always reports the PR; persist-credentials false, env-only push auth with --force-with-lease to revert-<sha>, open PR reused on re-run; curl --max-time/--connect-timeout; poll fails fast on 4xx (60 s 404 grace), retries 5xx; summary Teams step runs if !cancelled(); severity and dd_event_id mapped, Teams deduped; shared resolve-stable-tag. All actions pinned by SHA (tests/test_infra/test_workflow_hardening.py). Gate: VERDICT GREEN on 7b82bfe (full run, 7 ran, 0 skipped); boot OK (/health, /ready 200; protected routes incl. rollback-spec 401). Decisions: 29edfa7, 8b72023, 61178fa, e1cdbf0. Status stays done-pending-review.
+
 ## BLOCKED
 _Live end-to-end ⛔ B1 + B4–B9 + upstream infra/deployment phases. YAML + lint now._
