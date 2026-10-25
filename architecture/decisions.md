@@ -49,6 +49,7 @@ User answers (binding; supersede backend §13.1's delete list and task 9.2's dem
 - **The SSE route `GET /events/{incident_id}` is removed** along with the dashboard live view. Its only consumer was the dashboard's EventSource, and the user chose to remove Fire and its live view. The 2026-10-19 "SSE events behind the bearer" line is void. `EventBus` / `DashboardEventEmitter` are kept for now as trace processors (dec 2026-10-15); removing them is a follow-up.
 - **`pr_details.branch` is eval metadata, never agent input.** It is excluded from every agent prompt (it is the ground-truth label), validated as `^[A-Za-z0-9._/-]{1,100}$`, and accepted only when it is a key in the vendored catalog. Otherwise it is dropped (the item is skipped).
 - **The dataset write is off the critical path.** It is a tracked background task with a hard timeout, so it never delays the terminal status or shutdown.
+- **Dev-only dependencies:** `numpy` (tests import it directly; the runtime keeps it transitive-only through sentence-transformers, so §13.4 holds for the shipped app) and `pytest-timeout` (global `timeout = 120`, so a wedged test fails instead of hanging CI).
 - **9.1 also deletes the now-unused Phase-1 models** (`AlertPayload`, `IncidentAlert.from_phase1`, `PipelineInput.from_alert`, `models/log_entry.py`) and their tests.
 
 Orchestrator rulings:
