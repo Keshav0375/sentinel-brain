@@ -5,7 +5,7 @@
 > Closed blockers, resolved R-items and the change log live in [history.md](history.md) — the
 > build loop never reads that file. **Keep this one live-only; append history there.**
 >
-> Last updated: 2026-10-24
+> Last updated: 2026-10-25
 
 
 ## Current Position
@@ -13,19 +13,21 @@
 | Field | Value |
 |-------|-------|
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
-| **Active phase** | backend 8 — CI/CD Workflows |
-| **Active branch** | `dev/backend-phase-8-cicd` (off `release-phase-2`) |
-| **Active PR** | [Sentinel#27](https://github.com/Keshav0375/Sentinel/pull/27) (backend 8, into release-phase-2) |
-| **Current task** | backend phase 8 tasks 8.1-8.4 done-pending-review; PR #27 open, awaiting sign-off |
-| **Tasks verified** | 65 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
-| **Phases merged** | 15 / 18 — infra 1-6, deployment 1-3, backend 1-7 (backend 1-7 merged into release-phase-2) |
+| **Active phase** | backend 9 — Cleanup & End-to-End |
+| **Active branch** | `dev/backend-phase-9-cleanup` (off `release-phase-2`; not yet created) |
+| **Active PR** | none yet (backend 8: #27 merged) |
+| **Current task** | backend phase 9 task 9.1 |
+| **Tasks verified** | 69 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
+| **Phases merged** | 16 / 18 — infra 1-6, deployment 1-3, backend 1-8 (backend 1-8 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
 
-**Backend phase 8 PR #27 open.** Carried follow-ups, all gating LIVE runs: (a) user runs /new-ticket for the infra CI-identity ticket (list: decisions 2026-10-24 phase 8 "Names the infra CI-identity ticket must create", incl. PG SELECT(id) grant); (b) user sets release-phase-2 as Sentinel default branch (back to main at final merge); (c) user creates REVERT_PR_PAT (fine-grained, Sentinel-deployment only, Contents+PRs RW, 90 days) as sentinel-dev environment secret; (d) real Anthropic/OpenAI keys in KV (B4/B5); (e) estate down (B1), nothing in phase 8 run live; (f) sentinel-backend concurrency group holds one pending run; (g) the PR's own CI is the first real run of ci_validation.yml.
+**Backend phase 8 signed 2026-10-25** (PR #27 merged, abee7d2). Next: backend phase 9 — Cleanup & End-to-End. Follow-ups (a)-(g) below still gate the LIVE runs.
+
+**Phase 8 carried follow-ups.** Carried follow-ups, all gating LIVE runs: (a) user runs /new-ticket for the infra CI-identity ticket (list: decisions 2026-10-24 phase 8 "Names the infra CI-identity ticket must create", incl. PG SELECT(id) grant); (b) user sets release-phase-2 as Sentinel default branch (back to main at final merge); (c) user creates REVERT_PR_PAT (fine-grained, Sentinel-deployment only, Contents+PRs RW, 90 days) as sentinel-dev environment secret; (d) real Anthropic/OpenAI keys in KV (B4/B5); (e) estate down (B1), nothing in phase 8 run live; (f) sentinel-backend concurrency group holds one pending run; (g) the PR's own CI is the first real run of ci_validation.yml.
 
 **Backend phase 7 signed 2026-10-24** (PR #26 merged, 62e4ef7). Next: backend phase 8 — CI/CD Workflows. Carry forward: (a) 🚨 GATES PHASE 8 — infra ticket: gha-backend identity + FIC (repo:Keshav0375/Sentinel, env sentinel-dev) + AKS/KV/AcrPush grants; API app registration with Incident.Write; root outputs (ACR login server, KV URI, backend UAMI client ID, API app client ID); seed-vault.sh adds anthropic-api-key and openai-api-key. (b) nothing verified live (B1): AKS apply, LB IP, backend-up/down, startup vs liveness (no startupProbe). (c) actionlint missing on CI runner, test skips. (d) filelock ignore expires 2026-11-24, not auto-enforced. (e) automountServiceAccountToken=false + workload identity unverified live.
 
@@ -86,6 +88,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-10-25 | backend | 8 — CI/CD Workflows | `dev/backend-phase-8-cicd` | [#27](https://github.com/Keshav0375/Sentinel/pull/27) | Keshav | Merged by the user into release-phase-2 (abee7d2). Gate GREEN on 7b82bfe (7 ran, 0 skipped). Carried: follow-ups (a)-(g) gate LIVE runs; nothing run live (B1). |
 | 2026-10-24 | backend | 7 — Container & K8s | `dev/backend-phase-7-container-and-k8s` | [#26](https://github.com/Keshav0375/Sentinel/pull/26) | Keshav | Approve & merge into release-phase-2 (62e4ef7). Gate GREEN on 1729dbf (7 ran, 0 skipped). Carried: CI-identity infra ticket gates phase 8; nothing verified live (B1); actionlint missing on CI runner; filelock ignore expires 2026-11-24; automount=false + WI unverified. |
 | 2026-10-24 | backend | 6 — Eval | `dev/backend-phase-6-eval` | [#24](https://github.com/Keshav0375/Sentinel/pull/24) | Keshav | Approve & merge into release-phase-2 (d2564d3). Gate GREEN on cf56e67 (7 ran, 0 skipped). Carried: live eval needs real scenario runs + LLM keys; score_store uses DATABASE_URL only; keep vendored branches.yaml in sync; eval_score gains judge_failed. |
 | 2026-10-23 | backend | 5 — API & App | `dev/backend-phase-5-api` | [#23](https://github.com/Keshav0375/Sentinel/pull/23) | Keshav | Merged by the user into release-phase-2 (0ea054a). Gate GREEN on d27a8f3 (7 ran, 0 skipped). Carried: 37s worst-case shutdown vs k8s 30s grace; OTel atexit up to 30s untested; KV read once. |
