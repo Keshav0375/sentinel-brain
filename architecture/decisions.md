@@ -16,6 +16,31 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-25: Phase 2 release, post-release branch model, and the monorepo
+
+User answers (binding):
+
+**Phase 2 release.**
+- `main` was backed up to **`main-backup`** (5b97232).
+- `release-phase-2` was merged into `main` with a **merge commit** (PR #29), so the full phase history is preserved.
+- **`release-phase-2` stays** as the frozen Phase 2 record and takes no new work.
+
+**The post-release branch model supersedes the CLAUDE.md "Branch model" table for `Sentinel`.**
+- New work branches from **`main`** and opens PRs into **`main`**: `dev/<cat>-phase-<M>-*` for phase work, `fix/*` for out-of-phase repairs.
+- `main` stays protected (PR required).
+- `guard-main-source.yml` now allows `dev/*` and `fix/*` into `main`, and still rejects other heads.
+- The default branch is `main`, which voids the 2026-10-24 phase-8 "release-phase-2 as default".
+- Workflow triggers keep `[main, release-phase-2]` harmlessly, or drop `release-phase-2` later.
+- The `sentinel-dev` environment's branch policy allows `main`.
+
+**Monorepo: infra comes into `Sentinel` as `infra/`, with full history** (`git subtree add --prefix=infra`).
+- Workflows: the infra workflows become `.github/workflows/infra_*.yml`, with `working-directory: infra`, an `infra/**` path filter and their own concurrency groups. Backend workflows ignore `infra/**`.
+- Identity: the environments `plan`, `production`, `destroy` and `ops` (required reviewers preserved) and the infra repo variables are recreated on `Sentinel`. `scripts/bootstrap-identities.sh` defaults `INFRA_REPO=Sentinel`, so the FIC subjects become `repo:Keshav0375/Sentinel:environment:<env>`. The user re-runs it once. `set-gh-secrets.sh` targets `Sentinel`.
+- Old repo: `Sentinel-infra` gets a pointer README and is **archived** (read-only, reversible).
+- Brain: the `infra` category's repo becomes `../Sentinel` with path `infra/`, and gate.py/where.py/CLAUDE.md/ground-rules are updated.
+- **`Sentinel-deployment` stays separate.** It is the monitored target app, whose scenario branches and revert PRs are the human gate, so merging it in would break the scenario model.
+- Built as **infra phase 7 (Monorepo)**, before backend phase 10 (Ops Dashboard). Both come from user tickets via `/new-ticket`.
+
 ### 2026-10-25: Ops dashboard (backend phase 10)
 
 User request: a team- and recruiter-facing dashboard for builds, failures, timestamps, agent runs, status, revert PRs needed, summaries and PRs awaiting review, with progressive-detail toggles, light and dark mode, and best-in-class UX. Nothing may ever be lost, and it lives in the `Sentinel` repo, the future single monorepo (infra is planned to move in later).
