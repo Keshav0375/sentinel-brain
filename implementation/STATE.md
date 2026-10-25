@@ -12,20 +12,22 @@
 
 | Field | Value |
 |-------|-------|
-| **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
-| **Active phase** | backend 9 — Cleanup & End-to-End |
-| **Active branch** | `dev/backend-phase-9-cleanup` (off `release-phase-2`) |
-| **Active PR** | [#28](https://github.com/Keshav0375/Sentinel/pull/28) → `release-phase-2` |
-| **Current task** | backend phase 9 sign-off (PR #28 open; 9.1, 9.2 done-pending-review) |
-| **Tasks verified** | 69 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
-| **Phases merged** | 16 / 18 — infra 1-6, deployment 1-3, backend 1-8 (backend 1-8 merged into release-phase-2) |
+| **Active category** | **backend** ✅ PHASE 2 COMPLETE (2026-10-25) — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
+| **Active phase** | final release — `release-phase-2` → `main` |
+| **Active branch** | `release-phase-2` (main backed up as `main-backup` at 5b97232) |
+| **Active PR** | [#29](https://github.com/Keshav0375/Sentinel/pull/29) release-phase-2 → main (in flight; backend 9: #28 merged 969256b) |
+| **Current task** | final release PR #29 |
+| **Tasks verified** | 71 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
+| **Phases merged** | 18 / 18 — infra 1-6, deployment 1-3, backend 1-9 (backend 1-9 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
 | **Tracker commits** | straight to `main` of this repo (`sentinel-brain`) — no branch, no PR. One phase = one code PR + tracker commits here. |
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
 
-**Backend phase 9 PR #28 open** into release-phase-2, awaiting sign-off ([report](../reports/backend-phase-9.md), [demo runbook](../reports/DEMO.md)). Carried: (a) the live demo is not yet run; (b) EventBus/DashboardEventEmitter have no subscriber; (c) the filelock ignore expires 2026-11-24; (d) NEXT: the user-authorized final merge of release-phase-2 → main (back up main to main-backup first), the monorepo infra move, and backend phase 10 (Ops Dashboard).
+**Backend phase 9 signed 2026-10-25** (PR #28 merged into release-phase-2, 969256b); backend Phase 2 is complete. Next: (1) final release PR #29, release-phase-2 → main, in flight (main backed up as main-backup at 5b97232); (2) the monorepo infra move; (3) backend phase 10 (Ops Dashboard).
+
+(Previous:) **Backend phase 9 PR #28 open** into release-phase-2, awaiting sign-off ([report](../reports/backend-phase-9.md), [demo runbook](../reports/DEMO.md)). Carried: (a) the live demo is not yet run; (b) EventBus/DashboardEventEmitter have no subscriber; (c) the filelock ignore expires 2026-11-24; (d) NEXT: the user-authorized final merge of release-phase-2 → main (back up main to main-backup first), the monorepo infra move, and backend phase 10 (Ops Dashboard).
 
 **Backend phase 8 signed 2026-10-25** (PR #27 merged, abee7d2). Next: backend phase 9 — Cleanup & End-to-End. Follow-ups (a)-(g) below still gate the LIVE runs.
 
@@ -90,6 +92,7 @@ merged. Newest first.
 
 | Date | Category | Phase | Branch | PR | Verified by | Notes |
 |------|----------|-------|--------|----|-----|-------|
+| 2026-10-25 | backend | 9 — Cleanup & End-to-End ✅ **BACKEND PHASE 2 COMPLETE** | `dev/backend-phase-9-cleanup` | [#28](https://github.com/Keshav0375/Sentinel/pull/28) | Keshav | Approved ("Approve all"); squash-merged into release-phase-2 (969256b). Gate GREEN on 3f7cdd3 (full run), boot OK. Reviews: arch CONFORMS, code LGTM, safety SAFE (branch-in-prompt blocker fixed). Carried: live demo not run ([DEMO.md](../reports/DEMO.md)); EventBus no subscriber; filelock ignore expires 2026-11-24. |
 | 2026-10-25 | backend | 8 — CI/CD Workflows | `dev/backend-phase-8-cicd` | [#27](https://github.com/Keshav0375/Sentinel/pull/27) | Keshav | Merged by the user into release-phase-2 (abee7d2). Gate GREEN on 7b82bfe (7 ran, 0 skipped). Carried: follow-ups (a)-(g) gate LIVE runs; nothing run live (B1). |
 | 2026-10-24 | backend | 7 — Container & K8s | `dev/backend-phase-7-container-and-k8s` | [#26](https://github.com/Keshav0375/Sentinel/pull/26) | Keshav | Approve & merge into release-phase-2 (62e4ef7). Gate GREEN on 1729dbf (7 ran, 0 skipped). Carried: CI-identity infra ticket gates phase 8; nothing verified live (B1); actionlint missing on CI runner; filelock ignore expires 2026-11-24; automount=false + WI unverified. |
 | 2026-10-24 | backend | 6 — Eval | `dev/backend-phase-6-eval` | [#24](https://github.com/Keshav0375/Sentinel/pull/24) | Keshav | Approve & merge into release-phase-2 (d2564d3). Gate GREEN on cf56e67 (7 ran, 0 skipped). Carried: live eval needs real scenario runs + LLM keys; score_store uses DATABASE_URL only; keep vendored branches.yaml in sync; eval_score gains judge_failed. |

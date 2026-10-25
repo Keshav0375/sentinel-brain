@@ -5,7 +5,7 @@
 | **Repo** | `Sentinel` |
 | **Branch → PR** | `dev/backend-phase-9-cleanup` → `release-phase-2` · PR #28 — https://github.com/Keshav0375/Sentinel/pull/28 |
 | **Tasks** | 2/2 green (VERDICT GREEN on 3f7cdd3, full run; boot OK) |
-| **Gate** | ⬜ awaiting sign-off |
+| **Gate** | ✅ verified 2026-10-25 (merged 969256b) |
 
 Reviews: architecture CONFORMS (1 round) · code LGTM (1 round) · safety SAFE (branch-in-prompt finding promoted to a blocker and fixed in 3f7cdd3).
 

@@ -182,11 +182,11 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 | 8.3 | `ci_incident_response.yml` (real pipeline) | [task-3](tasks/backend/phase-8-cicd/task-3-ci-incident-response.md) | ✅ |
 | 8.4 | `ci_backend_scale.yml` (scale toggle + nightly) | [task-4](tasks/backend/phase-8-cicd/task-4-ci-backend-scale.md) | ✅ |
 
-### Phase 9 — Cleanup & End-to-End  ·  branch `dev/backend-phase-9-cleanup`  ·  Gate: ⬜ **← NEXT**
+### Phase 9 — Cleanup & End-to-End  ·  branch `dev/backend-phase-9-cleanup`  ·  Gate: ✅ 2026-10-25
 | # | Task | File | Status |
 |---|------|------|--------|
-| 9.1 | Remove Phase-1 artifacts + deps (data/, generator/, aiosqlite…) | [task-1](tasks/backend/phase-9-cleanup/task-1-remove-phase1-artifacts.md) | 🟡 |
-| 9.2 | End-to-end integration smoke + eval | [task-2](tasks/backend/phase-9-cleanup/task-2-end-to-end-integration.md) | 🟡 |
+| 9.1 | Remove Phase-1 artifacts + deps (data/, generator/, aiosqlite…) | [task-1](tasks/backend/phase-9-cleanup/task-1-remove-phase1-artifacts.md) | ✅ |
+| 9.2 | End-to-end integration smoke + eval | [task-2](tasks/backend/phase-9-cleanup/task-2-end-to-end-integration.md) | ✅ |
 
 ---
 

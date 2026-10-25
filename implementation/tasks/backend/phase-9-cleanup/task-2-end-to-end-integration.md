@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `done-pending-review` |
+| **Status** | `verified` |
 | **Repo** | `Sentinel` (backend) + full system |
 | **Phase branch** | `dev/backend-phase-9-cleanup` |
 | **Commit prefix** | `test:` |
