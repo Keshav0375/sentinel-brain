@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) + full system |
 | **Phase branch** | `dev/backend-phase-9-cleanup` |
 | **Commit prefix** | `test:` |
@@ -35,8 +35,11 @@ The final proof: a real demo failure flows through the whole system and produces
 1. `pytest tests/test_e2e -q` green.
 2. Full-stack: run the DEMO.md steps → observe a revert PR + Teams notification + LangFuse trace for both a C and a B scenario.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report
+Built offline e2e smoke + terminal-state LangFuse dataset item. Commit 180be42 on dev/backend-phase-9-cleanup: "test: offline end-to-end smoke + terminal-state LangFuse dataset item (sentinel-scenario-runs)".
+Files: src/sentinel/eval/dataset_writer.py (new; one item per terminal incident, best effort, strips R14 data), agents/orchestrator.py (mttr set at terminal state), models/alert.py (PRDetails.branch), scripts/incident_dispatch.py (forwards head.ref as branch), scripts/quality_gate.py + ci_backend_deployment.yml (tests/test_e2e in integration), tests/test_e2e/ (7 tests: both paths, dedupe, SHA mismatch, judge scoring, no-outbound-network guard), writer/dispatch/alert tests.
+Gate: VERDICT GREEN (full run, 7 ran, 0 skipped); full pytest 2127 passed; boot probe /health and /ready 200, protected routes 401.
+Not yet run: live demo (pass/01, deployfail/03, runtime/01) - gated on infra CI-identity ticket, default-branch switch, REVERT_PR_PAT, real LLM keys, estate up. Runbook goes in reports/DEMO.md at close-phase. Decisions: 3c492de, 9320bb1, b0fa4a4.
 
 ## BLOCKED
 _Live full-stack demo ⛔ B1–B9 + all upstream phases verified. Offline e2e smoke writable now._
