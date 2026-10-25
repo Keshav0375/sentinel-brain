@@ -15,8 +15,8 @@
 | **Active category** | **backend** — infra ✅ COMPLETE (2026-09-13) and deployment ✅ COMPLETE (2026-10-07) |
 | **Active phase** | backend 9 — Cleanup & End-to-End |
 | **Active branch** | `dev/backend-phase-9-cleanup` (off `release-phase-2`) |
-| **Active PR** | none yet (backend 8: #27 merged) |
-| **Current task** | backend phase 9 close-phase (9.2 done-pending-review) |
+| **Active PR** | [#28](https://github.com/Keshav0375/Sentinel/pull/28) → `release-phase-2` |
+| **Current task** | backend phase 9 sign-off (PR #28 open; 9.1, 9.2 done-pending-review) |
 | **Tasks verified** | 69 / 72 — infra 6.8 is ⚠️ shipped-but-unexercised, so uncounted |
 | **Phases merged** | 16 / 18 — infra 1-6, deployment 1-3, backend 1-8 (backend 1-8 merged into release-phase-2) |
 | **Branch model** | Per repo. **infra + deployment:** `main` → `dev/<cat>-phase-<M>-<slug>` → PR back to `main` (no release branch). **backend (`Sentinel`):** `release-phase-2` → `dev/backend-phase-<M>-<slug>` → PR back to `release-phase-2`; `release-phase-2` → `main` once, at the end of Phase 2, and `main` takes nothing else. See [README §6](README.md#6-git-model--one-branch--one-pr-per-phase). |
@@ -24,6 +24,8 @@
 | **Control plane** | `sentinel-brain` (this repo). Code repos are siblings: `../Sentinel` (backend), `../Sentinel-deployment`, `../Sentinel-infra`. |
 
 ## Next Action
+
+**Backend phase 9 PR #28 open** into release-phase-2, awaiting sign-off ([report](../reports/backend-phase-9.md), [demo runbook](../reports/DEMO.md)). Carried: (a) the live demo is not yet run; (b) EventBus/DashboardEventEmitter have no subscriber; (c) the filelock ignore expires 2026-11-24; (d) NEXT: the user-authorized final merge of release-phase-2 → main (back up main to main-backup first), the monorepo infra move, and backend phase 10 (Ops Dashboard).
 
 **Backend phase 8 signed 2026-10-25** (PR #27 merged, abee7d2). Next: backend phase 9 — Cleanup & End-to-End. Follow-ups (a)-(g) below still gate the LIVE runs.
 
