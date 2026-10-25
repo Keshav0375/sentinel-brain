@@ -10,7 +10,7 @@ background: false
 Category and flags: $ARGUMENTS
 
 If no category was given, use the active one from `python3 scripts/where.py` (its PHASE line).
-Repo paths: infra `../Sentinel-infra` · deployment `../Sentinel-deployment` · backend `../Sentinel`.
+Repo paths: infra `../Sentinel/infra` · deployment `../Sentinel-deployment` · backend `../Sentinel`.
 
 Run your checks for that category and reply with your verdict block. A `PARTIAL` or
 `INCONCLUSIVE` verdict is not green — list what did not run.

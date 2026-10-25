@@ -7,9 +7,9 @@ directly from brain has two traps, and this wrapper closes both:
 1. Gate source. The local `Sentinel` checkout can sit on any branch. On `main` it is
    behind `release-phase-2` and lacks fixes such as IMPLICIT_PATHS — without which
    deployment phase 1 can never report green. So:
-     backend            → the working-tree copy (a phase branch may add to MATRIX in the
-                          same commit as the tests it adds)
-     infra / deployment → the copy at `origin/release-phase-2`, extracted to a temp file
+     backend, infra     → the working-tree copy of the Sentinel checkout (infra = its infra/
+                          subdir; a phase branch may add to MATRIX in the same commit)
+     deployment         → the copy at `origin/main`, extracted to a temp file
 2. Tool resolution. The gate looks every tool up on PATH and SKIPS what it cannot find.
    ruff / pytest / pyright live in the target repo's `.venv`, and macOS ships `python3`
    but no `python` (infra's py-unittest calls `python`). So PATH gets the repo's
@@ -19,6 +19,7 @@ directly from brain has two traps, and this wrapper closes both:
     python3 scripts/gate.py backend --fast     # skip slow/network checks while iterating
     python3 scripts/gate.py infra --json
     python3 scripts/gate.py backend --path ../.wt/Sentinel-5.2   # gate a wave worktree
+    python3 scripts/gate.py infra --path ../.wt/Sentinel-x/infra
 
 --path gates another checkout of the category's repo — a `git worktree` a parallel
 builder works in. Tools still come from the canonical repo's `.venv` when the worktree
@@ -79,7 +80,7 @@ def _git(repo: Path, *args: str) -> str:
 
 def gate_source(cat: str, tmp: Path, checkout: Path = SENTINEL) -> tuple[Path, str]:
     """-> (path to quality_gate.py, human label of where it came from)."""
-    if cat == "backend":
+    if cat in ("backend", "infra"):
         branch = _git(checkout, "rev-parse", "--abbrev-ref", "HEAD")
         sha = _git(checkout, "rev-parse", "--short", "HEAD")
         if branch == "release-phase-2":
@@ -135,8 +136,11 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="sentinel-gate-") as t:
         tmp = Path(t)
-        src, src_label = gate_source(cat, tmp, repo if cat == "backend" else SENTINEL)
-        path, tools_label = tool_path(repo, tmp, canonical)
+        # infra is a subdir of the Sentinel checkout since infra phase 7: its gate is that checkout's working tree,
+        # and its tools come from the Sentinel root .venv (infra/ has none).
+        checkout = repo if cat == "backend" else repo.parent if cat == "infra" else SENTINEL
+        src, src_label = gate_source(cat, tmp, checkout)
+        path, tools_label = tool_path(repo, tmp, canonical.parent if cat == "infra" else canonical)
         print(f"GATE    {cat} · {repo.name} · source {src_label} · tools {tools_label}")
         if "(no .venv)" in tools_label and cat in ("backend", "deployment"):
             print(f"NOTE    no {repo.name}/.venv — ruff/pytest will be SKIPPED unless on PATH. "

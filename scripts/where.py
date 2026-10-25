@@ -40,7 +40,7 @@ TODO = ROOT / "implementation" / "TODO.md"
 
 CATEGORY_ORDER = ["infra", "deployment", "backend"]
 REPO = {
-    "infra": "../Sentinel-infra",
+    "infra": "../Sentinel/infra",  # monorepo subdir since infra phase 7 (2026-10-25)
     "deployment": "../Sentinel-deployment",
     "backend": "../Sentinel",
 }

@@ -33,7 +33,7 @@ from where import (  # noqa: E402
 
 OWNER, REPO, PROJECT = "Keshav0375", "sentinel-brain", 4
 BLOB = f"https://github.com/{OWNER}/{REPO}/blob/main/"
-CODE_REPO = {"infra": "Sentinel-infra", "deployment": "Sentinel-deployment", "backend": "Sentinel"}
+CODE_REPO = {"infra": "Sentinel", "deployment": "Sentinel-deployment", "backend": "Sentinel"}
 EPIC = {
     "infra": ("Infra", "Terraform estate — 7 modules + the Entra/OIDC identity plane"),
     "deployment": ("Deployment", "Target FastAPI app, deploy pipeline + 30 scenario branches"),

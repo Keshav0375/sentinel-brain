@@ -7,7 +7,7 @@ user-invocable: false
 # Sentinel ground rules (binding for every session and every subagent)
 
 **Repos.** You run from `sentinel-brain` (docs, tracker, agents — no app code). Code repos are
-siblings: backend `../Sentinel` · deployment `../Sentinel-deployment` · infra `../Sentinel-infra`.
+siblings: backend `../Sentinel` · deployment `../Sentinel-deployment` · infra `../Sentinel/infra` (a subdir of the Sentinel repo).
 GitHub owner `Keshav0375`, repo casing exact (OIDC `sub` claims are case-sensitive).
 
 **Python is `python3`.** macOS has no `python`. Never type `python …`.

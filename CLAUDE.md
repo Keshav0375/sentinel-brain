@@ -12,7 +12,7 @@ stay clean. Owner: Keshav (sole author). This file is a map — follow the point
 |----------|------|--------|------------|
 | backend | `../Sentinel` | `Keshav0375/Sentinel` | Multi-agent incident-response pipeline on AKS. The `Sentinel` repo **is** the backend. Hosts the quality gate (`scripts/quality_gate.py`). |
 | deployment | `../Sentinel-deployment` | `Keshav0375/Sentinel-deployment` | Target FastAPI app on App Service F1 + 30 scenario branches that generate real Datadog signal. |
-| infra | `../Sentinel-infra` | `Keshav0375/Sentinel-infra` | Terraform — 7 modules + the Entra/OIDC identity plane. |
+| infra | `../Sentinel/infra` | `Keshav0375/Sentinel` (`infra/`) | Terraform — 7 modules + the Entra/OIDC identity plane. Monorepo subdir since infra phase 7; `Keshav0375/Sentinel-infra` is archived. |
 
 **Phase 1 (MVP) is dead.** Phase 2 *replaced* it (SQLite→Postgres+pgvector, synthetic JSON→real
 scenario branches, approval tool→**the revert PR is the gate**, backend-executes→**GHA executes**,
@@ -93,7 +93,7 @@ heading) — never re-derive it.
 | Repo | Branch from | PR into | Protected? |
 |------|-------------|---------|-----------|
 | `Sentinel` (backend) | `main` | `main` | yes — PR required; `guard-main-source.yml` allows only `dev/*`, `fix/*` |
-| `Sentinel-infra` | `main` | `main` | no |
+| `Sentinel` / `infra/` | `main` | `main` | yes — same repo and rules as the backend row (dev/infra-phase-<M>-*) |
 | `Sentinel-deployment` | `main` | `main` | no |
 
 - **Phase 2 shipped to `main` on 2026-10-25 (PR #29).** `main-backup` holds the pre-release `main`;

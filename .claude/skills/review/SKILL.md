@@ -8,7 +8,7 @@ background: false
 ---
 
 Ad-hoc review. Target: $ARGUMENTS (empty → the active category from `python3 scripts/where.py`).
-Repos: infra `../Sentinel-infra` · deployment `../Sentinel-deployment` · backend `../Sentinel`.
+Repos: infra `../Sentinel/infra` · deployment `../Sentinel-deployment` · backend `../Sentinel`.
 
 Scope: `git -C <repo> diff` (uncommitted); if empty, `git -C <repo> diff HEAD~1`.
 
