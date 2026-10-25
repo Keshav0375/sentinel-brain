@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `in-progress` |
+| **Status** | `done-pending-review` |
 | **Repo** | `Sentinel` (backend) |
 | **Phase branch** | `dev/backend-phase-9-cleanup` |
 | **Commit prefix** | `refactor:` |
@@ -34,8 +34,19 @@ intentionally late).
 1. `grep -r "sentinel.generator\|infra.db\|data/scenarios" src/ tests/` → no hits.
 2. App boots; `pytest -q` green; `pip show aiosqlite` → not installed.
 
-## Report   ·   _filled on completion_
-_not yet implemented_
+## Report
+Commit `8a55663` on `dev/backend-phase-9-cleanup`: "refactor: remove Phase-1 synthetic data, generator, SQLite and scripts; serve the scenario catalog".
+- Deleted: `data/`, `src/sentinel/generator/`, `infra/db.py`, `api/events.py` (SSE `/events/{id}`, dashboard-only), `scripts/run_scenario.py`, `scripts/demo.py`, `docker-compose.yml`, Phase-1 tests.
+- Kept: `scripts/run_eval.py` (decision 2026-10-25), alembic 001/002.
+- `aiosqlite` removed (lock: aiosqlite + content-hash only); numpy transitive only. pyproject no longer includes `data/`; CLI serve-only; `config.sentinel_db_path` removed.
+- Catalog: vendored `src/sentinel/catalog/branches.yaml` (git mv from eval fixture) + loader; `/api/scenarios` serves it read-only behind bearer. Dashboard is a read-only catalog (no Fire button, no live view).
+- Decisions: 3c492de, 9320bb1.
+- Follow-up: EventBus and DashboardEventEmitter have no subscriber; kept per decision 2026-10-15 (emitter as trace processor); removal needs a decision.
 
-## BLOCKED
-_Gated on all prior phases verified (do NOT delete Phase-1 until Phase-2 proven)._
+## Tests
+Gate: VERDICT GREEN (full run, 7 ran, 0 skipped). Boot probe: /health and /ready 200, protected routes 401. arm64 image builds, serves /health with `--read-only --network none`, ships catalog (30 entries).
+
+## How to Verify
+1. `grep -r "sentinel.generator\|infra.db\|data/scenarios" src/ tests/` -> no hits.
+2. `poetry run sentinel serve` boots; `pytest -q` green; `pip show aiosqlite` -> not installed.
+3. `GET /api/scenarios` with bearer returns 30 catalog entries; without bearer 401.

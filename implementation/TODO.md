@@ -185,7 +185,7 @@ _Implement third — the multi-agent brain. Migrates Phase-1 code to Phase-2 (se
 ### Phase 9 — Cleanup & End-to-End  ·  branch `dev/backend-phase-9-cleanup`  ·  Gate: ⬜ **← NEXT**
 | # | Task | File | Status |
 |---|------|------|--------|
-| 9.1 | Remove Phase-1 artifacts + deps (data/, generator/, aiosqlite…) | [task-1](tasks/backend/phase-9-cleanup/task-1-remove-phase1-artifacts.md) | 🔵 |
+| 9.1 | Remove Phase-1 artifacts + deps (data/, generator/, aiosqlite…) | [task-1](tasks/backend/phase-9-cleanup/task-1-remove-phase1-artifacts.md) | 🟡 |
 | 9.2 | End-to-end integration smoke + eval | [task-2](tasks/backend/phase-9-cleanup/task-2-end-to-end-integration.md) | 🔵 |
 
 ---
