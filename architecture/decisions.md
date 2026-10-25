@@ -16,6 +16,23 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-25: Ops dashboard (backend phase 10)
+
+User request: a team- and recruiter-facing dashboard for builds, failures, timestamps, agent runs, status, revert PRs needed, summaries and PRs awaiting review, with progressive-detail toggles, light and dark mode, and best-in-class UX. Nothing may ever be lost, and it lives in the `Sentinel` repo, the future single monorepo (infra is planned to move in later).
+
+User answers:
+- Repo `Sentinel`.
+- Updates are events plus a reconciler.
+- Scope: app builds and deploys, incidents and agent runs, revert PRs and reviews, backend CI/CD and eval, and traces.
+- React is acceptable, and so is a database.
+
+Orchestrator design (binding; see `architecture/ops-dashboard.md`):
+- **The store is an append-only git ledger** on orphan branch `ops-ledger`, one JSON file per event with a deterministic `event_id`. It survives estate teardown and backend scale-to-zero, is free and versioned, and counts are derived from it. The Azure Postgres was rejected because it is destroyed with the estate; an external DB was rejected because it adds a vendor and an API.
+- **Public static React SPA on GitHub Pages**, built from reconciled snapshots.
+- **Data rules (R14):** a strict per-kind allow-list, with no raw logs or tool output, no secrets, and LLM summaries capped at 500 characters.
+- **The dashboard is observe-only.** No UI action merges or approves anything, so HITL is unchanged.
+- **Phase:** built as **backend phase 10** after phase 9 signs off. Tracker entry via `/new-ticket` (user-invoked).
+
 ### 2026-10-25: Backend phase 9 (Cleanup & End-to-End) contract
 
 User answers (binding; supersede backend §13.1's delete list and task 9.2's demo-PR wording):

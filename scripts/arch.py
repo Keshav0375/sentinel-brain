@@ -30,6 +30,7 @@ DOCS = {
     "infra": "architecture/infra.md",
     "backend": "architecture/backend.md",
     "deployment": "architecture/deployment.md",
+    "dashboard": "architecture/ops-dashboard.md",
     "decisions": "architecture/decisions.md",
     "index": "architecture/README.md",
 }
