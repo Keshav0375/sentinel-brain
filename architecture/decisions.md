@@ -16,6 +16,20 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-25: Backend phase 9 (Cleanup & End-to-End) contract
+
+User answers (binding; supersede backend §13.1's delete list and task 9.2's demo-PR wording):
+- **`GET /api/scenarios` is re-pointed at the real catalog.** It serves the 30 scenario branches (branch, case, fault, expected_signal_type, expected_resolution, …) read-only, from ONE vendored copy of `Sentinel-deployment/scenarios/branches.yaml` shipped with the package. The eval tests use that same copy, so there is no second fixture. It stays behind the bearer token, and the dashboard panel shows the real scenarios.
+- **The live demo runs** `pass/01` (true negative: no incident), `deployfail/03` (`deploy_failure` → revert PR) and `runtime/01` (`runtime_error` → rollback or escalation), with `runtime/07` optional. Each is a human-merged PR on Sentinel-deployment, followed by the real path (Datadog → bridge → `repository_dispatch` → `ci_incident_response.yml`).
+- **The live runbook lives in `sentinel-brain/reports/DEMO.md`,** never in a code repo.
+- **The pipeline adds a LangFuse dataset item at the terminal state.** When an incident ends `rollback_proposed` or `escalated`, the backend writes one item to dataset `sentinel-scenario-runs`, in the item schema documented in `eval/runner.py`. The branch label comes from the deployed version or PR, plus the PR number, the merge SHA and the trajectory. This is a write to our own LangFuse only, like traces and scores, so the HITL rule holds. It is best effort: a failure is logged and never fails the incident. A human then runs `scripts/run_eval.py` to score the runs.
+
+Orchestrator rulings:
+- `scripts/run_eval.py` is **kept**: phase 6 rewrote it as the eval pipeline's CLI, and §13.1's deletion of it is void.
+- 9.1 also removes every lingering reference to the deleted code: the `cli.py` `scenario`/`scenarios`/seed paths, `config.sentinel_db_path`, the pyproject `{ include = "data" }`, the tests that import the deleted code, stale comments, `.gitignore` sqlite lines, and the README/CONVENTIONS/CLAUDE.md mentions.
+- The offline E2E (`tests/test_e2e/`) stubs the LangFuse client and dataset. Scoring stays a separate `run_eval` pass, never inlined into the pipeline.
+- The links between incident, PR, deploy, logs and trace are live-only and are recorded as not yet run until the live demo.
+
 ### 2026-10-24: Backend phase 8 (CI/CD Workflows) contract
 
 User answers (binding; they supersede backend §9.1–§9.3 triggers, `secrets.GH_PAT`, the stale names and the `sentinel-gha` PG user):
