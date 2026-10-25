@@ -41,10 +41,12 @@ Commit `8a55663` on `dev/backend-phase-9-cleanup`: "refactor: remove Phase-1 syn
 - `aiosqlite` removed (lock: aiosqlite + content-hash only); numpy transitive only. pyproject no longer includes `data/`; CLI serve-only; `config.sentinel_db_path` removed.
 - Catalog: vendored `src/sentinel/catalog/branches.yaml` (git mv from eval fixture) + loader; `/api/scenarios` serves it read-only behind bearer. Dashboard is a read-only catalog (no Fire button, no live view).
 - Decisions: 3c492de, 9320bb1.
+- Review fix `3f7cdd3` ("fix: phase 9 review — branch kept out of prompts, dataset write off the critical path, Phase-1 models removed"): Phase-1 models deleted; stale text fixed; numpy and pytest-timeout dev-only.
+- Decisions: 3c492de, 9320bb1, b0fa4a4, 8e763a0, 934fe7d.
 - Follow-up: EventBus and DashboardEventEmitter have no subscriber; kept per decision 2026-10-15 (emitter as trace processor); removal needs a decision.
 
 ## Tests
-Gate: VERDICT GREEN (full run, 7 ran, 0 skipped). Boot probe: /health and /ready 200, protected routes 401. arm64 image builds, serves /health with `--read-only --network none`, ships catalog (30 entries).
+Gate: VERDICT GREEN on `3f7cdd3` (full run); boot OK. Earlier on 8a55663: VERDICT GREEN (full run, 7 ran, 0 skipped). Boot probe: /health and /ready 200, protected routes 401. arm64 image builds, serves /health with `--read-only --network none`, ships catalog (30 entries).
 
 ## How to Verify
 1. `grep -r "sentinel.generator\|infra.db\|data/scenarios" src/ tests/` -> no hits.
