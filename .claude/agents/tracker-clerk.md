@@ -46,7 +46,7 @@ Input: phase ref, repo, branch, integration branch, the task DONE blocks, review
 2. `gh pr create --repo Keshav0375/<repo> --base <integration> --head <branch>` — title
    `<cat> phase <M> — <phase name>`; body: one bullet per task (commit subject + `Keshav0375/sentinel-brain#<task issue>`)
    + the aggregated How to Verify steps + a last line `Refs Keshav0375/sentinel-brain#<phase issue>`
-   (numbers: `python3 scripts/board_sync.py --issues <cat>-<M>`). **No attribution line.** Backend: `--base release-phase-2`, never `main`.
+   (numbers: `python3 scripts/board_sync.py --issues <cat>-<M>`). **No attribution line.** Backend: `--base main` (`release-phase-2` is frozen since the 2026-10-25 release).
 3. Write `reports/<cat>-phase-<M>.md` from `implementation/_templates/phase-report-template.md` —
    short: what shipped, what it unblocks, see-it-working, not done/blocked, decisions.
 4. STATE.md `Active PR` → the PR link. Commit `docs: <cat> phase <M> report; PR #<n> open`, push.

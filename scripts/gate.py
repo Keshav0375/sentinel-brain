@@ -66,7 +66,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from where import REPO, ROOT  # noqa: E402  (single source for repo locations)
 
 SENTINEL = (ROOT / REPO["backend"]).resolve()
-GATE_REF = "origin/release-phase-2"
+GATE_REF = "origin/main"  # release-phase-2 frozen after the Phase 2 release (2026-10-25)
 GATE_PATH = "scripts/quality_gate.py"
 NO_PATH = "no such path yet: "  # the gate's skip detail for a check whose paths are missing
 
@@ -82,14 +82,14 @@ def gate_source(cat: str, tmp: Path, checkout: Path = SENTINEL) -> tuple[Path, s
     if cat == "backend":
         branch = _git(checkout, "rev-parse", "--abbrev-ref", "HEAD")
         sha = _git(checkout, "rev-parse", "--short", "HEAD")
-        if branch == "main":
-            print("WARN    ../Sentinel is on `main` — backend work belongs on dev/* or "
-                  "release-phase-2; this gate copy is stale")
+        if branch == "release-phase-2":
+            print("WARN    ../Sentinel is on `release-phase-2` — that branch is frozen; "
+                  "backend work belongs on dev/* or fix/* from main")
         return checkout / GATE_PATH, f"working tree {branch}@{sha}"
 
     note = ""
     try:
-        _git(SENTINEL, "fetch", "--quiet", "origin", "release-phase-2")
+        _git(SENTINEL, "fetch", "--quiet", "origin", "main")
     except (subprocess.SubprocessError, OSError):
         note = " (fetch failed — cached ref)"
     sha = _git(SENTINEL, "rev-parse", "--short", GATE_REF)

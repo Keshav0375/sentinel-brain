@@ -164,7 +164,7 @@ reviewer that raised it.
    - **Hold** → leave the PR open.
 
 **Never** merge without an explicit Approve. **Never** mark `verified` what the user has not
-confirmed. **Never** merge a backend phase into `Sentinel` `main`.
+confirmed. **Never** target `Sentinel` `release-phase-2` — it is frozen; phases go `dev/*` → `main`.
 
 ## Chat output (binding)
 The user sees a terminal. Digest, never transcript: verdict first, one line per finding/task, 🚨/⚠️

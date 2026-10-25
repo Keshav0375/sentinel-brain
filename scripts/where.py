@@ -44,7 +44,7 @@ REPO = {
     "deployment": "../Sentinel-deployment",
     "backend": "../Sentinel",
 }
-INTEGRATION = {"infra": "main", "deployment": "main", "backend": "release-phase-2"}
+INTEGRATION = {"infra": "main", "deployment": "main", "backend": "main"}  # release-phase-2 frozen 2026-10-25
 
 DONE = {"✅"}                                              # verified
 OPEN_STATUS = {"⬜", "\U0001f535", "⛔", "\U0001f7e1"}  # not-started/in-progress/blocked/pending-review

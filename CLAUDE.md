@@ -49,7 +49,7 @@ python3 scripts/board_sync.py [--issues <cat>-<M>]           # mirror tracker �
 | Finished phase summaries | `reports/` |
 
 The session starts with `where.py` output already injected (SessionStart hook) — don't re-run it
-just to orient. `scripts/gate.py` exists because the gate must come from `release-phase-2` (the
+just to orient. `scripts/gate.py` exists because the gate must come from `main` (the
 local `Sentinel` checkout may be stale) and must find ruff/pytest in the target repo's `.venv`;
 it ends with one `VERDICT` line and exits non-zero unless the gate is fully green.
 
@@ -92,14 +92,14 @@ heading) — never re-derive it.
 
 | Repo | Branch from | PR into | Protected? |
 |------|-------------|---------|-----------|
-| `Sentinel` (backend) | `release-phase-2` | `release-phase-2` | yes — `main` is guarded |
+| `Sentinel` (backend) | `main` | `main` | yes — PR required; `guard-main-source.yml` allows only `dev/*`, `fix/*` |
 | `Sentinel-infra` | `main` | `main` | no |
 | `Sentinel-deployment` | `main` | `main` | no |
 
-- `Sentinel` `main` accepts exactly one merge — `release-phase-2`, once, at the end of Phase 2,
-  driven by the user. `guard-main-source.yml` rejects `dev/*` → `main`.
-- `fix/*` → `release-phase-2` is allowed for out-of-phase repairs (tooling/CI defects found
-  mid-build). Phase work is always `dev/*`; never use `fix/` to dodge the phase model.
+- **Phase 2 shipped to `main` on 2026-10-25 (PR #29).** `main-backup` holds the pre-release `main`;
+  `release-phase-2` is **frozen** as the Phase 2 record (the guard rejects every PR into it).
+- `fix/*` → `main` is allowed for out-of-phase repairs (tooling/CI defects). Phase work is always
+  `dev/*`; never use `fix/` to dodge the phase model.
 - Tracker commits go straight to brain `main` (no branch, no PR). `planning/phase-2-e2e` is retired.
 
 ## MCP servers (`.mcp.json`)
