@@ -250,7 +250,8 @@ X-Correlation-ID: {correlation_id}
   },
   "context": {
     "service_metadata": { ... },
-    "pr_details": { "number": 5, "sha": "a3f9c2", "author": "dev-bot", "files_changed": ["app/main.py"] },
+    "pr_details": { "number": 5, "sha": "a3f9c2", "author": "dev-bot", "files_changed": ["app/main.py"], "branch": "deployfail/03" },
+    // pr_details.branch = the PR head.ref (scenario branch name), forwarded by the incident workflow; optional (dec 2026-10-25)
     "recent_logs": [ ... ]
   },
   "timestamp": "2026-07-01T12:00:00Z",
