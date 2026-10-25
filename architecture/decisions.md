@@ -45,6 +45,12 @@ User answers (binding; supersede backend §13.1's delete list and task 9.2's dem
 - **The branch label is forwarded.** `scripts/incident_dispatch.py:shape_pr_details` adds `branch` (the PR's `head.ref`), `PRDetails` gains `branch: str | None` (§3.1 amended), and the dataset writer uses `pr_details.branch`. With no branch, the item is skipped and logged. 9.2 is built after 9.1, not in parallel.
 - **A narrow R14 exception covers dataset items only.** The item's `pipeline_result` carries the LLM-written root cause, evidence summary and justification. **Every raw tool-output or log clip is stripped**, including the `_escalate` fallback's ≤300-char tool snippets. The trajectory is the orchestrator's status-only timeline, never raw span exports. Traces and scores keep R14 unchanged.
 
+*Amended after review (2026-10-25):*
+- **The SSE route `GET /events/{incident_id}` is removed** along with the dashboard live view. Its only consumer was the dashboard's EventSource, and the user chose to remove Fire and its live view. The 2026-10-19 "SSE events behind the bearer" line is void. `EventBus` / `DashboardEventEmitter` are kept for now as trace processors (dec 2026-10-15); removing them is a follow-up.
+- **`pr_details.branch` is eval metadata, never agent input.** It is excluded from every agent prompt (it is the ground-truth label), validated as `^[A-Za-z0-9._/-]{1,100}$`, and accepted only when it is a key in the vendored catalog. Otherwise it is dropped (the item is skipped).
+- **The dataset write is off the critical path.** It is a tracked background task with a hard timeout, so it never delays the terminal status or shutdown.
+- **9.1 also deletes the now-unused Phase-1 models** (`AlertPayload`, `IncidentAlert.from_phase1`, `PipelineInput.from_alert`, `models/log_entry.py`) and their tests.
+
 Orchestrator rulings:
 - `scripts/run_eval.py` is **kept**: phase 6 rewrote it as the eval pipeline's CLI, and §13.1's deletion of it is void.
 - 9.1 also removes every lingering reference to the deleted code: the `cli.py` `scenario`/`scenarios`/seed paths, `config.sentinel_db_path`, the pyproject `{ include = "data" }`, the tests that import the deleted code, stale comments, `.gitignore` sqlite lines, and the README/CONVENTIONS/CLAUDE.md mentions.
