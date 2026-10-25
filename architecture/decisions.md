@@ -24,6 +24,10 @@ User answers (binding; supersede backend §13.1's delete list and task 9.2's dem
 - **The live runbook lives in `sentinel-brain/reports/DEMO.md`,** never in a code repo.
 - **The pipeline adds a LangFuse dataset item at the terminal state.** When an incident ends `rollback_proposed` or `escalated`, the backend writes one item to dataset `sentinel-scenario-runs`, in the item schema documented in `eval/runner.py`. The branch label comes from the deployed version or PR, plus the PR number, the merge SHA and the trajectory. This is a write to our own LangFuse only, like traces and scores, so the HITL rule holds. It is best effort: a failure is logged and never fails the incident. A human then runs `scripts/run_eval.py` to score the runs.
 
+*Amended (user answers to the 9.2 HALT, 2026-10-25):*
+- **The branch label is forwarded.** `scripts/incident_dispatch.py:shape_pr_details` adds `branch` (the PR's `head.ref`), `PRDetails` gains `branch: str | None` (§3.1 amended), and the dataset writer uses `pr_details.branch`. With no branch, the item is skipped and logged. 9.2 is built after 9.1, not in parallel.
+- **A narrow R14 exception covers dataset items only.** The item's `pipeline_result` carries the LLM-written root cause, evidence summary and justification. **Every raw tool-output or log clip is stripped**, including the `_escalate` fallback's ≤300-char tool snippets. The trajectory is the orchestrator's status-only timeline, never raw span exports. Traces and scores keep R14 unchanged.
+
 Orchestrator rulings:
 - `scripts/run_eval.py` is **kept**: phase 6 rewrote it as the eval pipeline's CLI, and §13.1's deletion of it is void.
 - 9.1 also removes every lingering reference to the deleted code: the `cli.py` `scenario`/`scenarios`/seed paths, `config.sentinel_db_path`, the pyproject `{ include = "data" }`, the tests that import the deleted code, stale comments, `.gitignore` sqlite lines, and the README/CONVENTIONS/CLAUDE.md mentions.

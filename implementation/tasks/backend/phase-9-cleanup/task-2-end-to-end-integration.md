@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | `not-started` |
+| **Status** | `in-progress` |
 | **Repo** | `Sentinel` (backend) + full system |
 | **Phase branch** | `dev/backend-phase-9-cleanup` |
 | **Commit prefix** | `test:` |
