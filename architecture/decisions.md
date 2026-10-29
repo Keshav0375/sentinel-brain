@@ -126,6 +126,8 @@ User answers (binding; they supersede backend §9.1–§9.3 triggers, `secrets.G
 - `GET /incidents/{id}/rollback-spec` (bearer auth, `Incident.Write`) returns the `RollbackSpec` the pipeline drafted (404 when there is none, e.g. escalated).
 - The workflow passes it unchanged to `POST /generate/pr-content`. The backend still only drafts.
 
+**pip-audit exception extended (user ruling, 2026-10-28).** 10 more filelock CVEs were published (CVE-2026-112938, -112936, -112910, -112909, -112911, -112939, -112915, -112935, -112912, -112908). They are fixed only in filelock 4.x. The newest litellm (1.106.6, checked via the Poetry resolver) still caps filelock `<4.0`. The owner chose the same dated ignore. The re-check date is unchanged: **2026-11-24**.
+
 **Orchestrator rulings.**
 - `ci_backend_scale.yml` joins `concurrency: {group: sentinel-backend, cancel-in-progress: false}`.
 - 8.3's name is `[sentinel] incident — response pipeline`.
