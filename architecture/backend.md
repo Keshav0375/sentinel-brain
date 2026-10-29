@@ -687,13 +687,15 @@ Note: `draft_slack_summary` and `send_notification` are removed from the backend
 | Migrations | Manual `CREATE TABLE` | `alembic` |
 | Concurrency | Single connection | `asyncpg.Pool` (min=2, max=10) |
 
-### 5.2 What PostgreSQL Stores (3 Tables)
+### 5.2 What PostgreSQL Stores (3 core tables + 2 operational, dec 2026-10-25 memory hardening)
 
 | Table | Purpose | Key Queries |
 |-------|---------|-------------|
 | `incidents` | Every incident the system has handled — episodic memory. Carries `pr_number`/`pr_url` when a revert PR was created (creation record only — no lifecycle tracking, see §3.3) | Similarity search by embedding, filter by status/service, trajectory replay |
 | `services` | Service ownership, dependencies, runbooks — semantic memory | Lookup by name, similarity search for "which service matches this symptom?" |
 | `deployments` | Deploy metadata linking incidents to PRs, commits, and Datadog events. **Written by `ci_app_deployment.yml`'s record-deployment stage on every deploy (success and failure)** | Correlate incident → deploy → PR → logs; "what deployed to this service in the last 2 hours?" |
+| `incident_checkpoints` | Per-stage agent checkpoints (migration 003): an in-flight incident resumes once after a pod restart; same data class as `trajectory`, never exported | Latest checkpoint per incident |
+| `cache_entries` | Tool/LLM result cache (migration 003): exact-match key, TTL; `fetch_logs` always, deterministic LLM calls only behind a flag, judge never | Lookup by key, expired-row prune |
 
 ### 5.3 Schema
 
@@ -767,7 +769,7 @@ CREATE INDEX idx_deployments_incident ON deployments(incident_id);
 CREATE INDEX idx_deployments_commit ON deployments(commit_sha);
 ```
 
-### 5.4 Why These 3 Tables (Not More, Not Fewer)
+### 5.4 Why These 3 Core Tables (the 2 operational tables are caches/checkpoints, not memory)
 
 - **incidents** = episodic memory. The agent learns from past incidents via vector similarity. Terminal state is written at pipeline completion; if a revert PR was created, GHA writes `pr_number` + `pr_url` onto the incident row (one `psql UPDATE`) for correlation.
 - **services** = semantic memory. The triage agent looks up "which team owns this service?" and "what are its dependencies?" without an LLM call.
