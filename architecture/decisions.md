@@ -16,6 +16,15 @@ python scripts/arch.py decisions R6          # just the entry(s) matching a keyw
 
 ## Decision Log
 
+### 2026-10-28: Automated eval runs in-cluster
+
+User ruling: option (b). `ci_eval.yml` brings the backend up and runs `scripts/run_eval.py` as a **Kubernetes Job in `sentinel-dev` under the backend's workload identity** (SA `sentinel-backend`). The LLM keys stay pod-only: `get-kv-secrets` still never exports them, and no GHA identity can read them.
+- The Job stores `incidents.eval_score` as normal (dec 2026-10-22).
+- The workflow collects `reports/eval_report.json`, uploads it as an artifact, and emits one `eval.scored` event per scored run through `ops-event`, using the frozen allow-list. `judge_conflict` and `judge_failed` are flags, never aggregated.
+- The image ships the eval CLI (`scripts/run_eval.py`) and the vendored catalog.
+- It uses the `sentinel-backend` concurrency group, preflight-gated like the other cloud workflows. Teardown follows the keep-warm rule.
+- This supersedes the 2026-10-25 note that "a human runs run_eval.py"; running it by hand stays possible.
+
 ### 2026-10-25: Agent memory and storage hardening (after the Ops dashboard)
 
 The user chose all four options, to be planned and built after backend phase 10:
