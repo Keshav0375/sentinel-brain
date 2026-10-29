@@ -25,6 +25,11 @@
 
 ## Next Action
 
+**2026-10-28:** infra phase 7 (monorepo, PR #32, dabf404) and backend phase 10 (Ops Dashboard, PR #33, ef6ccf0) are merged into `main`. **Next:** the memory and storage hardening (decision 2026-10-25, Redis = Azure Managed Redis B0), then the README rewrite. Owner steps outstanding:
+- enable GitHub Pages and run the first `ops_pages.yml` deploy
+- re-run `infra/scripts/bootstrap-identities.sh`, push secrets with `infra/scripts/set-gh-secrets.sh`, set `INFRA_OIDC_READY=true`
+- run `/new-ticket` for these phases so the tracker reflects them
+
 **Backend phase 9 signed 2026-10-25** (PR #28 merged into release-phase-2, 969256b); backend Phase 2 is complete. Next: (1) final release PR #29, release-phase-2 → main, in flight (main backed up as main-backup at 5b97232); (2) the monorepo infra move; (3) backend phase 10 (Ops Dashboard).
 
 (Previous:) **Backend phase 9 PR #28 open** into release-phase-2, awaiting sign-off ([report](../reports/backend-phase-9.md), [demo runbook](../reports/DEMO.md)). Carried: (a) the live demo is not yet run; (b) EventBus/DashboardEventEmitter have no subscriber; (c) the filelock ignore expires 2026-11-24; (d) NEXT: the user-authorized final merge of release-phase-2 → main (back up main to main-backup first), the monorepo infra move, and backend phase 10 (Ops Dashboard).

@@ -22,7 +22,7 @@ The user chose all four options, to be planned and built after backend phase 10:
 - **A. Memory survives teardown.** Before destroy, `pg_dump` goes to blob storage, kept outside the destroyable estate; on apply it is restored. Episodic memory (incidents and embeddings) and semantic memory (services) persist across test runs. Cost: cents a month.
 - **B. Agent checkpoints.** A Postgres checkpoint table plus write-through of short-term memory, so an in-flight incident resumes after a pod restart or redeploy instead of being stuck in `in_progress`.
 - **C. Tool/LLM cache.** A Postgres cache table (exact-match key, TTL) for Datadog query results and LLM responses, to cut eval re-run cost. R14 applies: cached rows stay in our DB and are never exported.
-- **D. Redis.** A hot cache, the short-term working-memory store, and pub/sub for live dashboard updates. The provider is still open: Azure Managed Redis Balanced B0 (about $13.14/mo, inside the estate) or Upstash (free 256 MB / 500K commands, then $0.20 per 100K, external vendor). Ask the user at planning time.
+- **D. Redis: Azure Managed Redis, Balanced B0** (user ruling, 2026-10-28; about $13.14/mo). It holds the hot cache, the short-term working-memory store, and pub/sub. It sits inside the estate (Terraform in `infra/`, private networking, Entra/managed-identity auth with no access keys) and is created and destroyed with the estate. It holds no durable state; durable memory stays in Postgres plus the blob backup.
 
 Current baseline: Postgres Flexible Server B1ms (about $12/mo on-demand in East US, up to about $26 elsewhere) plus 32 GB of storage, billed only while the estate is up.
 
