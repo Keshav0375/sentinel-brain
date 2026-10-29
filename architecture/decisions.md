@@ -24,6 +24,12 @@ User ruling: option (b). `ci_eval.yml` brings the backend up and runs `scripts/r
 - The image ships the eval CLI (`scripts/run_eval.py`) and the vendored catalog.
 - It uses the `sentinel-backend` concurrency group, preflight-gated like the other cloud workflows. Teardown follows the keep-warm rule.
 - This supersedes the 2026-10-25 note that "a human runs run_eval.py"; running it by hand stays possible.
+- *Amended (orchestrator ruling, 2026-10-28):*
+  - The namespace quota equals one backend pod, so the eval **pauses the backend**: backend-up, then scale the Deployment to 0, run the Job, then restore per keep-warm (scale back to 1, or run backend-down). Incidents queue in the `sentinel-backend` concurrency group meanwhile.
+  - The Job manifest lives at `azure/k8s/jobs/eval-job.yaml`, outside backend-up's `azure/k8s/*.yaml` glob.
+  - Reports come out through the Job logs, between markers.
+  - The pending infra CI-identity ticket must also grant gha-backend `batch/jobs` create/get/list/watch/delete, plus `pods` get/list and `pods/log` get, in `sentinel-dev`.
+  - Build order on the branch: memory backend, then memory infra (REDIS_* inputs), then eval.
 
 ### 2026-10-25: Agent memory and storage hardening (after the Ops dashboard)
 
