@@ -30,6 +30,7 @@ User ruling: option (b). `ci_eval.yml` brings the backend up and runs `scripts/r
   - Reports come out through the Job logs, between markers.
   - The pending infra CI-identity ticket must also grant gha-backend `batch/jobs` create/get/list/watch/delete, plus `pods` get/list and `pods/log` get, in `sentinel-dev`.
   - Build order on the branch: memory backend, then memory infra (REDIS_* inputs), then eval.
+  - **`eval.scored` cardinality (orchestrator ruling):** one event per scenario branch per eval run, for the **newest** dataset item of that branch. The frozen recipe (`source_id = <run_id>.<run_attempt>`, `state = scenario`) allows only one event per branch per run. Older items of the same branch are counted in the run's job summary and the uploaded report, not emitted.
 
 ### 2026-10-25: Agent memory and storage hardening (after the Ops dashboard)
 
@@ -38,6 +39,12 @@ The user chose all four options, to be planned and built after backend phase 10:
 - **B. Agent checkpoints.** A Postgres checkpoint table plus write-through of short-term memory, so an in-flight incident resumes after a pod restart or redeploy instead of being stuck in `in_progress`.
 - **C. Tool/LLM cache.** A Postgres cache table (exact-match key, TTL) for Datadog query results and LLM responses, to cut eval re-run cost. R14 applies: cached rows stay in our DB and are never exported.
 - **D. Redis: Azure Managed Redis, Balanced B0** (user ruling, 2026-10-28; about $13.14/mo). It holds the hot cache, the short-term working-memory store, and pub/sub. It sits inside the estate (Terraform in `infra/`, private networking, Entra/managed-identity auth with no access keys) and is created and destroyed with the estate. It holds no durable state; durable memory stays in Postgres plus the blob backup.
+
+*Amended (user ruling 2026-10-28, option a; scoped after the safety review):*
+- **Backup role.** `grant-db-access.sh` (the human-admin flow) creates `gha-deploy` as a non-admin role scoped to **this deployment's database only**. It gets `CONNECT` on that DB, `SELECT` on its tables for the dump, and `INSERT` on its tables for the data-only restore. It does NOT get the server-wide `pg_read_all_data`/`pg_write_all_data`; the platform Postgres server is shared, and those roles span every database. Table owners never change, and migrations stay with the admin.
+- **The backup fails closed.** Only a workspace or output that is genuinely absent counts as a skip. Any Terraform, state or `pg_dump` error blocks the destroy, unless the dispatch sets `force_destroy_without_backup`.
+- **The restore is data-only** and runs only when `incidents` exists and is empty. It skips the data of `alembic_version`, `services`, `cache_entries` **and `incident_checkpoints`**. Restored `in_progress` placeholder rows are closed as `escalated` ("restored from backup"), so the startup sweep never resumes a stale incident against a new estate.
+- **Resume bounds.** Every cap carries across a resume: the tool-call budget is checkpointed per tool call, and the reflexion loops and the **wall-clock deadline** are both absolute from the incident's first start.
 
 Current baseline: Postgres Flexible Server B1ms (about $12/mo on-demand in East US, up to about $26 elsewhere) plus 32 GB of storage, billed only while the estate is up.
 
