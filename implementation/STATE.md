@@ -25,6 +25,25 @@
 
 ## Next Action
 
+**2026-10-30:** backend phase 11 is merged into `main` (PR #35, ba78355): memory hardening (checkpoints + bounded resume, tool/LLM cache, Azure Managed Redis B0, fail-closed pre-destroy backup + data-only restore), in-cluster eval (`ci_eval.yml`) and the README for the shipped system. All planned build work is merged.
+
+Owner steps before anything runs live:
+1. Enable GitHub Pages (4 `gh api` commands), then `gh workflow run ops_pages.yml`.
+2. `infra/scripts/bootstrap-identities.sh`, then fill `infra/.env` and run `set-gh-secrets.sh`, then set the repo var `INFRA_OIDC_READY=true`.
+3. `infra/scripts/grant-db-access.sh` (after `alembic upgrade head`).
+4. The infra CI-identity ticket (`/new-ticket`): gha-backend FIC + grants, including the eval Job RBAC.
+5. `REVERT_PR_PAT`; real Anthropic/OpenAI keys in KV.
+6. Estate up, then the live demo (`reports/DEMO.md`).
+
+Then archive `Sentinel-infra`, after the first infra plan run from Sentinel passes.
+
+Follow-ups:
+- re-check the filelock ignores by 2026-11-24
+- remove `EventBus`/`DashboardEventEmitter`
+- the Redis aclose wait sits outside the shutdown grace budget (code-review note)
+- the restore's placeholder UPDATE should also set `resolution_type` and `resolved_at`
+- the memory-restore `terraform output` errors are silent
+
 **2026-10-28:** infra phase 7 (monorepo, PR #32, dabf404) and backend phase 10 (Ops Dashboard, PR #33, ef6ccf0) are merged into `main`. **Next:** the memory and storage hardening (decision 2026-10-25, Redis = Azure Managed Redis B0), then the README rewrite. Owner steps outstanding:
 - enable GitHub Pages and run the first `ops_pages.yml` deploy
 - re-run `infra/scripts/bootstrap-identities.sh`, push secrets with `infra/scripts/set-gh-secrets.sh`, set `INFRA_OIDC_READY=true`
